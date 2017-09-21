@@ -27,10 +27,14 @@
 % to FCC.
 % note, required functions in chenFunctions
 %
+% chenzhe, 2017-08-31. change the input format of grain file from .csv to
+% .txt, so it is of more general use.
+%
 % prerequisite: may need EBSD_tool_convert_grain_file_txt_to_CSV()
 % ---------- level 1----------
 % load_settings()
-% find_variable_column_from_CSV_grain_file()
+% grain_file_read()
+% find_variable_column_from_grain_file_header()
 % % construct_neighbor_structure()
 % % construct_misorientation_structure()
 % % ----> calculate_misorientation_hcp()
@@ -54,8 +58,8 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('.csv','choose the EBSD file (csv format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.csv'],'choose the EBSD file (csv format, from type-2 grain file)');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
 [strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
@@ -63,15 +67,19 @@ tform = maketform('projective',cpEBSD(1:4,:),cpSEM(1:4,:));
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-save([sampleName,'_traceAnalysis_WS1_rename.mat']);
-
+saveDataPath = [uigetdir(pathSetting,'choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+try
+    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
+catch
+    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
+end
 %%
-% Read EBSD grain file. '.csv' format for now.
-EBSDdata1 = grain_file_read([EBSDfilePath1, EBSDfileName1(1:end-4),'.txt']);
-EBSDdata2 = csvread([EBSDfilePath2, EBSDfileName2],1,0);
-columnIndex1 = find_variable_column_from_CSV_grain_file(EBSDfilePath1, EBSDfileName1,...
+% Read EBSD grain file. '.txt' format for now.
+[EBSDdata1,EBSDheader1] = grain_file_read([EBSDfilePath1, EBSDfileName1]);
+[EBSDdata2,EBSDheader2] = grain_file_read([EBSDfilePath2, EBSDfileName2]);
+columnIndex1 = find_variable_column_from_grain_file_header(EBSDheader1,...
         {'grain-ID','phi1-r','phi-r','phi2-r','x-um','y-um','edge'});
-columnIndex2 = find_variable_column_from_CSV_grain_file(EBSDfilePath2, EBSDfileName2,...
+columnIndex2 = find_variable_column_from_grain_file_header(EBSDheader2,...
         {'grainId','phi1-d','phi-d','phi2-d','x-um','y-um','n-neighbor+id','grain-dia-um','area-umum','edge'});
 
 % read type-2 grain file and get average info for grains
@@ -88,11 +96,11 @@ gEdge = EBSDdata2(:,columnIndex2(10));
 gNeighbors = EBSDdata2(:,(columnIndex2(7)+1):(size(EBSDdata2,2)));
     
 % [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{i} = [2;3;...]
-% neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
+neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
 
 % [temp disable] misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
 % misorientationStruct.misorientation{i}=[5d;75d;...]
-% misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
+misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
 
 
 % EBSD data, from type-1 grain file. (column, data) pair:
@@ -162,10 +170,10 @@ y = Y;
 [gExx,~] = generate_grain_avg_data(ID,gID,exx, 0.2, sigma);
 
 %% 
-save([sampleName,'_traceAnalysis_WS2_rename.mat']);
-save([sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','boundaryTF',...
+save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
+save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','boundaryTF',...
     'phi1','phi','phi2',...
-    ...'neighborStruct','misorientationStruct',...    
+    'neighborStruct','misorientationStruct',...    
     'gArea','gCenterX','gCenterY','gDiameter','gExx','gID','gNNeighbors',...
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
     'ebsdStepSize','fileSetting','pathSetting',...
