@@ -63,7 +63,8 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 [strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
-tform = maketform('projective',cpEBSD(1:4,:),cpSEM(1:4,:));
+tform = make_average_transform('projective',cpEBSD,cpSEM);
+
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
@@ -125,6 +126,7 @@ end
 x = reshape(EBSDdata1(:,columnIndex1(5)),mResize,nResize)';
 y = reshape(EBSDdata1(:,columnIndex1(6)),mResize,nResize)';
 ID = reshape(EBSDdata1(:,columnIndex1(1)),mResize,nResize)';
+ID_0 = ID;  % keep a copy, maybe useful
 edge = reshape(EBSDdata1(:,columnIndex1(7)),mResize,nResize)';
 
 strainData = load([strainFilePath, strainFileName]);
@@ -147,7 +149,7 @@ catch
 end
 clear EBSDdata1 EBSDdata2 strainData;
 
-% fwded coordinates 
+%% fwded coordinates 
 [x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,[x(:),y(:)]);
 
 ID = interp_data(x,y,ID,X,Y,tform,'interp','nearest');
@@ -156,7 +158,7 @@ phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
 edge = interp_data(x,y,edge,X,Y,tform,'interp','nearest');
 [boundaryTF, ~, ~, ~, ~] = find_boundary_from_ID_matrix(ID);
-for iThick = 1:5
+for iThick = 1:4
     boundaryTF = grow_boundary(boundaryTF);       % grow boundary if necessary  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -------------------------------------------
 end
 
