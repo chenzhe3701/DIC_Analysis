@@ -162,7 +162,7 @@ for iThick = 1:4
     boundaryTF = grow_boundary(boundaryTF);       % grow boundary if necessary  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -------------------------------------------
 end
 
-x = X;  % change x to X
+x = X;  % replace x with X
 y = Y;
 
 [gCenterX, gCenterY] = tformfwd(tform,[gCenterX, gCenterY]);
