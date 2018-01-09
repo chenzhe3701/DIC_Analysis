@@ -1,8 +1,11 @@
-%
+% Start with analyzing more data, such as quantiles, ...
 
 clear;
 addChenFunction;
-directory_DIC = uigetdir('','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('','pick DIC directory, which contains the stitched DIC data for each stop');
+dicFiles = dir([dicPath,'\*.mat']);
+dicFiles = struct2cell(dicFiles);
+dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
@@ -20,12 +23,13 @@ gIDwithTrace = gID(~isnan(gExx));
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 
 STOP = {'0','1','2','3','4','5','6','7'};
-iE_start = 2;   % elongation levels to analyze. 1-based.
-iE_stop = 8;
+B=1;    % 0-based B=1.  1-based B=0.
+iE_start = 1;   % elongation levels to analyze. 0-based.
+iE_stop = 7;
 resReduceRatio = 3;         % to save space, reduce map resolution
 grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 % file name prefixes
-f1 = 'T5_#7_stop_';
+f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
@@ -39,12 +43,13 @@ notes = struct('atEdge',[],'likeTwin',[],'tooSmall',[]);
 
 % end of modify settings part 1 ------------------------------------------------------------------------------------------------------------------------------------
 save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
+    'dicPath','dicFiles',...
     'STOP','iE_start','iE_stop','resReduceRatio','grow_boundary_TF','f1','f2','neighbor_elim','twinTF_text','notes','gIDwithTrace',...
     '-append');
 
 %%
 iE = 5;
-strainFile = [directory_DIC,'\',f2,STOP{iE}]; disp(strainFile);            % change the prefix and name of DIC file ----------------------------------------------------
+strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);            % change the prefix and name of DIC file ----------------------------------------------------
 
 load(strainFile,'exx','exy','eyy');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
 

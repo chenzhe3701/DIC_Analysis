@@ -74,7 +74,7 @@ try
 catch
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 end
-%%
+%% Read raw EBSD data and DIC data.  The alignment will be performed in next section.
 % Read EBSD grain file. '.txt' format for now.
 [EBSDdata1,EBSDheader1] = grain_file_read([EBSDfilePath1, EBSDfileName1]);
 [EBSDdata2,EBSDheader2] = grain_file_read([EBSDfilePath2, EBSDfileName2]);
@@ -83,6 +83,7 @@ columnIndex1 = find_variable_column_from_grain_file_header(EBSDheader1,...
 columnIndex2 = find_variable_column_from_grain_file_header(EBSDheader2,...
         {'grainId','phi1-d','phi-d','phi2-d','x-um','y-um','n-neighbor+id','grain-dia-um','area-umum','edge'});
 
+    
 % read type-2 grain file and get average info for grains
 gID = EBSDdata2(:,columnIndex2(1));
 gPhi1 = EBSDdata2(:,columnIndex2(2));
@@ -96,10 +97,11 @@ gArea = EBSDdata2(:,columnIndex2(9));
 gEdge = EBSDdata2(:,columnIndex2(10));
 gNeighbors = EBSDdata2(:,(columnIndex2(7)+1):(size(EBSDdata2,2)));
     
-% [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{i} = [2;3;...]
+% [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{ind_in_g1} = [2;3;...]
 neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
 
-% [temp disable] misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
+% [temp disable] Note this is currently only for HCP!
+% misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
 % misorientationStruct.misorientation{i}=[5d;75d;...]
 misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
 
@@ -129,6 +131,8 @@ ID = reshape(EBSDdata1(:,columnIndex1(1)),mResize,nResize)';
 ID_0 = ID;  % keep a copy, maybe useful
 edge = reshape(EBSDdata1(:,columnIndex1(7)),mResize,nResize)';
 
+
+% Strain data
 strainData = load([strainFilePath, strainFileName]);
 try
     X = strainData.x;       % X, Y are position of SEM system.
@@ -149,8 +153,18 @@ catch
 end
 clear EBSDdata1 EBSDdata2 strainData;
 
-%% fwded coordinates 
-[x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,[x(:),y(:)]);
+%% align euler angle coordinates to SEM, so later on, phiSys can be set to [0 0 0]. Do this before interp so there are few points to rotate
+phiSys = [-90, 180, 0];
+[phi1,phi,phi2] = align_euler_to_sample(phi1,phi,phi2,'none', phiSys(1),phiSys(2),phiSys(3)); % align euler angle to sample reference frame ------------ align.  UMich data is actually setting-1 !!!
+[q0,q1,q2,q3,phi1,phi,phi2] = regulate_euler_quat(phi1,phi,phi2);   % regulate the angles
+[gPhi1,gPhi,gPhi2] = align_euler_to_sample(gPhi1,gPhi,gPhi2,'none', phiSys(1),phiSys(2),phiSys(3));
+[gQ0,gQ1,gQ2,gQ3,gPhi1,gPhi,gPhi2] = regulate_euler_quat(gPhi1,gPhi,gPhi2);   % regulate the angles
+eulerAligned = 1;
+save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'eulerAligned','-append');  % record if eulerAligned.
+
+%% Align EBSD to SEM
+% forwarded coordinates 
+% [x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,x,y);
 
 ID = interp_data(x,y,ID,X,Y,tform,'interp','nearest');
 phi1 = interp_data(x,y,phi1,X,Y,tform,'interp','nearest');
@@ -158,12 +172,13 @@ phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
 edge = interp_data(x,y,edge,X,Y,tform,'interp','nearest');
 [boundaryTF, ~, ~, ~, ~] = find_boundary_from_ID_matrix(ID);
+boundaryTFB = boundaryTF;  % make it thicker
 for iThick = 1:4
-    boundaryTF = grow_boundary(boundaryTF);       % grow boundary if necessary  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -------------------------------------------
+    boundaryTFB = grow_boundary(boundaryTFB);       % grow boundary thicker
 end
 
-x = X;  % replace x with X
-y = Y;
+% x = X;  % replace x with X
+% y = Y;
 
 [gCenterX, gCenterY] = tformfwd(tform,[gCenterX, gCenterY]);
 
@@ -171,10 +186,12 @@ y = Y;
 % If > 20% data points are valid in this grain, then there will be an avg value.  Otherwise, the value is NaN. ----------------- can modify. 
 [gExx,~] = generate_grain_avg_data(ID,gID,exx, 0.2, sigma);
 
-%% 
+%% Save the data
+disp('saving ...');
 save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
-save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','boundaryTF',...
-    'phi1','phi','phi2',...
+save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
+    'phi1','phi','phi2','q0','q1','q2','q3',...
+    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',...
     'neighborStruct','misorientationStruct',...    
     'gArea','gCenterX','gCenterY','gDiameter','gExx','gID','gNNeighbors',...
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
