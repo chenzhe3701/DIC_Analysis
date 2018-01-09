@@ -47,17 +47,69 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
     'STOP','iE_start','iE_stop','resReduceRatio','grow_boundary_TF','f1','f2','neighbor_elim','twinTF_text','notes','gIDwithTrace',...
     '-append');
 
-%%
+%% Can load strain data for a specific strain level
 iE = 5;
-strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);            % change the prefix and name of DIC file ----------------------------------------------------
-
+strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
 load(strainFile,'exx','exy','eyy');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
+
+%%
+g_aoi_range = [];
+for iS = 1:length(gIDwithTrace)
+    % select the target grain
+    ID_current = gIDwithTrace(iS);
+%     ID_current = 668;
+    
+    ind_current = find(ID_current == gID);    % an index of row
+    phi1_local = gPhi1(ind_current);
+    phi_local = gPhi(ind_current);
+    phi2_local = gPhi2(ind_current);
+        
+    ID_neighbor = gNeighbors(ind_current,:);
+    ID_neighbor = ID_neighbor((ID_neighbor~=0)&(ID_neighbor~=neighbor_elim));
+    
+    % find index range of a small matrix containing the grain of interest,
+    % (and can choose to include some neighboring grains)  
+    ind_local = ismember(ID, [ID_current]); %ismember(ID, [ID_current,ID_neighbor]);
+    indC_min = find(sum(ind_local, 1), 1, 'first');
+    indC_max = find(sum(ind_local, 1), 1, 'last');
+    indR_min = find(sum(ind_local, 2), 1, 'first');
+    indR_max = find(sum(ind_local, 2), 1, 'last');
+    
+    nRow = indR_max - indR_min + 1;
+    nColumn = indC_max - indC_min + 1;
+    
+    exx_local = exx(indR_min:indR_max, indC_min:indC_max);  % strain of this region: grain + neighbor. Look at 'exx' strain, but can be changed later --------------------
+    exy_local = exy(indR_min:indR_max, indC_min:indC_max);
+    eyy_local = eyy(indR_min:indR_max, indC_min:indC_max);
+    boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+    x_local = X(indR_min:indR_max, indC_min:indC_max);
+    y_local = Y(indR_min:indR_max, indC_min:indC_max);
+    ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+    
+    
+    % find vectors for cluster, using ind
+    ind = find((ID_local==ID_current)&(~isnan(exx_local)));
+    exx_t = exx_local(ind);
+    exy_t = exy_local(ind);
+    eyy_t = eyy_local(ind);
+    data_t = [exx_t(:), exy_t(:), eyy_t(:)];
+    T = kmeans(data_t,3,'Distance','sqeuclidean','MaxIter',1000);      % this is the cluster method 
+    
+    clusterNum = zeros(size(x_local,1),size(x_local,2));
+    clusterNum(ind) = T;
+    fh1 = myplot(x_local,y_local,exx_local);
+    fh2 = myplot(x_local,y_local,clusterNum);
+    pause(2);
+    close all;
+    
+    % Next need to predict the strain, and find out if the clusters are actually twinning region. 
+end
 
 %%
 for iS = 1%:length(gIDwithTrace)
     close all;
     ID_current = gIDwithTrace(iS);              % id of current grain
-    ID_current = 89;
+    ID_current = 668;
     
     ind_current = find(ID_current == gID);    % an index of row
     phi1_current = gPhi1(ind_current);
