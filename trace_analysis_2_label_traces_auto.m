@@ -98,22 +98,8 @@ for iS =1:length(gIDwithTrace)
         %         disp(epsilon);
         cPred(iss,1) = iss;                                     % ss number
         cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
-        cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy
+        cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy.  Note that 'conjugated' twin system, i.e., 19 and 22, almost always show similar components!!!
     end    
-    % [criterion-0-common] select candidate twin system.  If strain is close, only keep one of them. This is a temp solution, because experimental strain fields don't match exactly
-    cPredDiff = zeros(size(cPred,1),1);      % [variable for summary and tune up] make a matrix similar to cPred, to record the predicted eij difference. 
-    for iss = 19:21
-        diffNorm = norm(cPred(iss,3:5)-cPred(iss+3,3:5),1);
-        if diffNorm<0.05
-            if cPred(iss,2)>cPred(iss+3,2)
-                cPred(iss+3,:) = nan;
-            else
-                cPred(iss,:) = nan;
-            end
-        end
-        cPredDiff(iss) = diffNorm;
-        cPredDiff(iss+3) = diffNorm;
-    end
     %     disp(cPred);
     
     % =================== find measured strain: =======================
