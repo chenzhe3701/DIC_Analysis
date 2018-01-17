@@ -57,6 +57,10 @@ load(strainFile,'exx','exy','eyy');     % Look at exx, but this can be changed i
 twinMap = zeros(size(exx));
 sfMap = zeros(size(exx));
 disSimiMap = zeros(size(exx));
+twinMap_2 = zeros(size(exx));
+shearMap = zeros(size(exx));
+sfMap_2 = zeros(size(exx));
+
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 ss = crystal_to_cart_ss(ssa,c_a);
 
@@ -84,9 +88,11 @@ for iS =1:length(gIDwithTrace)
         %         disp('---');
         N(iss,:) = ss(1,:,iss) * g;
         M(iss,:) = ss(2,:,iss) * g;
-        MN{iss} = M(iss,:)'*N(iss,:);
-        F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
-        F = F3(1:2,1:2);
+        MN2{iss} = M(iss,:)'*N(iss,:);
+        MN2{iss} = MN2{iss}(1:2,1:2);
+        %         F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
+        %         F = F3(1:2,1:2);
+        F = eye(2) + gamma*MN2{iss};
         epsilon = (F'*F-eye(2))/2;
         %         disp((F3'*F3-eye(3))/2);
         %         disp(epsilon);
@@ -94,7 +100,7 @@ for iS =1:length(gIDwithTrace)
         cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
         cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy
     end    
-    % [criterion-1] select candidate twin system.  If strain is close, only keep one of them. This is a temp solution, because experimental strain fields don't match exactly
+    % [criterion-0-common] select candidate twin system.  If strain is close, only keep one of them. This is a temp solution, because experimental strain fields don't match exactly
     cPredDiff = zeros(size(cPred,1),1);      % [variable for summary and tune up] make a matrix similar to cPred, to record the predicted eij difference. 
     for iss = 19:21
         diffNorm = norm(cPred(iss,3:5)-cPred(iss+3,3:5),1);
@@ -159,16 +165,17 @@ for iS =1:length(gIDwithTrace)
     % (1) kmeans cluster
     nCluster = 4;       % total number of clusters
     [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
-    
     clusterNumMapRaw = zeros(size(x_local,1),size(x_local,2));      % record raw clusterNumberMap
     clusterNumMapRaw(ind) = idx;
+    
+    % ================ method-1, from theoretical twin shear --> to predict strain components as cluster center ===================
     twinMapLocal = zeros(size(x_local,1),size(x_local,2));          % local map to record twin_system_number
     sfMapLocal = zeros(size(x_local,1),size(x_local,2));            % local map to record schmid_factor
     disSimiMapLocal = zeros(size(x_local,1),size(x_local,2));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
     %     fh1 = myplot(x_local,y_local,cNMap);
     pdistCS = pdist2(centroid, cPred(:,3:5));       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-    pdistCS(pdistCS > 0.025) = nan;                 % [criterion-2] if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
-    [m_dist, matchingTS] = nanmin(pdistCS,[],2);    % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
+    pdistCS(pdistCS > 0.025) = nan;                 % [criterion-1] if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
+    [m_dist, matchingTS] = nanmin(pdistCS,[],2);    % [criterion-2] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
     matchingTS(isnan(m_dist)) = 0;
     
     % ==== change cluster number into twin system number, or 0
@@ -222,8 +229,54 @@ for iS =1:length(gIDwithTrace)
     %     clusterNum = zeros(size(x_local,1),size(x_local,2));
     %     clusterNum(ind) = T;
     %     fh3 = myplot(x_local,y_local,clusterNum);
-    waitbar(iS/length(gIDwithTrace), hWaitbar);
+    
+    
+    % ============ method-2, from cluster_centroid to estimated_shear, and compare if this is similar enough to theoretical shear of 0.1289 
+    twinMapLocal = zeros(size(x_local,1),size(x_local,2));          % local map to record twin_system_number
+    shearMapLocal = zeros(size(x_local,1),size(x_local,2));            % local map to record schmid_factor
+    sfMapLocal = zeros(size(x_local,1),size(x_local,2));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
+    
+    options = optimoptions(@fminunc,'display','off','algorithm','quasi-newton');
+
+    matchingTS = zeros(nCluster,1);
+    s = ones(nCluster,1)*100;   % initialize with very large value.
+    cost = zeros(nCluster,1);
+    for iCluster=1:nCluster
+        % fit the shear 's' for each cluster, by find the most likely twin system: 
+        %   for each cluster
+        %       for each if possible ts
+        %           calculate fitted twin shear
+        %           if abs(fitted twin shear - 0.1298) is smaller
+        %               update cluster twin type, twin shear, cost
+        for iss = 19:24
+           if ~isnan(cPred(iss,1))
+              [s_i,cost_i]=fminunc(@(x) sum(sum((((eye(2)+x*MN2{iss})'*(eye(2)+x*MN2{iss})-eye(2))/2-...
+                  [centroid(iCluster,1),centroid(iCluster,2);centroid(iCluster,2),centroid(iCluster,3)]).^2)), 0.1298, options);
+              if abs(s_i-0.1298) < abs(s(iCluster)-0.1298)
+                  matchingTS(iCluster) = iss;
+                  s(iCluster) = s_i;
+                  cost(iCluster) = cost_i;
+              end              
+           end
+        end
+        % ==== similarly, change cluster number into twin system number, or 0
+        tsNum = matchingTS(iCluster);               % twin system number currently considered
+        if tsNum > -1   % this should be 18, but set to -1 for debug
+            indTwinLocal = (clusterNumMapRaw==iCluster);
+            twinMapLocal(indTwinLocal) = tsNum;    % assign twinSysNum to the region in the local map
+            shearMapLocal(indTwinLocal) = s(iCluster);
+            if tsNum>0
+                sfMapLocal(indTwinLocal) = cPred(tsNum,2);
+            end
+        end
+    end
+    % copy identified twin system number to twinMap
+    twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
+    shearMap(indR_min:indR_max, indC_min:indC_max) = shearMap(indR_min:indR_max, indC_min:indC_max) + shearMapLocal;
+    sfMap_2(indR_min:indR_max, indC_min:indC_max) = sfMap_2(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
+    
     %     input('press to continue');
+    waitbar(iS/length(gIDwithTrace), hWaitbar);
 end
 close(hWaitbar);
 
