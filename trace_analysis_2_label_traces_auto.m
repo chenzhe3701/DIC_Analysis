@@ -160,7 +160,7 @@ for iS =1:length(gIDwithTrace)
     disSimiMapLocal = zeros(size(x_local,1),size(x_local,2));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
     %     fh1 = myplot(x_local,y_local,cNMap);
     pdistCS = pdist2(centroid, cPred(:,3:5));       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-    pdistCS(pdistCS > 0.025) = nan;                 % [criterion-1] if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
+    %     pdistCS(pdistCS > 0.025) = nan;                 % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
     [m_dist, matchingTS] = nanmin(pdistCS,[],2);    % [criterion-2] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
     matchingTS(isnan(m_dist)) = 0;
     
@@ -265,6 +265,20 @@ for iS =1:length(gIDwithTrace)
     waitbar(iS/length(gIDwithTrace), hWaitbar);
 end
 close(hWaitbar);
+disp('start saving tempWS');
+save('tempWS.mat');
+disp('finished saving tempWS');
+
+%% temp code for plot and investigate the results
+myplot(exx,boundaryTFB);
+myplot(disSimiMap,boundaryTFB);
+myplot(twinMap,boundaryTFB); caxis([19,24]);
+myplot(sfMap,boundaryTFB);
+
+myplot(shearMap, boundaryTFB);
+myplot(twinMap_2, boundaryTFB); caxis([19,24]);
+myplot(sfMap_2, boundaryTFB);
+
 
 %%
 % for iS = 1%:length(gIDwithTrace)
