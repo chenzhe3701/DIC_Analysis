@@ -89,9 +89,10 @@ for iE = iE_start:iE_stop
     % 110, 195, 569, 1266, 1313, 1141
     % step 2: 195, 541
     
+    %%
     hWaitbar = waitbar(0,'finding twin region for grains ...');
     for iS =1:length(gIDwithTrace)
-%         iS = find(arrayfun(@(x) x.gID == 483,stru)),  % for debugging
+        %         iS = find(arrayfun(@(x) x.gID == 1466,stru)),  % for debugging
         close all;
         % select the target grain
         ID_current = gIDwithTrace(iS);  % id=262 for an example for WE43-T6-C1
@@ -143,43 +144,65 @@ for iE = iE_start:iE_stop
         data_reduce = data_t(ind_reduce,:);
         reduce_ratio = fix(size(data_reduce,1)/nPoints);
         data_reduce = data_reduce(1:reduce_ratio:end,:);
-        eva = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster);
-        nCluster = eva.OptimalK; 
         
+        if isempty(data_reduce)
+            nCluster = 4;
+        else
+            eva = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster)
+            nCluster = eva.OptimalK;
+        end
+        
+        % compare, test the 'stability' of silhouette: calculate from the result of another kmeans run, and compare.
+        %         clear withinSum score;
+        %         for nc = 2:maxCluster
+        %             [idx_cell{nc}, centroid, sumd_cell{nc}] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
+        %             [score_cell{nc}] = silhouette(data_reduce,idx_cell{nc});
+        %             withinSum(nc) = mean(sumd_cell{nc});
+        %             score(nc) = nanmean(score_cell{nc});
+        %             figure; silhouette(data_reduce,idx_cell{nc});
+        %         end
+        
+        %         figure;
+        %         subplot(1,2,1);
+        %         plot(2:maxCluster,withinSum(2:end),'x-'); xlabel('num of clusters'); ylabel('within ssd'); axis square; % within-cluster SS, always decrease, maybe no need to look at.
+        
+        %         figure;
+        %         try
+        %             subplot(1,2,1);
+        %             plot(eva);
+        %             axis square;
+        %             subplot(1,2,2);
+        %         catch
+        %             subplot(1,1,1);
+        %         end
+        %         plot(2:maxCluster,score(2:end),'x-'); xlabel('num of clusters'); ylabel('avg silhouette'); axis square;
+        
+        
+        % compare 4 criterions
         %         for nPoints = [1000,2000,5000,10000]
         %             ind_reduce = ~isnan(sum(data_t,2));
         %             data_reduce = data_t(ind_reduce,:);
         %             reduce_ratio = fix(size(data_reduce,1)/nPoints);
         %             data_reduce = data_reduce(1:reduce_ratio:end,:);
         %             eva1 = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster)
-        %             figure; subplot(1,2,1); plot(eva1);
+        %             figure; subplot(2,2,1); plot(eva1);
         %             eva2 = evalclusters(data_reduce,'kmeans','gap','klist',2:maxCluster)
-        %             subplot(1,2,2); plot(eva2);
+        %             subplot(2,2,2); plot(eva2);
+        %             eva3 = evalclusters(data_reduce,'kmeans','CalinskiHarabasz','klist',2:maxCluster)
+        %             subplot(2,2,3); plot(eva3);
+        %             eva4 = evalclusters(data_reduce,'kmeans','DaviesBouldin','klist',2:maxCluster)
+        %             subplot(2,2,4); plot(eva4);
         %         end
         
-        %         clear withinSum score;
-        %         for nc = 1:maxCluster
-        %             [idx_cell{nc}, centroid, sumd_cell{nc}] = kmeans(data_t, nc, 'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
-        %             eva = evalclusters(data_t,'kmeans','silhouette',1:maxCluster);
-        %             %[score_cell{nc}] = silhouette(data_t,idx_cell{nc});
-        %             withinSum(nc) = mean(sumd_cell{nc});
-        %             score(nc) = nanmean(score_cell{nc});
-        %         end
-        %         figure;
-        %         subplot(1,2,1);
-        %         plot(1:maxCluster,withinSum,'x-'); xlabel('num of clusters'); ylabel('within ssd'); axis square;
-        %         subplot(1,2,2);
-        %         plot(1:maxCluster,score,'x-'); xlabel('num of clusters'); ylabel('avg silhouette'); axis square;
-        %
         
-        
-        % ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
+        %% ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
         % (1) kmeans cluster
-%         nCluster = 4;       % total number of clusters
-        [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
+        nCluster = 2;       % total number of clusters
+        [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000,'replicates',1);   % 'correlation' distance not good.
         clusterNumMapLocal = zeros(size(x_local));      % record raw clusterNumberMap
         clusterNumMapLocal(ind) = idx;
         clusterNumMap(indR_min:indR_max, indC_min:indC_max) = clusterNumMap(indR_min:indR_max, indC_min:indC_max) + clusterNumMapLocal;
+        
         
         %     % try to solve equation, hasn't been able to
         %     syms shear
@@ -282,9 +305,9 @@ for iE = iE_start:iE_stop
             %          myplot(x_local,y_local,exy_local);
             %          myplot(x_local,y_local,eyy_local);
             myplot(x_local,y_local,clusterNumMapLocal);
-            myplot(x_local,y_local,twinMapLocal); caxis([nss,nss+ntwin]);
-            myplot(x_local,y_local,sfMapLocal);
-            myplot(x_local,y_local,disSimiMapLocal);
+            %             myplot(x_local,y_local,twinMapLocal); caxis([nss,nss+ntwin]);
+            %             myplot(x_local,y_local,sfMapLocal);
+            %             myplot(x_local,y_local,disSimiMapLocal);
         end
         % copy identified twin system number to twinMap
         twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
@@ -347,7 +370,11 @@ for iE = iE_start:iE_stop
         sfMap_2(indR_min:indR_max, indC_min:indC_max) = sfMap_2(indR_min:indR_max, indC_min:indC_max) + sfMapLocal_2;
         costMap(indR_min:indR_max, indC_min:indC_max) = costMap(indR_min:indR_max, indC_min:indC_max) + costMapLocal;
         
-        waitbar(iS/length(gIDwithTrace), hWaitbar);
+        try
+            waitbar(iS/length(gIDwithTrace), hWaitbar);
+        catch
+        end
+        
         if 1==debugTF
             temp=stru(iS)
             disp(['iS=',num2str(iS)]);
@@ -363,6 +390,8 @@ for iE = iE_start:iE_stop
     
     
     %% =========== match cluster with twin system again, if need to change parameter ============================
+    iE = iE;
+    name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
     load([saveDataPath,name_result_on_the_fly],'clusterNumMap');
     
     % criterion final, for modifying
@@ -408,6 +437,7 @@ for iE = iE_start:iE_stop
         costMapLocal = zeros(size(ID_local));       % local map to record cost
         
         % ==== change cluster number into twin system number, or 0
+        nCluster = length(stru(iS).cLabel);
         for iCluster = 1:nCluster
             cNum = stru(iS).cLabel(iCluster);
             indClusterLocal = (clusterNumMapLocal==cNum);
@@ -476,9 +506,9 @@ for iE = iE_start:iE_stop
     
     
     %% temp code for plot and investigate the results
-    if 1
+    if 0
         myplot(X,Y,exx,boundaryTFB);
-        % myplot(X,Y,clusterNumMap,boundaryTFB);
+        myplot(X,Y,clusterNumMap,boundaryTFB);
         
         myplot(X,Y,disSimiMap,boundaryTFB);
         myplot(X,Y,twinMap,boundaryTFB); caxis([18,24]);
@@ -563,24 +593,6 @@ end
 %
 %
 % end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
