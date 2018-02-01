@@ -48,7 +48,7 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
     '-append');
 
 %%  can load stru
-% iE = 5;
+% iE = 2;
 % name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
 % try
 %     load([saveDataPath,name_result_on_the_fly]);
@@ -58,7 +58,6 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
 for iE = iE_start:iE_stop
     strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
     load(strainFile,'exx','exy','eyy');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
-    
     
     %% Cluster strain and record information in a structure, assign clusters to twin systems on the fly, but can also modify later.
     
@@ -92,7 +91,7 @@ for iE = iE_start:iE_stop
     %%
     hWaitbar = waitbar(0,'finding twin region for grains ...');
     for iS =1:length(gIDwithTrace)
-        %         iS = find(arrayfun(@(x) x.gID == 1466,stru)),  % for debugging
+%         iS = find(arrayfun(@(x) x.gID == 1466,stru));  % for debugging
         close all;
         % select the target grain
         ID_current = gIDwithTrace(iS);  % id=262 for an example for WE43-T6-C1
@@ -137,30 +136,79 @@ for iE = iE_start:iE_stop
         % export data if needed
         %         save(['grain_',num2str(ID_current)],'data_t');
         
-        % determine optimum number of clusters
-        maxCluster = 6;
-        nPoints = 2000;
+        %% ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
+        % first, predict centroid
+        stru(iS).gID = ID_current;
+        
+        % ================ method-1, from theoretical twin shear --> to predict strain components as cluster center ===================
+        ind_euler = find(gID==ID_current);
+        euler = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
+        if (1==eulerAligned)
+            g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
+        else
+            g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
+        end
+        gamma = 0.1289; % twin shear for Mg
+        cPred = nan*zeros(nss,5);   % [iss, SF, exx, exy, eyy]
+        for iss = (nss+1):(nss+ntwin)   % for Mg
+            %         disp('---');
+            N(iss,:) = ss(1,:,iss) * g;
+            M(iss,:) = ss(2,:,iss) * g;
+            MN2{iss} = M(iss,:)'*N(iss,:);
+            MN2{iss} = MN2{iss}(1:2,1:2);
+            %         F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
+            %         F = F3(1:2,1:2);
+            F = eye(2) + gamma*MN2{iss};
+            epsilon = (F'*F-eye(2))/2;
+            %         disp((F3'*F3-eye(3))/2);
+            %         disp(epsilon);
+            cPred(iss,1) = iss;                                     % ss number
+            cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
+            cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy.  Note that 'conjugated' twin system, i.e., 19 and 22, almost always show similar components!!!
+        end
+        stru(iS).tLabel = (nss+1 : nss+ntwin)';         % twin system number
+        stru(iS).tSF = cPred(nss+1:nss+ntwin,2)';       % twin schmid factor
+        stru(iS).tStrain = cPred(nss+1:nss+ntwin,3:5);      % twin strain components
+        [~,centroid_initial_ind] = max(stru(iS).tSF);
+        centroid_initial = stru(iS).tStrain(centroid_initial_ind,:); 
+        %     disp(cPred);
+        
+        % ======================= kmeans, determine optimum number of clusters ==================================== 
+        maxCluster = 5;
+        nPoints = 8100;
         ind_reduce = ~isnan(sum(data_t,2));
         data_reduce = data_t(ind_reduce,:);
-        reduce_ratio = fix(size(data_reduce,1)/nPoints);
+        reduce_ratio = ceil(size(data_reduce,1)/nPoints);
         data_reduce = data_reduce(1:reduce_ratio:end,:);
         
-        if isempty(data_reduce)
-            nCluster = 4;
-        else
-            eva = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster)
-            nCluster = eva.OptimalK;
-        end
+%         % use evalclusters to evaluate the umber of clusters
+%         if isempty(data_reduce)
+%             nCluster = 4;
+%         else
+%             eva = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster);
+%             nCluster = eva.OptimalK;
+%         end
         
-        % compare, test the 'stability' of silhouette: calculate from the result of another kmeans run, and compare.
-        %         clear withinSum score;
-        %         for nc = 2:maxCluster
-        %             [idx_cell{nc}, centroid, sumd_cell{nc}] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
-        %             [score_cell{nc}] = silhouette(data_reduce,idx_cell{nc});
-        %             withinSum(nc) = mean(sumd_cell{nc});
-        %             score(nc) = nanmean(score_cell{nc});
-        %             figure; silhouette(data_reduce,idx_cell{nc});
-        %         end
+        % compare the silhouette, by actually do kmeans on down-sampled samples.
+        disp(['ID=',num2str(ID_current)]);
+        clear wssd score_avg score_c;
+        score_min = -1*ones(1, maxCluster);
+        for nc = 2:maxCluster
+            nRep = 3;
+            c0 = kmeans_pp_init(data_reduce,nc,nRep,centroid_initial);
+            [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',500,'start',c0);   % 'correlation' distance not good.
+            sil_score = silhouette(data_reduce,idx);
+%             wssd(nc) = mean(sumd);
+%             score_avg(nc) = nanmean(sil_score); % avg score for the condition of nc clusters
+            for ii=1:nc
+                score_c{nc}(ii) = mean(sil_score(idx==ii)); % silhouette for each cluster
+            end
+            % figure; silhouette(data_reduce,idx);
+            score_min(nc) = min(score_c{nc});
+        end
+        [~,nCluster] = max(score_min);
+        disp(score_min);
+        disp([char(9),'nCluster=',num2str(nCluster)]);
         
         %         figure;
         %         subplot(1,2,1);
@@ -193,16 +241,18 @@ for iE = iE_start:iE_stop
         %             eva4 = evalclusters(data_reduce,'kmeans','DaviesBouldin','klist',2:maxCluster)
         %             subplot(2,2,4); plot(eva4);
         %         end
-        
-        
-        %% ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
-        % (1) kmeans cluster
-        nCluster = 2;       % total number of clusters
-        [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000,'replicates',1);   % 'correlation' distance not good.
+
+        % ========================= (1) perform kmeans cluster ============================  
+        %  nCluster = 2;       % total number of clusters
+        nRep = 3;
+        c0 = kmeans_pp_init(data_t,nCluster,nRep,centroid_initial);
+        [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000,'start',c0);   % 'correlation' distance not good.
         clusterNumMapLocal = zeros(size(x_local));      % record raw clusterNumberMap
         clusterNumMapLocal(ind) = idx;
         clusterNumMap(indR_min:indR_max, indC_min:indC_max) = clusterNumMap(indR_min:indR_max, indC_min:indC_max) + clusterNumMapLocal;
         
+        stru(iS).cLabel = (1:nCluster)';     % cluster number (actually label, but labe=number)
+        stru(iS).cCen = centroid;          % cluster centroid
         
         %     % try to solve equation, hasn't been able to
         %     syms shear
@@ -237,41 +287,7 @@ for iE = iE_start:iE_stop
         %     clusterNum = zeros(size(x_local,1),size(x_local,2));
         %     clusterNum(ind) = T;
         %     fh3 = myplot(x_local,y_local,clusterNum);
-        
-        stru(iS).gID = ID_current;
-        stru(iS).cLabel = (1:nCluster)';     % cluster number (actually label, but labe=number)
-        stru(iS).cCen = centroid;          % cluster centroid
-        
-        % ================ method-1, from theoretical twin shear --> to predict strain components as cluster center ===================
-        ind_euler = find(gID==ID_current);
-        euler = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
-        if (1==eulerAligned)
-            g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
-        else
-            g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
-        end
-        gamma = 0.1289; % twin shear for Mg
-        cPred = nan*zeros(nss,5);   % [iss, SF, exx, exy, eyy]
-        for iss = (nss+1):(nss+ntwin)   % for Mg
-            %         disp('---');
-            N(iss,:) = ss(1,:,iss) * g;
-            M(iss,:) = ss(2,:,iss) * g;
-            MN2{iss} = M(iss,:)'*N(iss,:);
-            MN2{iss} = MN2{iss}(1:2,1:2);
-            %         F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
-            %         F = F3(1:2,1:2);
-            F = eye(2) + gamma*MN2{iss};
-            epsilon = (F'*F-eye(2))/2;
-            %         disp((F3'*F3-eye(3))/2);
-            %         disp(epsilon);
-            cPred(iss,1) = iss;                                     % ss number
-            cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
-            cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy.  Note that 'conjugated' twin system, i.e., 19 and 22, almost always show similar components!!!
-        end
-        stru(iS).tLabel = (nss+1 : nss+ntwin)';         % twin system number
-        stru(iS).tSF = cPred(nss+1:nss+ntwin,2)';       % twin schmid factor
-        stru(iS).tStrain = cPred(nss+1:nss+ntwin,3:5);      % twin strain components
-        %     disp(cPred);
+
         
         % ==================== continue method-1, assign cluster to twin system on the fly ==========================
         twinMapLocal = zeros(size(exx_local));          % local map to record twin_system_number
@@ -380,6 +396,7 @@ for iE = iE_start:iE_stop
             disp(['iS=',num2str(iS)]);
             %         input('press to continue');
         end
+        disp(['finished ID=',num2str(ID_current)]);
     end
     close(hWaitbar);
     %%
