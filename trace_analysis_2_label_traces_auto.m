@@ -24,8 +24,8 @@ gIDwithTrace = gID(~isnan(gExx));
 
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
-iE_start = 1;   % elongation levels to analyze. 0-based.
-iE_stop = 7;
+iE_start = 2;   % elongation levels to analyze. 0-based.
+iE_stop = 5;
 resReduceRatio = 3;         % to save space, reduce map resolution
 grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 % file name prefixes
@@ -48,26 +48,36 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
     '-append');
 
 %%  can load stru
-% iE = 2;
-% name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
-% try
-%     load([saveDataPath,name_result_on_the_fly]);
-% catch
-% end
+iE = 5;
+name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
+try
+    load([saveDataPath,name_result_on_the_fly]);
+catch
+end
 %% Can load strain data for a specific strain level
 for iE = iE_start:iE_stop
     strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
-    load(strainFile,'exx','exy','eyy');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
-    
+    load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
+    % remove bad data points
+    exx(sigma==-1) = nan;
+    exy(sigma==-1) = nan;
+    eyy(sigma==-1) = nan;
+    qt_exx = quantile(exx(:),[0.003,0.997]);
+    qt_exy = quantile(exy(:),[0.003,0.997]);
+    qt_eyy = quantile(eyy(:),[0.003,0.997]);
+    ind_outlier = (exx<qt_exx(1))|(exx>qt_exx(2))|(exy<qt_exy(1))|(exy>qt_exy(2))|(eyy<qt_eyy(1))|(eyy>qt_eyy(2));
+    exx(ind_outlier) = nan;
+    exy(ind_outlier) = nan;
+    eyy(ind_outlier) = nan;
     %% Cluster strain and record information in a structure, assign clusters to twin systems on the fly, but can also modify later.
     
     debugTF = 0;
-    distCI = 0.05;     % distance Criterion Initial
-    sfCI = 0.3;        % schmid factor Criterion Initial
+    distCI = 0.035;     % distance Criterion Initial
+    sfCI = 0.37;        % schmid factor Criterion Initial
     shearTarget = 0.1289;
     shearCI = 0.05;        % shear criterion initial
-    sqrtCostCI = 0.06;     % sqrt(cost) criterion initial
-    scoreCI = 0.13;          % score criterion initial, score = 2*sqrt(cost) + abs(shearFit-shearTarget)
+    costCI = 0.042;     % sqrt(cost) criterion initial
+    scoreCI = 0.1;          % score criterion initial, score = 2*sqrt(cost) + abs(shearFit-shearTarget)
     
     % Create a few maps to record the criterion.
     clusterNumMap = zeros(size(exx));
@@ -89,9 +99,16 @@ for iE = iE_start:iE_stop
     % step 2: 195, 541
     
     %%
+    clear stru;
     hWaitbar = waitbar(0,'finding twin region for grains ...');
     for iS =1:length(gIDwithTrace)
-%         iS = find(arrayfun(@(x) x.gID == 1466,stru));  % for debugging
+        %%
+%         iS = find(arrayfun(@(x) x.gID == 246,stru));  % for debugging
+        iS = find(gIDwithTrace == 240); % for debugging
+        try 
+            stru(iS)=[];
+        catch
+        end
         close all;
         % select the target grain
         ID_current = gIDwithTrace(iS);  % id=262 for an example for WE43-T6-C1
@@ -121,9 +138,9 @@ for iE = iE_start:iE_stop
         ID_local = ID(indR_min:indR_max, indC_min:indC_max);
         
         % (0) can smooth
-        exx_local = colfilt(exx_local, [3 3], 'sliding', @(x) nanmean(x,1));
-        exy_local = colfilt(exy_local, [3 3], 'sliding', @(x) nanmean(x,1));
-        eyy_local = colfilt(eyy_local, [3 3], 'sliding', @(x) nanmean(x,1));
+%         exx_local = colfilt(exx_local, [3 3], 'sliding', @(x) nanmean(x,1));
+%         exy_local = colfilt(exy_local, [3 3], 'sliding', @(x) nanmean(x,1));
+%         eyy_local = colfilt(eyy_local, [3 3], 'sliding', @(x) nanmean(x,1));
         
         % find vectors for cluster, using ind
         ind = find((ID_local==ID_current)); %&(~isnan(exx_local)));
@@ -136,7 +153,7 @@ for iE = iE_start:iE_stop
         % export data if needed
         %         save(['grain_',num2str(ID_current)],'data_t');
         
-        %% ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
+        % ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
         % first, predict centroid
         stru(iS).gID = ID_current;
         
@@ -191,23 +208,30 @@ for iE = iE_start:iE_stop
         
         % compare the silhouette, by actually do kmeans on down-sampled samples.
         disp(['ID=',num2str(ID_current)]);
-        clear wssd score_avg score_c;
-        score_min = -1*ones(1, maxCluster);
-        for nc = 2:maxCluster
-            nRep = 3;
-            c0 = kmeans_pp_init(data_reduce,nc,nRep,centroid_initial);
-            [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',500,'start',c0);   % 'correlation' distance not good.
+        clear wssd score_avg score_c score_min neg_score_sum;
+%         score_min = -1*ones(1, maxCluster);
+        neg_score_sum = -inf*ones(1, maxCluster);
+        nRep = 3; 
+        c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
+        for nc = 2:maxCluster                       
+            % nRep = 3; 
+            % c0 = kmeans_pp_init(data_reduce,nc,nRep,centroid_initial);
+            % [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',500,'start',c0);
+            [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
             sil_score = silhouette(data_reduce,idx);
-%             wssd(nc) = mean(sumd);
-%             score_avg(nc) = nanmean(sil_score); % avg score for the condition of nc clusters
+            %             wssd(nc) = mean(sumd);
+            %             score_avg(nc) = nanmean(sil_score); % avg score for the condition of nc clusters
             for ii=1:nc
-                score_c{nc}(ii) = mean(sil_score(idx==ii)); % silhouette for each cluster
+                sil_this_cluster = sil_score(idx==ii);
+                %                 mean_score_cluster{nc}(ii) = mean(sil_this_cluster); % silhouette for each cluster
+                neg_score_cluster{nc}(ii) = sum(sil_this_cluster(sil_this_cluster<0));
             end
-            % figure; silhouette(data_reduce,idx);
-            score_min(nc) = min(score_c{nc});
+            %             figure; silhouette(data_reduce,idx);
+            %             score_min(nc) = min(mean_score_cluster{nc});
+            neg_score_sum(nc) = sum(neg_score_cluster{nc});
         end
-        [~,nCluster] = max(score_min);
-        disp(score_min);
+        %         [~,nCluster] = max(score_min);
+        [~,nCluster] = max(neg_score_sum);
         disp([char(9),'nCluster=',num2str(nCluster)]);
         
         %         figure;
@@ -332,10 +356,11 @@ for iE = iE_start:iE_stop
         
         % ============ method-2, from cluster_centroid to estimated_shear, and compare if this is similar enough to theoretical shear of 0.1289 ====================
         options = optimoptions(@fminunc,'display','off','algorithm','quasi-newton');
+        clear shear cost;
         for iCluster=1:nCluster
             for iss = (nss+1):(nss+ntwin)
-                [shear(iCluster,iss),cost(iCluster,iss)]=fminunc(@(x) sum(sum((((eye(2)+x*MN2{iss})'*(eye(2)+x*MN2{iss})-eye(2))/2-...
-                    [centroid(iCluster,1),centroid(iCluster,2);centroid(iCluster,2),centroid(iCluster,3)]).^2)), 0.1298, options);
+                [shear(iCluster,iss),cost(iCluster,iss)]=fminunc(@(x) sqrt(sum(sum((((eye(2)+x*MN2{iss})'*(eye(2)+x*MN2{iss})-eye(2))/2-...
+                    [centroid(iCluster,1),centroid(iCluster,2);centroid(iCluster,2),centroid(iCluster,3)]).^2))), 0.1298, options);
             end
         end
         stru(iS).cShear = shear(:,nss+1:nss+ntwin);       % cluster centroid's expected shear
@@ -354,10 +379,10 @@ for iE = iE_start:iE_stop
             shearFit(abs(shearFit-shearTarget) > shearCI) = nan;      % [criterion-2] shear_difference should be < 0.5
             
             costFit = stru(iS).cCost(iCluster,:);
-            costFit(sqrt(costFit) > sqrtCostCI) = nan;     % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
+            costFit(costFit > costCI) = nan;     % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
             
-            score = abs(shearFit-shearTarget)+2*sqrt(costFit);     % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
-            score(sqrt(costFit)*2+abs(shearFit-shearTarget) > scoreCI) = nan;  % [criterion-5] combination of shearDiff and sqrtCost should also be limited
+            score = abs(shearFit-shearTarget)+2*costFit;     % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
+            score(costFit*2+abs(shearFit-shearTarget) > scoreCI) = nan;  % [criterion-5] combination of shearDiff and sqrtCost should also be limited
             
             [m_score,ind_t] = min(score,[],2);
             % [m_shear_diff,ind_t] = min(abs(shearFit-0.1289),[],2);    % if just look at the shear.
@@ -416,7 +441,7 @@ for iE = iE_start:iE_stop
     sfCF = 0.37;
     shearTarget = 0.1289;
     shearCF = 0.05;
-    sqrtCostCF = 0.042;
+    costCF = 0.042;
     scoreCF = 0.1;
     
     close all;
@@ -482,10 +507,10 @@ for iE = iE_start:iE_stop
             shearFit(abs(shearFit-shearTarget) > shearCF) = nan;      % [criterion-2] shear_difference should be < 0.5
             
             costFit = stru(iS).cCost(iCluster,:);
-            costFit(sqrt(costFit) > sqrtCostCF) = nan;                 % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
+            costFit(costFit > costCF) = nan;                 % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
             
-            score = abs(shearFit-shearTarget) + 2*sqrt(costFit);       % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
-            score(sqrt(costFit)*2+abs(shearFit-shearTarget) > scoreCF) = nan;      % [criterion-5] combination of shearDiff and sqrtCost should also be limited
+            score = abs(shearFit-shearTarget) + 2*costFit;       % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
+            score(costFit*2+abs(shearFit-shearTarget) > scoreCF) = nan;      % [criterion-5] combination of shearDiff and sqrtCost should also be limited
             
             [m_score,ind_t] = min(score,[],2);
             if isnan(m_score)
