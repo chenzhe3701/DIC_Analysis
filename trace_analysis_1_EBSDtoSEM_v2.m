@@ -151,6 +151,14 @@ catch
     exy = strainData.exy;
     eyy = strainData.eyy;
 end
+if exist('exy_corrected','var')&&(1==exy_corrected)
+    disp('================= exy already corrected ! ========================');
+    exy_corrected = 1;
+else
+    disp('================= exy being corrected here ! =======================');
+    exy = -exy;
+    exy_corrected = 1;
+end
 clear EBSDdata1 EBSDdata2 strainData;
 
 %% align euler angle coordinates to SEM, so later on, phiSys can be set to [0 0 0]. Do this before interp so there are few points to rotate
