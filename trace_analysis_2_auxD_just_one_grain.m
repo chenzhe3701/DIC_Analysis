@@ -41,11 +41,9 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 iE = 5;
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
 load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
-try
-    exy_corrected = strainData.exy_corrected;
-catch
-    exy_corrected = 0;
-end
+clear('exy_corrected');
+load(strainFile,'exy_corrected');   % if 'exy_corrected' does not exist, this does not give error, rather, just warning. 
+
 if exist('exy_corrected','var')&&(1==exy_corrected)
     disp('================= exy already corrected ! ========================');
     exy_corrected = 1;
@@ -82,7 +80,7 @@ scoreCI = 0.19;          % score criterion initial, score = 2*sqrt(cost) + abs(s
 %%
 rng(1);
 
-iS = find(gIDwithTrace == 296); % for debugging.
+iS = find(gIDwithTrace == 647); % for debugging.
 
 % select the target grain
 ID_current = gIDwithTrace(iS);  % id=262 for an example for WE43-T6-C1
@@ -176,7 +174,7 @@ for nc = 2:maxCluster
         %                 mean_score_cluster{nc}(ii) = mean(sil_this_cluster); % silhouette for each cluster
         neg_score_cluster{nc}(ii) = sum(sil_this_cluster(sil_this_cluster<0));
     end
-    %             figure; silhouette(data_reduce,idx);
+    figure; silhouette(data_reduce,idx);
     %             score_min(nc) = min(mean_score_cluster{nc});
     neg_score_sum(nc) = sum(neg_score_cluster{nc});
 end
@@ -185,7 +183,7 @@ end
 disp([char(9),'nCluster=',num2str(nCluster)]);
 
 
-% ========================= (1) perform kmeans cluster ============================
+%% ========================= (1) perform kmeans cluster ============================
 % nCluster = 4;       % total number of clusters
 nRep = 3;
 c0 = kmeans_pp_init(data_t,nCluster,nRep,centroid_initial);

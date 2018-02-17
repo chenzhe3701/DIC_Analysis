@@ -11,10 +11,10 @@ addChenFunction;
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
-
+load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+% load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% select iE to analyze
-iE = 5;
+iE = 1;
 
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 ss = crystal_to_cart_ss(ssa,c_a);
@@ -34,19 +34,33 @@ ss = crystal_to_cart_ss(ssa,c_a);
 name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
 load([saveDataPath,name_result_on_the_fly]);
 
-if ~exist('tNote','var')
-    tNote.enable = [];
-    tNote.disable = [];
+scoreCF = 0.1;
+if strcmpi(sampleName,'WE43_T6_C1')
+    switch iE
+        case 5
+            scoreCF = 0.230;
+        case 4
+            scoreCF = 0.215;
+        case 3
+            scoreCF = 0.217;
+        case 2
+            scoreCF = 0.291;
+    end
 end
-
+% scoreCF = 0.15;  % can manually modify
 % criterion final, for modifying
 % distCF = 0.035;
 sfCF = 0.100;
 % shearTarget = 0.1289;
 % shearCF = 0.05;
 % costCF = 0.055;
-scoreCF = 0.15;
+msgbox('check scoreCF, iE, etc');
 
+if ~exist('tNote','var')
+    tNote.enable = [0 0];
+    tNote.disable = [0 0];
+end
+%%
 %     close all;
 % Create a few maps to record the criterion.
 twinMap = zeros(size(exx));
@@ -118,12 +132,13 @@ for iS =1:length(stru)
             tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
         end
         if tsNum > nss
-            if m_score < scoreCF
-                twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
-            end
             sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
             disSimiMapLocal(indClusterLocal) = m_dist;
             scoreMapLocal(indClusterLocal) = m_score;
+            if m_score < scoreCF
+                twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
+                scoreMapLocal(indClusterLocal) = m_score/10;
+            end
         end
         
 %         % ================ method-2 ==========================
@@ -172,27 +187,24 @@ try
     close(hWaitbar);
 catch
 end
-
+dt = datetime;
+save(['temp_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'tNote','scoreCF','sfCF');
+save([saveDataPath,'twin_label_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'iE','tNote','scoreCF','sfCF');
 % adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap. 
 %% (a)
-[f,a,c,s,v]=myplotc(X,Y,scoreMap,boundaryTFB);
+[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',3);
+%%
+myplot(X, Y, twinMap,boundaryTFB);
 
-%% (b)
-tNote = disable_twin(X,Y,ID,clusterNumMap,tNote,f,a);
-save('tNote_temp','tNote');
-%% (c)
-tNote = enable_twin(X,Y,ID,clusterNumMap,tNote,f,a);
-save('tNote_temp','tNote');
-%% (d)
-twinMap(scoreMap>s.Value)=nan;
-myplot(X,Y,twinMap,boundaryTFB);
-
+%%
+% twinMap(scoreMap>s.Value)=nan;
+% myplot(X,Y,twinMap,boundaryTFB);
 
 
 %% save the result
 name_result_modified = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_modified.mat'];
 disp('start saving cluster_result_modified');
-save([saveDataPath,name_result_modified],'twinMap','sfMap','disSimiMap','scoreMap','clusterNumMap','stru');
+save([saveDataPath,name_result_modified],'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','stru','tNote','scoreCF','sfCF');
 % save([saveDataPath,name_result_modified],'stru','-append');
 % save([saveDataPath,name_result_modified],'twinMap_2','shearMap','sfMap_2','costMap','-append');
 disp('finished saving cluster_result_modified');
@@ -200,16 +212,16 @@ disp('finished saving cluster_result_modified');
 
 % temp code for plot and investigate the results
 if 0
-    %         myplot(X,Y,exx,boundaryTFB);
-    %         myplot(X,Y,clusterNumMap,boundaryTFB);
-    
-    myplot(X,Y,disSimiMap,boundaryTFB);
-    %         myplot(X,Y,twinMap,boundaryTFB); caxis([18,24]);
-    %         myplot(X,Y,sfMap,boundaryTFB);
-    %
-    %         myplot(X,Y,shearMap, boundaryTFB);
-    %         myplot(X,Y,abs(shearMap-0.1289), boundaryTFB); title('shear diff');
-    %         myplot(X,Y,twinMap_2, boundaryTFB); caxis([18,24]);
-    %         myplot(X,Y,sfMap_2, boundaryTFB);
-    %         myplot(X,Y,costMap, boundaryTFB);
+%     myplot(X,Y,exx,boundaryTFB);
+%     myplot(X,Y,clusterNumMap,boundaryTFB);
+%     
+%     myplot(X,Y,disSimiMap,boundaryTFB);
+%     myplot(X,Y,twinMap,boundaryTFB); caxis([18,24]);
+%     myplot(X,Y,sfMap,boundaryTFB);
+%     
+%     myplot(X,Y,shearMap, boundaryTFB);
+%     myplot(X,Y,abs(shearMap-0.1289), boundaryTFB); title('shear diff');
+%     myplot(X,Y,twinMap_2, boundaryTFB); caxis([18,24]);
+%     myplot(X,Y,sfMap_2, boundaryTFB);
+%     myplot(X,Y,costMap, boundaryTFB);
 end

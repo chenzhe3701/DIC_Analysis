@@ -25,7 +25,7 @@ gIDwithTrace = gID(~isnan(gExx));
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
-iE_stop = 5;
+iE_stop = 6;
 resReduceRatio = 3;         % to save space, reduce map resolution
 grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 % file name prefixes
@@ -56,14 +56,12 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
 % end
 %% Can load strain data for a specific strain level
 rng(1);
-for iE = [7,1] %iE_start:iE_stop
+for iE = iE_start:iE_stop
     strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
     load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
-    try
-        exy_corrected = strainData.exy_corrected;
-    catch
-        exy_corrected = 0;
-    end
+    clear('exy_corrected');
+    load(strainFile,'exy_corrected');   % if 'exy_corrected' does not exist, this does not give error, rather, just warning. 
+
     if exist('exy_corrected','var')&&(1==exy_corrected)
         disp('================= exy already corrected ! ========================');
         exy_corrected = 1;
