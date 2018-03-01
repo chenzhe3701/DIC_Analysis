@@ -25,7 +25,7 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% select iE to analyze
-iE = 1;
+iE = 5;
 
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 ss = crystal_to_cart_ss(ssa,c_a);
@@ -50,7 +50,7 @@ end
 % scoreCF = 0.15;  % can manually modify
 % criterion final, for modifying
 % distCF = 0.035;
-sfCF = 0.100;
+% sfCF = -1;
 % shearTarget = 0.1289;
 % shearCF = 0.05;
 % costCF = 0.055;
@@ -100,15 +100,17 @@ for iS =1:length(stru)
     
     % ==== change cluster number into twin system number, or 0
     nCluster = length(stru(iS).cLabel);
+    stru(iS).cEnable = zeros(nCluster,1);
+    stru(iS).c2t = zeros(nCluster,1);
     for iCluster = 1:nCluster
         cNum = stru(iS).cLabel(iCluster);
         indClusterLocal = (clusterNumMapLocal==cNum);
         
         % ============== method-1 =============================
         pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-        %             pdistCS(pdistCS > distCF) = nan;                 % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
-        pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
-        %             [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
+        %         pdistCS(pdistCS > distCF) = nan;                % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
+        %         pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
+        %         [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
         
         % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
         score = pdistCS * 7 + (0.5 - stru(iS).tSF);
@@ -116,29 +118,48 @@ for iS =1:length(stru)
         [m_score, ind_t] = nanmin(score,[],2);
         m_dist = pdistCS(ind_t);
         
-        % if this cluster in this grain is disabled, make it nan. If enabled, make score as 0.
+        tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
         if ~isempty(tNote.enable) && ismember([ID_current,iCluster],tNote.enable,'rows')
-            m_score = 0.00001;
-            m_dist = 0.00001;
+            stru(iS).cEnable(iCluster) = 1;
+        
         end
         if ~isempty(tNote.disable) && ismember([ID_current,iCluster],tNote.disable,'rows')
-            m_score = nan;
-            m_dist = nan;
+            stru(iS).cEnable(iCluster) = -1;
         end
+ 
         
-        if isnan(m_dist)
-            tsNum = [];
-        else
-            tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
-        end
+        
+%         % if this cluster in this grain is disabled, make it nan. If enabled, make score as 0.
+%         if ~isempty(tNote.enable) && ismember([ID_current,iCluster],tNote.enable,'rows')
+%             m_score = 0.00001;
+%             m_dist = 0.00001;
+%         end
+%         if ~isempty(tNote.disable) && ismember([ID_current,iCluster],tNote.disable,'rows')
+%             m_score = nan;
+%             m_dist = nan;
+%         end
+        
+%         if isnan(m_dist)
+%             tsNum = [];
+%         else
+%             tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
+%         end
+
+        
         if tsNum > nss
             sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
             disSimiMapLocal(indClusterLocal) = m_dist;
             scoreMapLocal(indClusterLocal) = m_score;
-            if m_score < scoreCF
+            if (m_score < scoreCF) || (1 == stru(iS).cEnable(iCluster))
                 twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
                 scoreMapLocal(indClusterLocal) = m_score/10;
+                stru(iS).c2t(iCluster) = tsNum;     % c2t is the identification label.  Cluster->Twin
             end
+            if (-1 == stru(iS).cEnable(iCluster))
+                twinMapLocal(indClusterLocal) = -tsNum;
+                scoreMapLocal(indClusterLocal) = m_score*10;
+                stru(iS).c2t(iCluster) = tsNum;
+            end            
         end
         
 %         % ================ method-2 ==========================
@@ -188,18 +209,14 @@ try
 catch
 end
 dt = datetime;
-save(['temp_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'tNote','scoreCF','sfCF');
-save([saveDataPath,'twin_label_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'iE','tNote','scoreCF','sfCF');
-% adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap. 
-%% (a)
+save(['temp_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'tNote','scoreCF');
+save([saveDataPath,'twin_label_result_s',num2str(iE),'_',num2str(dt.Year),'_',num2str(dt.Month),'_',num2str(dt.Day),'_',num2str(dt.Hour),'_',num2str(dt.Minute),'.mat'],'iE','tNote','scoreCF');
+
+%% adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap. 
+% (a)
 [f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',3);
 %%
 myplot(X, Y, twinMap,boundaryTFB);
-
-%%
-% twinMap(scoreMap>s.Value)=nan;
-% myplot(X,Y,twinMap,boundaryTFB);
-
 
 %% save the result
 name_result_modified = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_modified.mat'];

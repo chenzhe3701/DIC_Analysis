@@ -35,33 +35,13 @@ f2 = '_';
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
-notes = struct('atEdge',[],'likeTwin',[],'tooSmall',[]);
-% This is a special note for data processing, for specific samples, to give grain labels
-% useful fields will be 'tooSmall', 'atEdge', 'likeTwin'
-% notes = load('T5#7_traceAnalysisNotes');
-% 2016-08-15. create a field called 'noTrace'. noTrace = 1 = too small. noTrace = 2 = at edge .
 
-% end of modify settings part 1 ------------------------------------------------------------------------------------------------------------------------------------
-save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],...
-    'dicPath','dicFiles',...
-    'STOP','iE_start','iE_stop','resReduceRatio','grow_boundary_TF','f1','f2','neighbor_elim','twinTF_text','notes','gIDwithTrace',...
-    '-append');
-
-%%  can load stru
-% iE = 5;
-% name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
-% try
-%     load([saveDataPath,name_result_on_the_fly]);
-% catch
-% end
 %% Can load strain data for a specific strain level
 rng(1);
 for iE = iE_start:iE_stop
-    strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
-    load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
+    strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
     clear('exy_corrected');
-    load(strainFile,'exy_corrected');   % if 'exy_corrected' does not exist, this does not give error, rather, just warning. 
-
+    load(strainFile,'exx','exy','eyy','sigma','exy_corrected');     % if 'exy_corrected' does not exist, this does not give error, rather, just warning. % ----------------------------------------------------------------------------------
     if exist('exy_corrected','var')&&(1==exy_corrected)
         disp('================= exy already corrected ! ========================');
         exy_corrected = 1;
@@ -82,11 +62,13 @@ for iE = iE_start:iE_stop
     exy(ind_outlier) = nan;
     eyy(ind_outlier) = nan;
     
+    struNC_fName = [sampleName, '_s',STOP{iE+B},'_nClusters.mat']
+    load([saveDataPath,struNC_fName],'struNC');
     %% Cluster strain and record information in a structure, assign clusters to twin systems on the fly, but can also modify later.
     
     debugTF = 0;
-    distCI = 0.035;     % distance Criterion Initial
-    sfCI = 0.2;        % schmid factor Criterion Initial
+    %     distCI = 0.035;     % distance Criterion Initial
+    sfCI = -0.5;        % schmid factor Criterion Initial
     shearTarget = 0.1289;
     shearCI = 0.05;        % shear criterion initial
     costCI = 0.07;     % sqrt(cost) criterion initial
@@ -137,9 +119,6 @@ for iE = iE_start:iE_stop
         indR_min = find(sum(ind_local, 2), 1, 'first');
         indR_max = find(sum(ind_local, 2), 1, 'last');
         
-        nRow = indR_max - indR_min + 1;
-        nColumn = indC_max - indC_min + 1;
-        
         exx_local = exx(indR_min:indR_max, indC_min:indC_max);  % strain of this region: grain + neighbor. Look at 'exx' strain, but can be changed later --------------------
         exy_local = exy(indR_min:indR_max, indC_min:indC_max);
         eyy_local = eyy(indR_min:indR_max, indC_min:indC_max);
@@ -148,10 +127,6 @@ for iE = iE_start:iE_stop
         y_local = Y(indR_min:indR_max, indC_min:indC_max);
         ID_local = ID(indR_min:indR_max, indC_min:indC_max);
         
-        % (0) can smooth
-        %         exx_local = colfilt(exx_local, [3 3], 'sliding', @(x) nanmean(x,1));
-        %         exy_local = colfilt(exy_local, [3 3], 'sliding', @(x) nanmean(x,1));
-        %         eyy_local = colfilt(eyy_local, [3 3], 'sliding', @(x) nanmean(x,1));
         
         % find vectors for cluster, using ind
         ind = find((ID_local==ID_current)); %&(~isnan(exx_local)));
@@ -160,9 +135,6 @@ for iE = iE_start:iE_stop
         eyy_t = eyy_local(ind);
         data_t = [exx_t(:), exy_t(:), eyy_t(:)];
         %     [data_zn,mean0,std0] = zero_normalize_column(data_t);   % seems like it's better without zero_normalize.
-        
-        % export data if needed
-        %         save(['grain_',num2str(ID_current)],'data_t');
         
         % ============= clustering data.  grain-197 is a good example showing that kmeans seems to be better than gmModels =====================
         % first, predict centroid
@@ -201,82 +173,9 @@ for iE = iE_start:iE_stop
         centroid_initial = stru(iS).tStrain(ind_centroid_initial,:);
         %     disp(cPred);
         
-        % ======================= kmeans, determine optimum number of clusters ====================================
-        maxCluster = 5;
-        nPoints = 8100;
-        ind_reduce = ~isnan(sum(data_t,2));
-        data_reduce = data_t(ind_reduce,:);
-        reduce_ratio = ceil(size(data_reduce,1)/nPoints);
-        data_reduce = data_reduce(1:reduce_ratio:end,:);
-        
-        if(~isempty(data_reduce))
-            %         % use evalclusters to evaluate the umber of clusters
-            %         if isempty(data_reduce)
-            %             nCluster = 4;
-            %         else
-            %             eva = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster);
-            %             nCluster = eva.OptimalK;
-            %         end
-            
-            % compare the silhouette, by actually do kmeans on down-sampled samples.
-            disp(['ID=',num2str(ID_current)]);
-            clear wssd score_avg score_c score_min neg_score_sum;
-            %         score_min = -1*ones(1, maxCluster);
-            neg_score_sum = -inf*ones(1, maxCluster);
-            nRep = 3;
-            c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
-            for nc = 2:maxCluster
-                % nRep = 3;
-                % c0 = kmeans_pp_init(data_reduce,nc,nRep,centroid_initial);
-                % [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',500,'start',c0);
-                [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
-                sil_score = silhouette(data_reduce,idx);
-                %             wssd(nc) = mean(sumd);
-                %             score_avg(nc) = nanmean(sil_score); % avg score for the condition of nc clusters
-                for ii=1:nc
-                    sil_this_cluster = sil_score(idx==ii);
-                    %                 mean_score_cluster{nc}(ii) = mean(sil_this_cluster); % silhouette for each cluster
-                    neg_score_cluster{nc}(ii) = sum(sil_this_cluster(sil_this_cluster<0));
-                end
-                %             figure; silhouette(data_reduce,idx);
-                %             score_min(nc) = min(mean_score_cluster{nc});
-                neg_score_sum(nc) = sum(neg_score_cluster{nc});
-            end
-            %         [~,nCluster] = max(score_min);
-            [~,nCluster] = max(neg_score_sum);
-            disp([char(9),'nCluster=',num2str(nCluster)]);
-            
-            %         figure;
-            %         subplot(1,2,1);
-            %         plot(2:maxCluster,withinSum(2:end),'x-'); xlabel('num of clusters'); ylabel('within ssd'); axis square; % within-cluster SS, always decrease, maybe no need to look at.
-            
-            %         figure;
-            %         try
-            %             subplot(1,2,1);
-            %             plot(eva);
-            %             axis square;
-            %             subplot(1,2,2);
-            %         catch
-            %             subplot(1,1,1);
-            %         end
-            %         plot(2:maxCluster,score(2:end),'x-'); xlabel('num of clusters'); ylabel('avg silhouette'); axis square;
-            
-            
-            % compare 4 criterions
-            %         for nPoints = [1000,2000,5000,10000]
-            %             ind_reduce = ~isnan(sum(data_t,2));
-            %             data_reduce = data_t(ind_reduce,:);
-            %             reduce_ratio = fix(size(data_reduce,1)/nPoints);
-            %             data_reduce = data_reduce(1:reduce_ratio:end,:);
-            %             eva1 = evalclusters(data_reduce,'kmeans','silhouette','klist',2:maxCluster)
-            %             figure; subplot(2,2,1); plot(eva1);
-            %             eva2 = evalclusters(data_reduce,'kmeans','gap','klist',2:maxCluster)
-            %             subplot(2,2,2); plot(eva2);
-            %             eva3 = evalclusters(data_reduce,'kmeans','CalinskiHarabasz','klist',2:maxCluster)
-            %             subplot(2,2,3); plot(eva3);
-            %             eva4 = evalclusters(data_reduce,'kmeans','DaviesBouldin','klist',2:maxCluster)
-            %             subplot(2,2,4); plot(eva4);
-            %         end
+        if(~isempty(struNC(iS).nCluster))
+            ii = find(arrayfun(@(x) x.gID == stru(iS).gID, struNC));
+            nCluster = struNC(ii).nCluster;
             
             % ========================= (1) perform kmeans cluster ============================
             %         nCluster = 4;       % total number of clusters
@@ -290,41 +189,6 @@ for iE = iE_start:iE_stop
             stru(iS).cLabel = (1:nCluster)';     % cluster number (actually label, but labe=number)
             stru(iS).cCen = centroid;          % cluster centroid
             
-            %     % try to solve equation, hasn't been able to
-            %     syms shear
-            %     vpasolve( 1/2*((eye(2)+shear*MN{19}(1:2,1:2))'*(eye(2)+shear*MN{19}(1:2,1:2))-eye(2)) == [centroid(1,1), centroid(1,2); centroid(1,2), centroid(1,3)],shear)
-            
-            %     % (1.1) zero-normalize, then kmeans cluster
-            %     [idx, centroid, sumd] = kmeans(data_zn,4,'Distance','sqeuclidean','MaxIter',1000);   % 'correlation' distance not good.
-            %     clusterNum = zeros(size(x_local,1),size(x_local,2));
-            %     clusterNum(ind) = idx;
-            %     fh11 = myplot(x_local,y_local,clusterNum);
-            
-            
-            %     % (2) hierarchical cluster.  Does not work well.
-            %     Z = linkage(data_t);
-            %     figure;dendrogram(Z);
-            %     T = cluster(Z,'maxclust',3);
-            %     clusterNum = zeros(size(x_local,1),size(x_local,2));
-            %     clusterNum(ind) = T;
-            %     fh2 = myplot(x_local,y_local,clusterNum);
-            
-            %     % (3) using GMM Gaussian Mixture Models, not as good as kmeans
-            %     AIC = zeros(1,4);
-            %     gmModels = cell(1,4);
-            %     options = statset('MaxIter',1000);
-            %     for k = 1:4
-            %         gmModels{k} = fitgmdist(data_t,k,'options',options,'SharedCovariance',false);
-            %         AIC(k) = gmModels{k}.AIC;
-            %     end
-            %     [minAic,numComponents] = min(AIC);
-            %
-            %     T = cluster(gmModels{numComponents}, data_t);
-            %     clusterNum = zeros(size(x_local,1),size(x_local,2));
-            %     clusterNum(ind) = T;
-            %     fh3 = myplot(x_local,y_local,clusterNum);
-            
-            
             % ==================== continue method-1, assign cluster to twin system on the fly ==========================
             twinMapLocal = zeros(size(exx_local));          % local map to record twin_system_number
             sfMapLocal = zeros(size(exx_local));            % local map to record schmid_factor
@@ -334,7 +198,20 @@ for iE = iE_start:iE_stop
             for iCluster = 1:nCluster
                 cNum = stru(iS).cLabel(iCluster);
                 indClusterLocal = (clusterNumMapLocal==cNum);
-                %  ind_c_on_map = (ID==ID_current)&(clusterNumMap == cNum);  % could index on whole map, but very slow
+                
+                % [For debug], extract local exx,exy,eyy map of this cluster, and local data [exx(:),exy(:),eyy(:)], for whatever analysis -----------------  
+                exx_cluster = zeros(size(exx_local));   % map
+                exx_cluster(indClusterLocal) = exx_local(indClusterLocal);
+                exy_cluster = zeros(size(exy_local));
+                exy_cluster(indClusterLocal) = exy_local(indClusterLocal);
+                eyy_cluster = zeros(size(eyy_local));
+                eyy_cluster(indClusterLocal) = eyy_local(indClusterLocal);
+                data_cluster = [exx_cluster(indClusterLocal),exy_cluster(indClusterLocal),eyy_cluster(indClusterLocal)];    % matrix
+                
+                egcName = [num2str(iE*100000+ID_current*10+iCluster)];  % name = strain-grain-cluster, for saving purpose
+                
+                % [For debug end] whatever------------------------------------------------------------------------------------  
+                
                 
                 pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
                 %             pdistCS(pdistCS > distCI) = nan;                 % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
@@ -346,12 +223,9 @@ for iE = iE_start:iE_stop
                 [m_score, ind_t] = nanmin(score,[],2);
                 m_dist = pdistCS(ind_t);
                 
-                if isnan(m_dist)
-                    tsNum = [];
-                else
-                    tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
-                end
-                if tsNum > nss
+                tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
+                
+                if tsNum > -1
                     % Note global assign like: twinMap(ind_c_on_map) = tsNum; is very slow.
                     twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map
                     sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
@@ -361,19 +235,19 @@ for iE = iE_start:iE_stop
             end
             if 1 == debugTF
                 
-                myplot(x_local,y_local,exx_local);
-                %             myplot(x_local,y_local,exy_local);
-                %             myplot(x_local,y_local,eyy_local);
+                myplot(x_local,y_local,exx_local); % myplot(x_local,y_local,exy_local); myplot(x_local,y_local,eyy_local);
                 myplot(x_local,y_local,clusterNumMapLocal);
-                %             myplot(x_local,y_local,twinMapLocal); caxis([nss,nss+ntwin]);
-                %             myplot(x_local,y_local,sfMapLocal);
-                %             myplot(x_local,y_local,disSimiMapLocal);
+                % myplot(x_local,y_local,twinMapLocal); caxis([nss,nss+ntwin]);
+                % myplot(x_local,y_local,sfMapLocal);
+                % myplot(x_local,y_local,disSimiMapLocal);
             end
             % copy identified twin system number to twinMap
             twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
             sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
             disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMap(indR_min:indR_max, indC_min:indC_max) + disSimiMapLocal;
             scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMap(indR_min:indR_max, indC_min:indC_max) + scoreMapLocal;
+            
+            
             
             % ============ method-2, from cluster_centroid to estimated_shear, and compare if this is similar enough to theoretical shear of 0.1289 ====================
             options = optimoptions(@fminunc,'display','off','algorithm','quasi-newton');
@@ -455,84 +329,14 @@ for iE = iE_start:iE_stop
     catch
     end
     %%
-    name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
-    disp('start saving result_on_the_fly');
+    timeStr = datestr(now,'yyyymmdd_HHMM')
+    name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly_',timeStr,'.mat'];
     save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','twinMap_2','shearMap','sfMap_2','costMap','stru');
-    disp('finished saving result_on_the_fly');
+    disp(['saved cluster_result_on_the_fly: ',name_result_on_the_fly]);
     
     
 end
-%%
-% for iS = 1%:length(gIDwithTrace)
-%     close all;
-%     ID_current = gIDwithTrace(iS);              % id of current grain
-%     ID_current = 668;
-%
-%     ind_current = find(ID_current == gID);    % an index of row
-%     phi1_current = gPhi1(ind_current);
-%     phi_current = gPhi(ind_current);
-%     phi2_current = gPhi2(ind_current);
-%
-%     ID_neighbor = gNeighbors(ind_current,:);
-%     ID_neighbor = ID_neighbor((ID_neighbor~=0)&(ID_neighbor~=neighbor_elim));
-%
-%     % find index range of a small matrix containing the grain of interest
-%     ind_pool = ismember(ID, [ID_current,ID_neighbor]);
-%     indC_min = find(sum(ind_pool, 1), 1, 'first');
-%     indC_max = find(sum(ind_pool, 1), 1, 'last');
-%     indR_min = find(sum(ind_pool, 2), 1, 'first');
-%     indR_max = find(sum(ind_pool, 2), 1, 'last');
-%
-%     nRow = indR_max - indR_min + 1;
-%     nColumn = indC_max - indC_min + 1;
-%
-%     e_current = exx(indR_min:indR_max, indC_min:indC_max);  % strain of this region: grain + neighbor. Look at 'exx' strain, but can be changed later --------------------
-%     boundaryTF_current = boundaryTF(indR_min:indR_max, indC_min:indC_max);
-%     x_current = X(indR_min:indR_max, indC_min:indC_max);
-%     y_current = Y(indR_min:indR_max, indC_min:indC_max);
-%     ID_map_current = ID(indR_min:indR_max, indC_min:indC_max);
-%
-%     e_grain = e_current;
-%     e_grain(ID_map_current~=ID_current) = 0;  % 'e_grain' is strain of This grain. 'e_current' is strian of this region.
-%     e_grain(isnan(e_grain)) = 0;
-%
-%     % calculate Schmid factor.
-%     % sf_mat = [#, SF, angle_XtoY, trace_x_end, trace_y_end]
-%     % burgersXY = [burgers_X, burgers_Y, ratio].
-%     % ---------------------------------------- select proper setting for analysis, such as material, twin, stress ---------------------------------------------------------
-%
-%     [sf_mat, sf_mat_sorted, burgersXY] = trace_analysis_TiMgAl([phi1_current,phi_current,phi2_current],[-90,180,0],[0,0,0],stressTensor,sampleMaterial,twinTF_text);
-%
-%
-%
-%     figureHandle_1 = myplot(x_current,y_current,e_grain);
-%
-%     % hough transform, houghpeaks the peaks, houghlines the line segments
-%     [h,t,r] = hough(e_grain);
-%     [tg,rg] = meshgrid(t,r);
-%     % figureHandle_2 = myplot(tg,rg,h);
-%     figureHandle_2 = figure;
-%     imshow(h,[],'XData',t,'YData',r,'colormap',parula); axis on; axis square;
-%
-%     peaks = houghpeaks(h,10);   %,'NHoodSize',[floor(size(h,1)/2)*2+1,3]);
-%     set(0,'currentfigure',figureHandle_2); hold on;
-%     for k = 1:size(peaks,1)
-%         xy = [tg(peaks(k,1),peaks(k,2)),rg(peaks(k,1),peaks(k,2))];
-%         plot3(xy(1),xy(2),max(h(:)),'s','LineWidth',1,'Color','k')
-%     end
-%
-%     lines = houghlines(e_grain,t,r,peaks);
-%     % lines(k).point1/2 is in fact the index (index_c, index_r)
-%     % show the extracted lines
-%     set(0,'currentfigure',figureHandle_1); hold on;
-%     for k = 1:length(lines)
-%         xy = [x_current(lines(k).point1(2),lines(k).point1(1)),y_current(lines(k).point1(2),lines(k).point1(1));...
-%             x_current(lines(k).point2(2),lines(k).point2(1)),y_current(lines(k).point2(2),lines(k).point2(1))];
-%         plot3(xy(:,1),xy(:,2),1*ones(size(xy,1),1),'LineWidth',2,'Color','green')
-%     end
-%
-%
-% end
+
 
 
 

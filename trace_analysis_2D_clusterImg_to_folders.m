@@ -1,7 +1,9 @@
 
 
-% chenzhe, 2018-02-12, make clustered regions into images.
-% prepare for cnn work.
+% chenzhe, 2018-02-26 based on modified/cleaned cluster result, put cluster
+% images into twin and notwin folder. 
+% Can use as ground truth, but in fact, it still contain mis-identified
+% clusters, because visualization can miss a lot of things ...
 
 clear;
 addChenFunction;
@@ -24,20 +26,23 @@ B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
-saveImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose/make a path [to save the]/[of the saved] twin image.'),'\'];
+allImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose/make a parent path for all twin & notwin images.'),'\'];
+mkdir(allImgPath,'twin');
+mkdir(allImgPath,'notwin');
+trainImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose/make a parent path for training twin images.'),'\'];
+
 %% select iE to analyze
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 for iE = iE_start:iE_stop
-    %% load data for this iE
+    % load data for this iE
     warning('off','all');
     %     iE = 5;
+    
 
-    name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
-    load([saveDataPath,name_result_on_the_fly]);
-    
-    
-    %%    
-    
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result]);
+    struCell{iE} = stru;
     hWaitbar = waitbar(0,'Converting clustered data into image...');
     for iS =1:length(stru)
         
@@ -71,12 +76,15 @@ for iE = iE_start:iE_stop
             imgLocal = uint8((img==cNum)*255);
             imgLocal = cat(3,imgLocal,imgLocal,imgLocal);
             
-            imgName = ([num2str(iE*100000 + ID_current*10 + iCluster),'.tif']);
-            
-            imwrite(imgLocal, [saveImgPath,imgName]);
-        end
-        
-        
+            imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
+            imwrite(imgLocal, fullfile(allImgPath,imgName));   % to parent folder
+            % then to each labeld folder
+            if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
+                imwrite(imgLocal, fullfile(allImgPath,'twin',imgName));
+            else
+                imwrite(imgLocal, fullfile(allImgPath,'notwin',imgName));
+            end
+        end       
         
         waitbar(iS/length(stru), hWaitbar);
         
@@ -87,16 +95,30 @@ for iE = iE_start:iE_stop
     warning('on','all');
 end
 
-%% randomly select nSamples of image, divided them into twin vs notwin by hand later 
-trainImgPath = [saveDataPath,'train_img_',num2str(img_size)];
-mkdir(trainImgPath);
-d=dir(saveImgPath);
-d=d(3:end);
-nSamples = 40;
-ind_pool = randsample(size(d,1),nSamples);
-for ii = 1:nSamples
-    ind = ind_pool(ii);
-    copyfile(fullfile(d(ind).folder,d(ind).name),fullfile(trainImgPath,d(ind).name));
+%% randomly select nSamples of training image, of twin vs notwin, using current labels  
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'stru');
+    struCell{iE} = stru;
 end
-
-
+mkdir(trainImgPath,'twin');
+mkdir(trainImgPath,'notwin');
+nSamples = 80;
+nTwin = 0;
+nNotwin = 0;
+while (nTwin<nSamples) || (nNotwin<nSamples)
+    iE = randi([iE_start,iE_stop]);
+    iS = randi([1,length(stru)]);
+    ID_current = gIDwithTrace(iS);
+    iCluster = randi([1,length(struCell{iE}(iS).cLabel)]);
+    cNum = struCell{iE}(iS).cLabel(iCluster);
+    imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
+    if (struCell{iE}(iS).c2t(iCluster)>nss) && (struCell{iE}(iS).cEnable(iCluster)>=0) && (nTwin<nSamples)
+        copyfile(fullfile(allImgPath,imgName), fullfile(trainImgPath,'twin',imgName));
+        nTwin = length(dir(fullfile(trainImgPath,'twin')))-2;
+    elseif (nNotwin<nSamples)
+        copyfile(fullfile(allImgPath,imgName), fullfile(trainImgPath,'notwin',imgName));
+        nNotwin = length(dir(fullfile(trainImgPath,'notwin')))-2;
+    end
+end

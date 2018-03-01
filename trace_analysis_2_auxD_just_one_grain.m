@@ -5,7 +5,7 @@
 
 clear;
 addChenFunction;
-dicPath = uigetdir('','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
@@ -15,7 +15,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 
@@ -81,7 +81,8 @@ scoreCI = 0.19;          % score criterion initial, score = 2*sqrt(cost) + abs(s
 rng(1);
 
 iS = find(gIDwithTrace == 647); % for debugging.
-
+iS = find(gIDwithTrace == 296); % for debugging.
+iS = find(gIDwithTrace == 188); % for debugging.
 % select the target grain
 ID_current = gIDwithTrace(iS);  % id=262 for an example for WE43-T6-C1
 
@@ -109,6 +110,16 @@ x_local = X(indR_min:indR_max, indC_min:indC_max);
 y_local = Y(indR_min:indR_max, indC_min:indC_max);
 ID_local = ID(indR_min:indR_max, indC_min:indC_max);
 
+% % additional down sampling
+% rr  = 5;
+% exx_local = exx_local(1:rr:end,1:rr:end);
+% exy_local = exy_local(1:rr:end,1:rr:end);
+% eyy_local = eyy_local(1:rr:end,1:rr:end);
+% boundaryTF_local = boundaryTF_local(1:rr:end,1:rr:end);
+% x_local = x_local(1:rr:end,1:rr:end);
+% y_local = y_local(1:rr:end,1:rr:end);
+% ID_local = ID_local(1:rr:end,1:rr:end);
+% %
 
 % find vectors for cluster, using ind
 ind = find((ID_local==ID_current)); %&(~isnan(exx_local)));
@@ -174,7 +185,7 @@ for nc = 2:maxCluster
         %                 mean_score_cluster{nc}(ii) = mean(sil_this_cluster); % silhouette for each cluster
         neg_score_cluster{nc}(ii) = sum(sil_this_cluster(sil_this_cluster<0));
     end
-    figure; silhouette(data_reduce,idx);
+%     figure; silhouette(data_reduce,idx);
     %             score_min(nc) = min(mean_score_cluster{nc});
     neg_score_sum(nc) = sum(neg_score_cluster{nc});
 end
@@ -188,6 +199,9 @@ disp([char(9),'nCluster=',num2str(nCluster)]);
 nRep = 3;
 c0 = kmeans_pp_init(data_t,nCluster,nRep,centroid_initial);
 [idx, centroid, sumd] = kmeans(data_t, nCluster, 'Distance','sqeuclidean','MaxIter',1000,'start',c0);   % 'correlation' distance not good.
+
+% figure; silhouette(data_t,idx); % use with 'rr'
+
 clusterNumMapLocal = zeros(size(x_local));      % record raw clusterNumberMap
 clusterNumMapLocal(ind) = idx;
 
@@ -201,16 +215,41 @@ sfMapLocal = zeros(size(exx_local));            % local map to record schmid_fac
 disSimiMapLocal = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
 scoreMapLocal = zeros(size(exx_local));
 
+% point wise
+stdPtsCCenMapLocal = zeros(size(exx_local));
+stdPtsTStrainMapLocal = zeros(size(exx_local));
+% point wise
+
 for iCluster = 1:nCluster
     cNum = cLabel(iCluster);
     indClusterLocal = (clusterNumMapLocal==cNum);
     
     pdistCS = pdist2(cCen(iCluster,:), tStrain);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-    
+     pdistCS = pdist2(cCen(iCluster,[1,3]), tStrain(:,[1,3]));   % temp
     % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
     score = pdistCS * 7 + (0.5 - tSF);
     [m_score, ind_t] = nanmin(score,[],2);
     m_dist = pdistCS(ind_t);
+    
+    % point wise
+    % select all data points in a cluster and do whatever --------------  
+    ind_ptws = (iCluster==idx);
+    ePts = data_t(ind_ptws,:);
+    
+    d_pts_cCen = pdist2(ePts,cCen(iCluster,:));
+    d_pts_tStrain = pdist2(ePts,tStrain(ind_t,:));
+    figure; 
+    subplot(2,2,1); histogram(d_pts_cCen);
+    subplot(2,2,2); histogram(ePts(:,1));
+    subplot(2,2,3); histogram(ePts(:,2));
+    subplot(2,2,4); histogram(ePts(:,3));
+    
+    std_pts_cCen = std(d_pts_cCen);
+    std_pts_tStrain = std(d_pts_tStrain);
+    stdPtsCCenMapLocal(indClusterLocal) = std_pts_cCen;
+    stdPtsTStrainMapLocal(indClusterLocal) = std_pts_tStrain;
+    % point wise --------------------------------------------------
+    
     
     if isnan(m_dist)
         tsNum = [];
@@ -291,13 +330,15 @@ if 1 == debugTF
     %     myplot(x_local,y_local,sfMapLocal);
     %     myplot(x_local,y_local,disSimiMapLocal);
     myplot(x_local,y_local,scoreMapLocal);
+    myplot(x_local,y_local,stdPtsCCenMapLocal);
+    myplot(x_local,y_local,stdPtsTStrainMapLocal);
 end
 
 if 1 == debugTF
-    myplot(x_local,y_local,twinMapLocal_2); caxis([nss,nss+ntwin]);
-    myplot(x_local,y_local,sfMapLocal_2);
-    myplot(x_local,y_local,shearMapLocal);
-    myplot(x_local,y_local,costMapLocal);
+%     myplot(x_local,y_local,twinMapLocal_2); caxis([nss,nss+ntwin]);
+%     myplot(x_local,y_local,sfMapLocal_2);
+%     myplot(x_local,y_local,shearMapLocal);
+%     myplot(x_local,y_local,costMapLocal);
 end
 
 
