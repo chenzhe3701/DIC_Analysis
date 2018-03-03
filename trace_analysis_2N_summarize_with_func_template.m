@@ -18,6 +18,7 @@
 
 clear;
 addChenFunction;
+%%
 dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
@@ -40,7 +41,7 @@ mkdir(allImgPath,'notwin');
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
-useStrain = 1;
+useStrain = 0;
 makeNewMap = 0;
 makeFigure = 0;
 summarizeTruth = 1;
@@ -62,10 +63,11 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 
 %% select iE to analyze
 
-for iE = iE_start:iE_stop
-    %% load data for this iE
+% for iE = iE_start:iE_stop
+    
+    % load data for this iE
     warning('off','all');
-    iE = 5;
+    iE = 2;
     if useStrain
         strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
         load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
@@ -93,8 +95,8 @@ for iE = iE_start:iE_stop
         eyy(ind_outlier) = nan;
     end
     
-    %%
-    % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn. 
+    
+    % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result]);
 
@@ -208,28 +210,32 @@ for iE = iE_start:iE_stop
                     data = [exx_local(indClusterLocal(:)),exx_local(indClusterLocal(:)),exx_local(indClusterLocal(:))];
                     d = pdist2(data, stru(iS).cCen(iCluster,:));
                     
-                    voi_d = nanmean(d);     % (d) avg within cluster dist
-                    voi_e = nanstd(d);
+                    vd = nanmean(d);     % (d) avg within cluster dist
+                    ve = nanstd(d);
                 end
                 
                 
                 % summarize the varialbe_of_interest, Catogory based on Ground-Truth result, but variable can be calculated in different ways
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
-                    voi_a = m_dist;                 % (a) RSS, disSimilarity, distance
-                    voi_a = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
+                    va = m_dist;                 % (a) RSS, disSimilarity, distance
+                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
                     
-                    voi_b = stru(iS).tSF(ind_t);    % (b) Schmid factor
-                    voi_c = stru(iS).tProb(iCluster);   % (c) cnnTwinProb
-    
-                    varTwin = [varTwin; ID_current, iCluster, voi_a, voi_b, voi_c, voi_d, voi_e];
+                    vb = stru(iS).tSF(ind_t);    % (b) Schmid factor
+                    vc = stru(iS).tProb(iCluster);   % (c) cnnTwinProb
+                    
+                    vd = stru(iS).vrFwd(iCluster);
+                    ve = stru(iS).vrBwd(iCluster);
+                    varTwin = [varTwin; ID_current, iCluster, va, vb, vc, vd, ve];
                 else
-                    voi_a = m_dist;
-                    voi_a = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
+                    va = m_dist;
+                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
                     
-                    voi_b = stru(iS).tSF(ind_t);
-                    voi_c = stru(iS).tProb(iCluster);
+                    vb = stru(iS).tSF(ind_t);
+                    vc = stru(iS).tProb(iCluster);
                     
-                    varNotwin = [varNotwin; ID_current, iCluster, voi_a, voi_b, voi_c, voi_d, voi_e];
+                    vd = stru(iS).vrFwd(iCluster);
+                    ve = stru(iS).vrBwd(iCluster);
+                    varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd, ve];
                 end
             end
         end
@@ -258,7 +264,7 @@ for iE = iE_start:iE_stop
         close(hWaitbar);
     end
     warning('on','all');
-end
+% end
 
 
 %% whatever to plot
@@ -269,9 +275,9 @@ histogram(varNotwin(:,5));
 
 %%
 figure; hold on;
-plot3(varTwin(:,3),varTwin(:,4),varTwin(:,7),'ro');
-plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,7),'bx');
-xlabel('RSS');ylabel('SF');zlabel('std');
+plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
+plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
+xlabel('RSS');ylabel('SF');zlabel('vInc');
 
 %%
 figure; hold on;
