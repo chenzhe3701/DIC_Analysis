@@ -42,7 +42,7 @@ mkdir(allImgPath,'notwin');
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
 useStrain = 0;
-makeNewMap = 0;
+makeNewMap = 1;
 makeFigure = 0;
 summarizeTruth = 1;
 
@@ -68,6 +68,11 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
     % load data for this iE
     warning('off','all');
     iE = 2;
+    
+    % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result], 'stru','clusterNumMap');
+    
     if useStrain
         strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
         load(strainFile,'exx','exy','eyy','sigma');     % Look at exx, but this can be changed in the future.   % ----------------------------------------------------------------------------------
@@ -94,14 +99,11 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
         exy(ind_outlier) = nan;
         eyy(ind_outlier) = nan;
     end
-    
-    
-    % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
-    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result]);
+
 
     if makeNewMap
-        moi = zeros(size(exx)); % new map of interest
+        map = zeros(size(exx)); % new map of interest
+        map2 = zeros(size(exx)); % new map of interest
     end
     if summarizeTruth
         varTwin = [];
@@ -164,7 +166,8 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
         if makeNewMap
             clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
             clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
-            moiLocal = zeros(size(clusterNumMapLocal));
+            mapLocal = zeros(size(clusterNumMapLocal));
+            mapLocal2 = zeros(size(clusterNumMapLocal));
         end
         
         
@@ -202,10 +205,11 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
                 [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 m_dist = pdistCS(ind_t);
                 
+
                 if useStrain
                     % calculate the within-cluster-distance: a vector d
                     indClusterLocal = (clusterNumMapLocal==cNum);
-                    moiLocal(indClusterLocal) = 1;
+                    % mapLocal(indClusterLocal);
                     
                     data = [exx_local(indClusterLocal(:)),exx_local(indClusterLocal(:)),exx_local(indClusterLocal(:))];
                     d = pdist2(data, stru(iS).cCen(iCluster,:));
@@ -247,11 +251,13 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
                 cNum = stru(iS).cLabel(iCluster);
                 
                 indClusterLocal = (clusterNumMapLocal==cNum);
-                moiLocal(indClusterLocal) = 1;
+                mapLocal(indClusterLocal) = stru(iS).vrFwd(iCluster);
+                mapLocal2(indClusterLocal) = stru(iS).vrBwd(iCluster);
             end
             
             % copy identified twin system number to twinMap
-            moi(indR_min:indR_max, indC_min:indC_max) = moi(indR_min:indR_max, indC_min:indC_max) + moiLocal;
+            map(indR_min:indR_max, indC_min:indC_max) = map(indR_min:indR_max, indC_min:indC_max) + mapLocal;
+            map2(indR_min:indR_max, indC_min:indC_max) = map2(indR_min:indR_max, indC_min:indC_max) + mapLocal2;
         end
         
         
@@ -268,17 +274,11 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 
 
 %% whatever to plot
-figure;
-histogram(varTwin(:,5));
-figure;
-histogram(varNotwin(:,5));
-
-%%
 figure; hold on;
 plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
 plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
-xlabel('RSS');ylabel('SF');zlabel('vInc');
-
+xlabel('RSS');ylabel('SF');zlabel('vrFwd');
+% set(gca,'zlim',[0 10]);
 %%
 figure; hold on;
 plot(varTwin(:,3),varTwin(:,4),'ro');
@@ -286,4 +286,22 @@ plot(varNotwin(:,3),varNotwin(:,4),'bx');
 xlabel('RSS');ylabel('SF');
 %%
 fplot(@(x) 3*x+0.35,[0 0.05],'k');
+
+%%
+figure;
+histogram(varTwin(:,5));
+figure;
+histogram(varNotwin(:,5));
+
+%%
+myplot(X,Y,map,boundaryTFB); caxis([0,2])
+myplot(X,Y,map2,boundaryTFB); caxis([0,2])
+
+
+
+
+
+
+
+
 

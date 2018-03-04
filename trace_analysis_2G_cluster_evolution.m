@@ -42,7 +42,7 @@ end
 %%
 for iE = iE_start:iE_stop-1
     %%
-    %     iE = 4;
+    % iE = 4;
     struA = struCell{iE};   % pre
     struP = struCell{iE+1}; % post
     
@@ -50,7 +50,7 @@ for iE = iE_start:iE_stop-1
     for iS =1:length(struA)
         % iS = find(arrayfun(@(x) x.gID == 246,stru));  % for debugging
         % iS = find(gIDwithTrace == 296); % for debugging.
-        % iS = find(arrayfun(@(x) x.gID == 190,stru));
+%         iS = find(arrayfun(@(x) x.gID == 190,stru));
         
         ID_current = gIDwithTrace(iS);
 
@@ -68,17 +68,12 @@ for iE = iE_start:iE_stop-1
         cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
         cMapP(ID_local~=ID_current) = 0;  % cluster number just this grain
         
-        if ~isfield(struA(iS),'vrFwd')||isempty(struA(iS).vrFwd)
-            struA(iS).vrFwd = zeros(size(struA(iS).cLabel));
-        end
-        if ~isfield(struA(iS),'vrBwd')||isempty(struA(iS).vrBwd)
+        % The code will only update the 'vrFwd' field of the current struA, and the 'vrBwd' of the next struP 
+        struA(iS).vrFwd = zeros(size(struA(iS).cLabel));
+        struP(iS).vrBwd = zeros(size(struP(iS).cLabel));
+        % special treatment for the first strain level
+        if iE == iE_start
             struA(iS).vrBwd = zeros(size(struA(iS).cLabel));
-        end
-        if ~isfield(struP(iS),'vrFwd')||isempty(struP(iS).vrFwd)
-            struP(iS).vrFwd = zeros(size(struP(iS).cLabel));
-        end
-        if ~isfield(struP(iS),'vrBwd')||isempty(struP(iS).vrBwd)
-            struP(iS).vrBwd = zeros(size(struP(iS).cLabel));
         end
         
         % match clusters, and find the one with area grown.
@@ -102,10 +97,15 @@ for iE = iE_start:iE_stop-1
                 link(cFrom(ii),cTo(ii)) = true;
             end
         end
-        twinLikely = link & (vrFwd<=1) & (overlapPctA>0.5);
-        [inda,indp] = find(twinLikely);
-        struA(iS).vrFwd(inda) = vrFwd(indp);
-        struP(iS).vrBwd(indp) = vrBwd(inda);
+        twinLikely = link & (vrFwd>=1) & (overlapPctA>0.5);
+        for ii = 1:size(twinLikely,1)
+            for jj=1:size(twinLikely,2)
+                if(twinLikely(ii,jj))
+                    struA(iS).vrFwd(ii) = vrFwd(ii,jj);
+                    struP(iS).vrBwd(jj) = vrBwd(ii,jj);
+                end
+            end
+        end
         
 %         myplot(cMapA);
 %         myplot(cMapP);
