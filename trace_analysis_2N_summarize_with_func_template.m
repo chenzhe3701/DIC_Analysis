@@ -41,11 +41,6 @@ mkdir(allImgPath,'notwin');
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
-useStrain = 0;
-makeNewMap = 1;
-makeFigure = 0;
-summarizeTruth = 1;
-
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
@@ -63,11 +58,16 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 
 %% select iE to analyze
 
+useStrain = 0;
+makeNewMap = 0;
+makeFigure = 0;
+summarizeTruth = 1;
+
 % for iE = iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
-    iE = 2;
+    iE = 4;
     
     % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -108,6 +108,8 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
     if summarizeTruth
         varTwin = [];
         varNotwin = [];
+        varEnabled = [];
+        varDisabled = [];
     end
     
     hWaitbar = waitbar(0,'running each grain, each cluster, ...');
@@ -219,7 +221,7 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
                 end
                 
                 
-                % summarize the varialbe_of_interest, Catogory based on Ground-Truth result, but variable can be calculated in different ways
+                % summarize something [varTwin, varNotwin], Catogory based on Ground-Truth result, but variable can be calculated in different ways
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
                     va = m_dist;                 % (a) RSS, disSimilarity, distance
                     va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
@@ -241,6 +243,19 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
                     ve = stru(iS).vrBwd(iCluster);
                     varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd, ve];
                 end
+                
+                % summarize something [enabled, disabled], only for the manually enabled ones, and disabled ones
+                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
+                    if stru(iS).vrFwd(iCluster)<1
+                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).vrFwd(iCluster)];  % If need to be enabled, but vrFwd found to be = 0  
+                    end
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
+                    if stru(iS).vrFwd(iCluster)>1
+                        varDisabled = [varDisabled; ID_current, iCluster, stru(iS).vrFwd(iCluster)];    % If need to be enabled, but vrFwd still > 1
+                    end
+                end
+                
+                
             end
         end
         
@@ -278,7 +293,7 @@ figure; hold on;
 plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
 plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
 xlabel('RSS');ylabel('SF');zlabel('vrFwd');
-% set(gca,'zlim',[0 10]);
+set(gca,'zlim',[0 3]);
 %%
 figure; hold on;
 plot(varTwin(:,3),varTwin(:,4),'ro');
@@ -298,8 +313,8 @@ myplot(X,Y,map,boundaryTFB); caxis([0,2])
 myplot(X,Y,map2,boundaryTFB); caxis([0,2])
 
 
-
-
+%% 
+save('s4_vrFwd_not_worked','varEnabled','varDisabled')
 
 
 
