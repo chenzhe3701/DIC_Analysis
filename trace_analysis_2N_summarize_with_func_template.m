@@ -38,6 +38,8 @@ gIDwithTrace = gID(~isnan(gExx));
 allImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','Choose/make a parent path for output images/files. If have a new task, then make a new one.'),'\'];
 mkdir(allImgPath,'twin');
 mkdir(allImgPath,'notwin');
+mkdir(allImgPath,'enable');
+mkdir(allImgPath,'disable');
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
@@ -69,15 +71,15 @@ end
 %% select iE to analyze
 
 useStrain = 0;
-makeNewMap = 0;
-makeFigure = 1;
-summarizeTruth = 1;
+makeNewMap = 1;
+makeFigure = 0;
+summarizeTruth = 0;
 
 % for iE = iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
-    iE = 3;
+    iE = 2;
     
     % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -173,16 +175,7 @@ summarizeTruth = 1;
             clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
             clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
         end
-        
-        % load previously-made clusterNumMap for this grain
-        if makeNewMap
-            clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
-            clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
-            mapLocal = zeros(size(clusterNumMapLocal));
-            mapLocal2 = zeros(size(clusterNumMapLocal));
-        end
-        
-        
+       
         % [code here] to make a figure of something
         if makeFigure
             nCluster = length(stru(iS).cLabel);
@@ -191,7 +184,7 @@ summarizeTruth = 1;
                 outputName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
   
                 % write img to parent folder, and then to each labeld folder
-                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
+                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
                     f = figure;
                     set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
                     % plot on figure
@@ -210,11 +203,11 @@ summarizeTruth = 1;
                     plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
        
                     % save and close
-                    saveas(f, fullfile(allImgPath,'twin',outputName));
+                    saveas(f, fullfile(allImgPath,'enable',outputName));
                     close(f);
 
                     
-                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
                     f = figure;
                     set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
                     % plot on figure
@@ -233,7 +226,7 @@ summarizeTruth = 1;
                     plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
                     
                     % save and close
-                    saveas(f, fullfile(allImgPath,'notwin',outputName));
+                    saveas(f, fullfile(allImgPath,'disable',outputName));
                     close(f);
 
                 end
@@ -308,20 +301,34 @@ summarizeTruth = 1;
         
         % [code here] to make a new map of something
         if makeNewMap
-            for iCluster = 1:nCluster
-                cNum = stru(iS).cLabel(iCluster);
-                
-                indClusterLocal = (clusterNumMapLocal==cNum);
-                mapLocal(indClusterLocal) = stru(iS).vrFwd(iCluster);
-                mapLocal2(indClusterLocal) = stru(iS).vrBwd(iCluster);
+            % load previously-made clusterNumMap for this grain
+            clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
+            clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
+            
+            mapLocal = zeros(size(clusterNumMapLocal));
+            
+            for iCluster = 1:length(stru(iS).cLabel)
+                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)   % enabled twin
+                    cNum = stru(iS).cLabel(iCluster);
+                    indClusterLocal = (clusterNumMapLocal==cNum);
+                    mapLocal(indClusterLocal) = 1;
+                    
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)  % natural twin
+                    cNum = stru(iS).cLabel(iCluster);
+                    indClusterLocal = (clusterNumMapLocal==cNum);
+                    mapLocal(indClusterLocal) = 2;
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)  % considered as twin, but disabled
+                    cNum = stru(iS).cLabel(iCluster);
+                    indClusterLocal = (clusterNumMapLocal==cNum);
+                    mapLocal(indClusterLocal) = 3;
+                end
             end
             
             % copy identified twin system number to twinMap
             map(indR_min:indR_max, indC_min:indC_max) = map(indR_min:indR_max, indC_min:indC_max) + mapLocal;
-            map2(indR_min:indR_max, indC_min:indC_max) = map2(indR_min:indR_max, indC_min:indC_max) + mapLocal2;
+%             map2(indR_min:indR_max, indC_min:indC_max) = map2(indR_min:indR_max, indC_min:indC_max) + mapLocal2;
         end
-        
-        
+       
         
         
         waitbar(iS/length(stru), hWaitbar);
@@ -336,8 +343,8 @@ summarizeTruth = 1;
 
 %% whatever to plot
 figure; hold on;
-plot3(varTwin(:,3),varTwin(:,4),varTwin(:,5),'ro');
-plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,5),'bx');
+plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
+plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
 xlabel('RSS');ylabel('SF');zlabel('vrFwd');
 set(gca,'zlim',[0 3]);
 %%
