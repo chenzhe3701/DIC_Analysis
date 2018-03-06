@@ -25,7 +25,7 @@ gIDwithTrace = gID(~isnan(gExx));
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
-iE_stop = 6;
+iE_stop = 5;
 resReduceRatio = 3;         % to save space, reduce map resolution
 grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 % file name prefixes
@@ -34,7 +34,7 @@ f2 = '_';
 
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
-
+method2 = 0;        % if use method-2, maybe not use...
 
 %% Can load strain data for a specific strain level
 rng(1);
@@ -78,13 +78,15 @@ for iE = iE_start:iE_stop
     clusterNumMap = zeros(size(exx));
     twinMap = zeros(size(exx));
     sfMap = zeros(size(exx));
-    disSimiMap = zeros(size(exx));
+    rssMap = zeros(size(exx));
     scoreMap = zeros(size(exx));
     
-    twinMap_2 = zeros(size(exx));
-    shearMap = zeros(size(exx));
-    sfMap_2 = zeros(size(exx));
-    costMap = zeros(size(exx));
+    if method2
+        twinMap_2 = zeros(size(exx));
+        shearMap = zeros(size(exx));
+        sfMap_2 = zeros(size(exx));
+        costMap = zeros(size(exx));
+    end
     
     [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
     ss = crystal_to_cart_ss(ssa,c_a);
@@ -192,14 +194,16 @@ for iE = iE_start:iE_stop
             % ==================== continue method-1, assign cluster to twin system on the fly ==========================
             twinMapLocal = zeros(size(exx_local));          % local map to record twin_system_number
             sfMapLocal = zeros(size(exx_local));            % local map to record schmid_factor
-            disSimiMapLocal = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
+            rssMapLocal = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
             scoreMapLocal = zeros(size(exx_local));
+            
             
             for iCluster = 1:nCluster
                 cNum = stru(iS).cLabel(iCluster);
                 indClusterLocal = (clusterNumMapLocal==cNum);
                 
-                % [For debug], extract local exx,exy,eyy map of this cluster, and local data [exx(:),exy(:),eyy(:)], for whatever analysis -----------------  
+                % [For debug], extract local exx,exy,eyy map of this cluster, and local data [exx(:),exy(:),eyy(:)], for whatever analysis -----------------
+                % here, calculate cluster median strain for use
                 exx_cluster = zeros(size(exx_local));   % map
                 exx_cluster(indClusterLocal) = exx_local(indClusterLocal);
                 exy_cluster = zeros(size(exy_local));
@@ -209,18 +213,18 @@ for iE = iE_start:iE_stop
                 data_cluster = [exx_cluster(indClusterLocal),exy_cluster(indClusterLocal),eyy_cluster(indClusterLocal)];    % matrix
                 
                 egcName = [num2str(iE*100000+ID_current*10+iCluster)];  % name = strain-grain-cluster, for saving purpose
+                stru(iS).cMed(iCluster,:) = median(data_cluster,'omitnan');
+                % [For debug end] whatever------------------------------------------------------------------------------------
                 
-                % [For debug end] whatever------------------------------------------------------------------------------------  
                 
-                
-                pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
+                pdistCS = pdist2(stru(iS).cMed(iCluster,:), stru(iS).tStrain);       % pair distance between cluster median (used to be centroids) and twinSystem strain components. Non-candidate twinSys lead to nan.
                 %             pdistCS(pdistCS > distCI) = nan;                 % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
                 %             pdistCS(stru(iS).tSF < sfCI) = nan;             % [criterion-2] SF must > sfCI
                 %             [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 
                 % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
-                score = pdistCS * 7 + (0.5 - stru(iS).tSF);
-                [m_score, ind_t] = nanmin(score,[],2);
+                score = pdistCS * 3 + (0.5 - stru(iS).tSF);
+                [m_score, ind_t] = nanmin(score,[],2);  % could be score
                 m_dist = pdistCS(ind_t);
                 
                 tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
@@ -229,9 +233,10 @@ for iE = iE_start:iE_stop
                     % Note global assign like: twinMap(ind_c_on_map) = tsNum; is very slow.
                     twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map
                     sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
-                    disSimiMapLocal(indClusterLocal) = m_dist;
+                    rssMapLocal(indClusterLocal) = m_dist;
                     scoreMapLocal(indClusterLocal) = m_score;
                 end
+                
             end
             if 1 == debugTF
                 
@@ -244,68 +249,70 @@ for iE = iE_start:iE_stop
             % copy identified twin system number to twinMap
             twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
             sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
-            disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMap(indR_min:indR_max, indC_min:indC_max) + disSimiMapLocal;
+            rssMap(indR_min:indR_max, indC_min:indC_max) = rssMap(indR_min:indR_max, indC_min:indC_max) + rssMapLocal;
             scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMap(indR_min:indR_max, indC_min:indC_max) + scoreMapLocal;
             
             
+            if method2
+                % ============ method-2, from cluster_centroid to estimated_shear, and compare if this is similar enough to theoretical shear of 0.1289 ====================
+                options = optimoptions(@fminunc,'display','off','algorithm','quasi-newton');
+                clear shear cost;
+                for iCluster=1:nCluster
+                    for iss = (nss+1):(nss+ntwin)
+                        [shear(iCluster,iss),cost(iCluster,iss)]=fminunc(@(x) sqrt(sum(sum((((eye(2)+x*MN2{iss})'*(eye(2)+x*MN2{iss})-eye(2))/2-...
+                            [centroid(iCluster,1),centroid(iCluster,2);centroid(iCluster,2),centroid(iCluster,3)]).^2))), 0.1298, options);
+                    end
+                end
+                stru(iS).cShear = shear(:,nss+1:nss+ntwin);       % cluster centroid's expected shear
+                stru(iS).cCost = cost(:,nss+1:nss+ntwin);      % cluster centroid fitted shear -induced cost
+                
+                % =============== continue method-2, assign cluster to twin system on the fly ==============================
+                twinMapLocal_2 = zeros(size(exx_local));          % local map to record twin_system_number
+                shearMapLocal = zeros(size(exx_local));            % local map to record schmid_factor
+                sfMapLocal_2 = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
+                costMapLocal = zeros(size(exx_local));       % local map to record cost
+                for iCluster = 1:nCluster
+                    cNum = stru(iS).cLabel(iCluster);
+                    indClusterLocal = (clusterNumMapLocal==cNum);
+                    
+                    shearFit = stru(iS).cShear(iCluster,:);
+                    shearFit(stru(iS).tSF < sfCI) = nan;            % [criterion-1] SF must > 0.35
+                    shearFit(abs(shearFit-shearTarget) > shearCI) = nan;      % [criterion-2] shear_difference should be < 0.5
+                    
+                    costFit = stru(iS).cCost(iCluster,:);
+                    costFit(costFit > costCI) = nan;     % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
+                    
+                    score = abs(shearFit-shearTarget)+2*costFit;     % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
+                    score(costFit*2+abs(shearFit-shearTarget) > scoreCI) = nan;  % [criterion-5] combination of shearDiff and sqrtCost should also be limited
+                    
+                    [m_score,ind_t] = min(score,[],2);
+                    % [m_shear_diff,ind_t] = min(abs(shearFit-0.1289),[],2);    % if just look at the shear.
+                    
+                    if isnan(m_score)
+                        tsNum = [];
+                    else
+                        tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
+                    end
+                    if tsNum > nss
+                        twinMapLocal_2(indClusterLocal) = tsNum;
+                        sfMapLocal_2(indClusterLocal) = stru(iS).tSF(ind_t);
+                        shearMapLocal(indClusterLocal)  = stru(iS).cShear(iCluster,ind_t);
+                        costMapLocal(indClusterLocal) = stru(iS).cCost(iCluster,ind_t);
+                    end
+                end
+                if 1 == debugTF
+                    myplot(x_local,y_local,twinMapLocal_2); caxis([nss,nss+ntwin]);
+                    myplot(x_local,y_local,sfMapLocal_2);
+                    myplot(x_local,y_local,shearMapLocal);
+                    myplot(x_local,y_local,costMapLocal);
+                end
+                % copy identified twin system number to twinMap
+                twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal_2;
+                shearMap(indR_min:indR_max, indC_min:indC_max) = shearMap(indR_min:indR_max, indC_min:indC_max) + shearMapLocal;
+                sfMap_2(indR_min:indR_max, indC_min:indC_max) = sfMap_2(indR_min:indR_max, indC_min:indC_max) + sfMapLocal_2;
+                costMap(indR_min:indR_max, indC_min:indC_max) = costMap(indR_min:indR_max, indC_min:indC_max) + costMapLocal;
+            end
             
-            % ============ method-2, from cluster_centroid to estimated_shear, and compare if this is similar enough to theoretical shear of 0.1289 ====================
-            options = optimoptions(@fminunc,'display','off','algorithm','quasi-newton');
-            clear shear cost;
-            for iCluster=1:nCluster
-                for iss = (nss+1):(nss+ntwin)
-                    [shear(iCluster,iss),cost(iCluster,iss)]=fminunc(@(x) sqrt(sum(sum((((eye(2)+x*MN2{iss})'*(eye(2)+x*MN2{iss})-eye(2))/2-...
-                        [centroid(iCluster,1),centroid(iCluster,2);centroid(iCluster,2),centroid(iCluster,3)]).^2))), 0.1298, options);
-                end
-            end
-            stru(iS).cShear = shear(:,nss+1:nss+ntwin);       % cluster centroid's expected shear
-            stru(iS).cCost = cost(:,nss+1:nss+ntwin);      % cluster centroid fitted shear -induced cost
-            
-            % =============== continue method-2, assign cluster to twin system on the fly ==============================
-            twinMapLocal_2 = zeros(size(exx_local));          % local map to record twin_system_number
-            shearMapLocal = zeros(size(exx_local));            % local map to record schmid_factor
-            sfMapLocal_2 = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
-            costMapLocal = zeros(size(exx_local));       % local map to record cost
-            for iCluster = 1:nCluster
-                cNum = stru(iS).cLabel(iCluster);
-                indClusterLocal = (clusterNumMapLocal==cNum);
-                
-                shearFit = stru(iS).cShear(iCluster,:);
-                shearFit(stru(iS).tSF < sfCI) = nan;            % [criterion-1] SF must > 0.35
-                shearFit(abs(shearFit-shearTarget) > shearCI) = nan;      % [criterion-2] shear_difference should be < 0.5
-                
-                costFit = stru(iS).cCost(iCluster,:);
-                costFit(costFit > costCI) = nan;     % [criterion-3] costFit should be < 0.025.  Change to 0.035 empirically
-                
-                score = abs(shearFit-shearTarget)+2*costFit;     % [criterion-4] the criterion is a combination of shearFit and sqrt(cost)
-                score(costFit*2+abs(shearFit-shearTarget) > scoreCI) = nan;  % [criterion-5] combination of shearDiff and sqrtCost should also be limited
-                
-                [m_score,ind_t] = min(score,[],2);
-                % [m_shear_diff,ind_t] = min(abs(shearFit-0.1289),[],2);    % if just look at the shear.
-                
-                if isnan(m_score)
-                    tsNum = [];
-                else
-                    tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
-                end
-                if tsNum > nss
-                    twinMapLocal_2(indClusterLocal) = tsNum;
-                    sfMapLocal_2(indClusterLocal) = stru(iS).tSF(ind_t);
-                    shearMapLocal(indClusterLocal)  = stru(iS).cShear(iCluster,ind_t);
-                    costMapLocal(indClusterLocal) = stru(iS).cCost(iCluster,ind_t);
-                end
-            end
-            if 1 == debugTF
-                myplot(x_local,y_local,twinMapLocal_2); caxis([nss,nss+ntwin]);
-                myplot(x_local,y_local,sfMapLocal_2);
-                myplot(x_local,y_local,shearMapLocal);
-                myplot(x_local,y_local,costMapLocal);
-            end
-            % copy identified twin system number to twinMap
-            twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal_2;
-            shearMap(indR_min:indR_max, indC_min:indC_max) = shearMap(indR_min:indR_max, indC_min:indC_max) + shearMapLocal;
-            sfMap_2(indR_min:indR_max, indC_min:indC_max) = sfMap_2(indR_min:indR_max, indC_min:indC_max) + sfMapLocal_2;
-            costMap(indR_min:indR_max, indC_min:indC_max) = costMap(indR_min:indR_max, indC_min:indC_max) + costMapLocal;
             
             try
                 waitbar(iS/length(gIDwithTrace), hWaitbar);
@@ -331,7 +338,11 @@ for iE = iE_start:iE_stop
     %%
     timeStr = datestr(now,'yyyymmdd_HHMM')
     name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly_',timeStr,'.mat'];
-    save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','twinMap_2','shearMap','sfMap_2','costMap','stru');
+    save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','rssMap','scoreMap','stru');
+    try
+        save([saveDataPath,name_result_on_the_fly] ,'twinMap_2','shearMap','sfMap_2','costMap','-append');
+    end
+    
     disp(['saved cluster_result_on_the_fly: ',name_result_on_the_fly]);
     
     
