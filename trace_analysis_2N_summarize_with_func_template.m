@@ -56,18 +56,28 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 
+
+%% (0) initialize something
+struCell = cell(1,length(STOP)-1);
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
+    struCell{iE} = stru;
+end
+
+
 %% select iE to analyze
 
 useStrain = 0;
 makeNewMap = 0;
-makeFigure = 0;
+makeFigure = 1;
 summarizeTruth = 1;
 
 % for iE = iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
-    iE = 4;
+    iE = 3;
     
     % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -179,17 +189,53 @@ summarizeTruth = 1;
             for iCluster = 1:nCluster
                 cNum = stru(iS).cLabel(iCluster);
                 outputName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
-                
-                f = figure;
-                set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
-                % plot on figure
-                
-                
+  
                 % write img to parent folder, and then to each labeld folder
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
+                    f = figure;
+                    set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
+                    % plot on figure
+                        
+                    iE_list = iE;
+                    iC_list = iCluster;
+                    while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+                        iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+                        iE_list = [iE_list(1)-1, iE_list];
+                    end
+                    while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
+                        iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
+                        iE_list = [iE_list, iE_list(end)+1];
+                    end
+                    
+                    plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
+       
+                    % save and close
                     saveas(f, fullfile(allImgPath,'twin',outputName));
-                else
+                    close(f);
+
+                    
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
+                    f = figure;
+                    set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
+                    % plot on figure
+                    
+                    iE_list = iE;
+                    iC_list = iCluster;
+                    while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+                        iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+                        iE_list = [iE_list(1)-1, iE_list];
+                    end
+                    while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
+                        iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
+                        iE_list = [iE_list, iE_list(end)+1];
+                    end
+                    
+                    plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
+                    
+                    % save and close
                     saveas(f, fullfile(allImgPath,'notwin',outputName));
+                    close(f);
+
                 end
             end
         end
@@ -224,34 +270,34 @@ summarizeTruth = 1;
                 % summarize something [varTwin, varNotwin], Catogory based on Ground-Truth result, but variable can be calculated in different ways
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
                     va = m_dist;                 % (a) RSS, disSimilarity, distance
-                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
+                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 2);
                     
                     vb = stru(iS).tSF(ind_t);    % (b) Schmid factor
-                    vc = stru(iS).tProb(iCluster);   % (c) cnnTwinProb
+                    vc = stru(iS).cLikeT(iCluster);   % (c) cnnTwinProb
                     
-                    vd = stru(iS).vrFwd(iCluster);
-                    ve = stru(iS).vrBwd(iCluster);
-                    varTwin = [varTwin; ID_current, iCluster, va, vb, vc, vd, ve];
+                    vd = stru(iS).cvInc(iCluster);
+                    
+                    varTwin = [varTwin; ID_current, iCluster, va, vb, vc, vd];
                 else
                     va = m_dist;
-                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 0.5);
+                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 2);
                     
                     vb = stru(iS).tSF(ind_t);
-                    vc = stru(iS).tProb(iCluster);
+                    vc = stru(iS).cLikeT(iCluster);
                     
-                    vd = stru(iS).vrFwd(iCluster);
-                    ve = stru(iS).vrBwd(iCluster);
-                    varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd, ve];
+                    vd = stru(iS).cvInc(iCluster);
+                    
+                    varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd];
                 end
                 
                 % summarize something [enabled, disabled], only for the manually enabled ones, and disabled ones
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
-                    if stru(iS).vrFwd(iCluster)<1
-                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).vrFwd(iCluster)];  % If need to be enabled, but vrFwd found to be = 0  
+                    if stru(iS).cvInc(iCluster)<1
+                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];  % If need to be enabled, but vrFwd found to be = 0  
                     end
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
-                    if stru(iS).vrFwd(iCluster)>1
-                        varDisabled = [varDisabled; ID_current, iCluster, stru(iS).vrFwd(iCluster)];    % If need to be enabled, but vrFwd still > 1
+                    if stru(iS).cvInc(iCluster)>0
+                        varDisabled = [varDisabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];    % If need to be enabled, but vrFwd still > 1
                     end
                 end
                 
@@ -290,8 +336,8 @@ summarizeTruth = 1;
 
 %% whatever to plot
 figure; hold on;
-plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
-plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
+plot3(varTwin(:,3),varTwin(:,4),varTwin(:,5),'ro');
+plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,5),'bx');
 xlabel('RSS');ylabel('SF');zlabel('vrFwd');
 set(gca,'zlim',[0 3]);
 %%
