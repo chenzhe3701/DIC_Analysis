@@ -56,7 +56,7 @@ for iE = iE_start:iE_stop
     struCell{iE} = stru;
 end
 
-%% (1) match clusters and track volume evolution
+% (1) match clusters and track volume evolution, fields related: cVol, cVolCleaned, preCluster, postCluster 
 for iE = iE_start:iE_stop-1
     struA = struCell{iE};   % pre
     struP = struCell{iE+1}; % post
@@ -122,7 +122,7 @@ for iE = iE_start:iE_stop-1
         for ii = 1:size(link,1)
             for jj=1:size(link,2)
                 if(link(ii,jj))
-                    struA(iS).cLikeT(ii) = 1;
+                    % struA(iS).cLikeT(ii) = 1;
                     struA(iS).postCluster(ii) = jj;
                     
                     struP(iS).preCluster(jj) = ii;
@@ -149,9 +149,34 @@ for iE = iE_start:iE_stop-1
     
 end
 
+% (after 1) update to Save
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    stru = struCell{iE};
+    save([saveDataPath,fName_c2t_result],'stru','-append');
+end
 
 
-%% (2) after tracking all strain level pairs, get volume history in the whole strain levels, and analyze
+%% (2) after tracking all strain level pairs, get volume history in the whole strain levels, and analyze. Related fields: volEvo, volEvoCleaned, cvInc 
+%  First, re-load stru in all strain levels
+struCell = cell(1,length(STOP)-1);
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'stru');
+    try
+        stru = rmfield(stru,{'cVolOC'});
+    end
+    % initialize/zero related fields 
+    for iS =1:length(stru)
+        stru(iS).cLikeT = zeros(size(stru(iS).cLabel));     % based on pair comparison between a pair of strain levels
+        stru(iS).volEvo = zeros(1,length(STOP)-1);
+        stru(iS).volEvoCleaned = zeros(1,length(STOP)-1);
+        stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
+    end
+    struCell{iE} = stru;
+end
+
+
 for iE = iE_start:iE_stop
     % stru = struCell{iE};
     for iS =1:length(struCell{iE})
@@ -213,8 +238,7 @@ for iE = iE_start:iE_stop
     end
 end
 
-
-%% (3) update to save
+% (after 2) update to save
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     stru = struCell{iE};
@@ -222,7 +246,7 @@ for iE = iE_start:iE_stop
 end
 
 
-%% plot map of a cluster of intereted in all strain levels
+%% [for debug] plot map of a cluster of intereted in all strain levels
 debug = 0;
 if debug
     close all;
