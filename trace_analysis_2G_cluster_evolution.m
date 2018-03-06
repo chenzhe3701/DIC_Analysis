@@ -51,7 +51,7 @@ for iE = iE_start:iE_stop
         stru(iS).cLikeT = zeros(size(stru(iS).cLabel));     % based on pair comparison between a pair of strain levels
         stru(iS).volEvo = zeros(1,length(STOP)-1);
         stru(iS).volEvoCleaned = zeros(1,length(STOP)-1);
-        stru(iS).cvInc = false(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
+        stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
     end
     struCell{iE} = stru;
 end
@@ -181,38 +181,15 @@ for iE = iE_start:iE_stop
                 vol = [vol, struCell{iE_list(end)}(iS).cVol(iC_list(end))];
                 vol_cleaned = [vol_cleaned, struCell{iE_list(end)}(iS).cVolCleaned(iC_list(end))];
             end
-            
-            
-            %             iE_current = iE;
-            %             iC_current = iCluster;
-            %             if 0==struCell{iE_current}(iS).preCluster(iC_current)
-            %                 vol(iE_current) = struCell{iE_current}(iS).cVol(iC_current);    % record size of the current cluster in the current iE
-            %                 vol_cleaned(iE_current) = struCell{iE_current}(iS).cVolCleaned(iC_current);    % record size of the current cluster overlaid with the post cluster, and cleaned
-            %                 % update iC, iE
-            %                 iC_current = struCell{iE_current}(iS).postCluster(iC_current);
-            %                 iE_current = iE_current + 1;
-            %             else
-            %                 iC_current = 0;
-            %                 iE_current = iE_current + 1;
-            %             end
-            %             while iC_current
-            %                 vol(iE_current) = struCell{iE_current}(iS).cVol(iC_current);   % update volume to the cluster size in the next iE
-            %                 vol_cleaned(iE_current) = struCell{iE_current}(iS).cVolCleaned(iC_current);
-            %                 % update iC, iE
-            %                 iC_current = struCell{iE_current}(iS).postCluster(iC_current);
-            %                 iE_current = iE_current + 1;
-            %             end
+
             
             % evaluate if volume seems to be increasing. Is this method OK?
             vol_valid = vol;   % or use vol_cleaned?
             if 1==length(vol_valid)
-                vInc = false;
-            elseif 2==length(vol_valid)
-                vInc = diff(vol_valid)>0;
+                vInc = -1;
             else
-                vol_valid = vol_valid(2:end);
-                kb = ([1:length(vol_valid);ones(1,length(vol_valid))]')\(vol_valid');
-                vInc = kb(1)>0;
+                vInc = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
+                vInc = mean(vInc);
             end
             
             % [2nd loop] copy
@@ -228,34 +205,7 @@ for iE = iE_start:iE_stop
                 end
                 
             end
-            
-            %             % [2nd loop] copy the volume to all corresponding clusters at different strain levels
-            %             iE_current = iE;
-            %             iC_current = iCluster;
-            %             if 0==struCell{iE_current}(iS).preCluster(iC_current)
-            %                 struCell{iE_current}(iS).volEvo(iC_current,:) = vol;    % record size history of the current cluster in the current iE
-            %                 struCell{iE_current}(iS).cvInc(iC_current) = vInc;      % record, by looking at volume history, does the volume increase ?
-            %
-            %                 struCell{iE_current}(iS).volEvoCleaned(iC_current,:) = vol_cleaned;
-            %
-            %                 % update iC, iE
-            %                 iC_current = struCell{iE_current}(iS).postCluster(iC_current);
-            %                 iE_current = iE_current + 1;
-            %             else
-            %                 iC_current = 0;
-            %                 iE_current = iE_current + 1;
-            %             end
-            %             while iC_current
-            %                 struCell{iE_current}(iS).volEvo(iC_current,:) = vol;      % update volume in the cluster in the next iE
-            %                 struCell{iE_current}(iS).cvInc(iC_current) = vInc;
-            %
-            %                 struCell{iE_current}(iS).volEvoCleaned(iC_current,:) = vol_cleaned;
-            %
-            %                 % update iC, iE
-            %                 iC_current = struCell{iE_current}(iS).postCluster(iC_current);
-            %                 iE_current = iE_current + 1;
-            %             end
-            
+
             
         end
         
@@ -273,11 +223,11 @@ end
 
 
 %% plot map of a cluster of intereted in all strain levels
-debug = 1;
+debug = 0;
 if debug
     close all;
     
-    egc = 300401;
+    egc = 313192;
     iC_target = mod(egc,10);
     egc = (egc-iC_target)/10;
     ID_target = mod(egc,10000);
