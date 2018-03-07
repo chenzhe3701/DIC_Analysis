@@ -31,6 +31,7 @@ mkdir(allImgPath,'twin');
 mkdir(allImgPath,'notwin');
 trainImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose/make a parent path for training twin images.'),'\'];
 
+useCleanedMap = 1;
 %% select iE to analyze
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
@@ -38,10 +39,14 @@ for iE = iE_start:iE_stop
     % load data for this iE
     warning('off','all');
     %     iE = 5;
-    
 
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result]);
+    
+    if useCleanedMap
+        clusterNumMap = clusterNumMapCleaned;
+    end
+    
     struCell{iE} = stru;
     hWaitbar = waitbar(0,'Converting clustered data into image...');
     for iS =1:length(stru)
@@ -104,7 +109,7 @@ for iE = iE_start:iE_stop
 end
 mkdir(trainImgPath,'twin');
 mkdir(trainImgPath,'notwin');
-nSamples = 80;
+nSamples = 160;
 nTwin = 0;
 nNotwin = 0;
 while (nTwin<nSamples) || (nNotwin<nSamples)

@@ -192,13 +192,13 @@ for iE = iE_start:iE_stop
             vol = struCell{iE}(iS).cVol(iCluster);    % record size of the current cluster in the current iE
             vol_cleaned = struCell{iE}(iS).cVolCleaned(iCluster);    % record size of the current cluster overlaid with the post cluster, and cleaned
             
-            % search to earlier strain
-            while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
-                iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
-                iE_list = [iE_list(1)-1, iE_list];
-                vol = [struCell{iE_list(1)}(iS).cVol(iC_list(1)), vol];
-                vol_cleaned = [struCell{iE_list(1)}(iS).cVolCleaned(iC_list(1)), vol_cleaned];
-            end
+            % search to earlier strain (try not to...)
+%             while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+%                 iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+%                 iE_list = [iE_list(1)-1, iE_list];
+%                 vol = [struCell{iE_list(1)}(iS).cVol(iC_list(1)), vol];
+%                 vol_cleaned = [struCell{iE_list(1)}(iS).cVolCleaned(iC_list(1)), vol_cleaned];
+%             end
             % search to later strain
             while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
                 iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
@@ -209,12 +209,12 @@ for iE = iE_start:iE_stop
 
             
             % evaluate if volume seems to be increasing. Is this method OK?
-            vol_valid = vol;   % or use vol_cleaned?
+            vol_valid = vol_cleaned;   % or use vol_cleaned?
             if 1==length(vol_valid)
-                vInc = -1;
+                cvInc = 0;
             else
-                vInc = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
-                vInc = mean(vInc);
+                cvInc = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
+                cvInc = mean(cvInc);
             end
             
             % [2nd loop] copy
@@ -224,7 +224,7 @@ for iE = iE_start:iE_stop
                     iC_current = iC_list(ii);
                     
                     struCell{iE_current}(iS).volEvo(iC_current,iE_list) = vol;    % record size history of the current cluster in the current iE
-                    struCell{iE_current}(iS).cvInc(iC_current) = vInc;      % record, by looking at volume history, does the volume increase ?
+                    struCell{iE_current}(iS).cvInc(iC_current) = cvInc;      % record, by looking at volume history, does the volume increase ?
                     
                     struCell{iE_current}(iS).volEvoCleaned(iC_current,iE_list) = vol_cleaned;
                 end

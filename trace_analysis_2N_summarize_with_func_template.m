@@ -71,9 +71,9 @@ end
 %% select iE to analyze
 
 useStrain = 0;
-makeNewMap = 1;
+makeNewMap = 0;
 makeFigure = 0;
-summarizeTruth = 0;
+summarizeTruth = 1;
 
 % for iE = iE_start:iE_stop
     
@@ -119,7 +119,10 @@ summarizeTruth = 0;
     end
     if summarizeTruth
         varTwin = [];
+        varTwinEnabled = [];
+        varTwinDisabled = [];
         varNotwin = [];
+        
         varEnabled = [];
         varDisabled = [];
     end
@@ -241,7 +244,7 @@ summarizeTruth = 0;
                 cNum = stru(iS).cLabel(iCluster);
                 
                 % Apply certain criterion to find the best matching twin system
-                pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
+                pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain, 'minkowski', 2);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
                 % pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
                 [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 m_dist = pdistCS(ind_t);
@@ -261,23 +264,31 @@ summarizeTruth = 0;
                 
                 
                 % summarize something [varTwin, varNotwin], Catogory based on Ground-Truth result, but variable can be calculated in different ways
-                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
+                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
                     va = m_dist;                 % (a) RSS, disSimilarity, distance
-                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 2);
-                    
                     vb = stru(iS).tSF(ind_t);    % (b) Schmid factor
-                    vc = stru(iS).cLikeT(iCluster);   % (c) cnnTwinProb
-                    
+                    vc = stru(iS).tProb(iCluster);   % (c) cnnTwinProb
                     vd = stru(iS).cvInc(iCluster);
                     
                     varTwin = [varTwin; ID_current, iCluster, va, vb, vc, vd];
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
+                    va = m_dist;
+                    vb = stru(iS).tSF(ind_t);
+                    vc = stru(iS).tProb(iCluster);
+                    vd = stru(iS).cvInc(iCluster);
+                    
+                    varTwinEnabled = [varTwinEnabled; ID_current, iCluster, va, vb, vc, vd];
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
+                    va = m_dist;
+                    vb = stru(iS).tSF(ind_t);
+                    vc = stru(iS).tProb(iCluster);
+                    vd = stru(iS).cvInc(iCluster);
+                    
+                    varTwinDisabled = [varTwinDisabled; ID_current, iCluster, va, vb, vc, vd];
                 else
                     va = m_dist;
-                    va = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain(ind_t,:), 'minkowski', 2);
-                    
                     vb = stru(iS).tSF(ind_t);
-                    vc = stru(iS).cLikeT(iCluster);
-                    
+                    vc = stru(iS).tProb(iCluster);
                     vd = stru(iS).cvInc(iCluster);
                     
                     varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd];
@@ -286,7 +297,7 @@ summarizeTruth = 0;
                 % summarize something [enabled, disabled], only for the manually enabled ones, and disabled ones
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
                     if stru(iS).cvInc(iCluster)<1
-                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];  % If need to be enabled, but vrFwd found to be = 0  
+                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];  % If need to be enabled, but vrFwd found to be = 0
                     end
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
                     if stru(iS).cvInc(iCluster)>0
