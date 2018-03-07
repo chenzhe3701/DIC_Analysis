@@ -2,7 +2,7 @@
 % chenzhe, 2018-03-01
 
 
-clear;
+% clear;
 addChenFunction;
 
 % looks like have to include this part to read the sample name.
@@ -40,7 +40,7 @@ for iE = iE_start:iE_stop
     cNumMaps_cleaned{iE} = clusterNumMapCleaned;
     % remove some fields
     try
-        stru = rmfield(stru,{'cVolOC'});
+        stru = rmfield(stru,{'tProbAvg'});
     end
     % initialize/zero fields
     for iS =1:length(stru)
@@ -48,9 +48,11 @@ for iE = iE_start:iE_stop
         stru(iS).cVolCleaned = zeros(size(stru(iS).cLabel)); % the cluster volume overlap with postCluster, and cleaned
         stru(iS).preCluster = zeros(size(stru(iS).cLabel));
         stru(iS).postCluster = zeros(size(stru(iS).cLabel));
-        stru(iS).cLikeT = zeros(size(stru(iS).cLabel));     % based on pair comparison between a pair of strain levels
-        stru(iS).volEvo = zeros(1,length(STOP)-1);
-        stru(iS).volEvoCleaned = zeros(1,length(STOP)-1);
+
+        stru(iS).volEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).volEvoCleaned = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).tProbEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
     end
     struCell{iE} = stru;
@@ -122,9 +124,7 @@ for iE = iE_start:iE_stop-1
         for ii = 1:size(link,1)
             for jj=1:size(link,2)
                 if(link(ii,jj))
-                    % struA(iS).cLikeT(ii) = 1;
                     struA(iS).postCluster(ii) = jj;
-                    
                     struP(iS).preCluster(jj) = ii;
                 end
             end
@@ -164,13 +164,14 @@ for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru');
     try
-        stru = rmfield(stru,{'cVolOC'});
+        stru = rmfield(stru,{'tProbAvg'});
     end
     % initialize/zero related fields 
     for iS =1:length(stru)
-        stru(iS).cLikeT = zeros(size(stru(iS).cLabel));     % based on pair comparison between a pair of strain levels
-        stru(iS).volEvo = zeros(1,length(STOP)-1);
-        stru(iS).volEvoCleaned = zeros(1,length(STOP)-1);
+        stru(iS).volEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).volEvoCleaned = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).tProbEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
+        stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
     end
     struCell{iE} = stru;
@@ -191,25 +192,28 @@ for iE = iE_start:iE_stop
             iC_list = iCluster;
             vol = struCell{iE}(iS).cVol(iCluster);    % record size of the current cluster in the current iE
             vol_cleaned = struCell{iE}(iS).cVolCleaned(iCluster);    % record size of the current cluster overlaid with the post cluster, and cleaned
+            tProbEvo = struCell{iE}(iS).tProb(iCluster);
             
-            % search to earlier strain (try not to...)
-%             while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
-%                 iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
-%                 iE_list = [iE_list(1)-1, iE_list];
-%                 vol = [struCell{iE_list(1)}(iS).cVol(iC_list(1)), vol];
-%                 vol_cleaned = [struCell{iE_list(1)}(iS).cVolCleaned(iC_list(1)), vol_cleaned];
-%             end
+            % search to earlier strain (or try not to...)
+            while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+                iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+                iE_list = [iE_list(1)-1, iE_list];
+                vol = [struCell{iE_list(1)}(iS).cVol(iC_list(1)), vol];
+                vol_cleaned = [struCell{iE_list(1)}(iS).cVolCleaned(iC_list(1)), vol_cleaned];
+                tProbEvo = [struCell{iE_list(1)}(iS).tProb(iC_list(1)), tProbEvo];
+            end
             % search to later strain
             while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
                 iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
                 iE_list = [iE_list, iE_list(end)+1];
                 vol = [vol, struCell{iE_list(end)}(iS).cVol(iC_list(end))];
                 vol_cleaned = [vol_cleaned, struCell{iE_list(end)}(iS).cVolCleaned(iC_list(end))];
+                tProbEvo = [tProbEvo, struCell{iE_list(end)}(iS).tProb(iC_list(end))];
             end
 
             
             % evaluate if volume seems to be increasing. Is this method OK?
-            vol_valid = vol_cleaned;   % or use vol_cleaned?
+            vol_valid = vol_cleaned;   % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
             if 1==length(vol_valid)
                 cvInc = 0;
             else
@@ -218,17 +222,18 @@ for iE = iE_start:iE_stop
             end
             
             % [2nd loop] copy
-            if length(iE_list) > 1
+            if length(iE_list) >= 1
                 for ii = 1:length(iE_list)
                     iE_current = iE_list(ii);
                     iC_current = iC_list(ii);
                     
                     struCell{iE_current}(iS).volEvo(iC_current,iE_list) = vol;    % record size history of the current cluster in the current iE
-                    struCell{iE_current}(iS).cvInc(iC_current) = cvInc;      % record, by looking at volume history, does the volume increase ?
-                    
                     struCell{iE_current}(iS).volEvoCleaned(iC_current,iE_list) = vol_cleaned;
+                    struCell{iE_current}(iS).tProbEvo(iC_current,iE_list) = tProbEvo;
+                    
+                    struCell{iE_current}(iS).cvInc(iC_current) = cvInc; 
+                    struCell{iE_current}(iS).tProbMax(iC_current) = max(tProbEvo(1:find(iE_list==iE)));
                 end
-                
             end
 
             
