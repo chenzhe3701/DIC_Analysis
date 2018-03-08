@@ -18,7 +18,7 @@
 
 % clear;
 addChenFunction;
-%%
+
 dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
@@ -35,15 +35,15 @@ load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF'
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
-allImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','Choose/make a parent path for output images/files. If have a new task, then make a new one.'),'\'];
-mkdir(allImgPath,'Twin');
-mkdir(allImgPath,'TwinEnabled');
-mkdir(allImgPath,'TwinDisabled');
-mkdir(allImgPath,'Notwin');
+summaryImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','Choose/make a parent path for output images/files. If have a new task, then make a new one.'),'\'];
+mkdir(summaryImgPath,'Twin');
+mkdir(summaryImgPath,'TwinEnabled');
+mkdir(summaryImgPath,'TwinDisabled');
+mkdir(summaryImgPath,'Notwin');
 
-twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\twin_img_cleaned','choose the parent path for all the source twin images.'),'\'];
-mkdir(allImgPath,'Classified_twin');
-mkdir(allImgPath,'Classified_notwin');
+twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose the parent path for all the source twin images.'),'\'];
+mkdir(summaryImgPath,'Classified_twin');
+mkdir(summaryImgPath,'Classified_notwin');
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
@@ -76,10 +76,10 @@ end
 
 useStrain = 0;
 makeNewMap = 0;
-makeFigure = 1;
-summarizeTruth = 0;
+makeFigure = 0;
+summarizeTruth = 1;
 
-for iE = iE_start:iE_stop
+for iE = 2%iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
@@ -187,12 +187,12 @@ for iE = iE_start:iE_stop
                 cNum = stru(iS).cLabel(iCluster);
                 outputName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
                 
-                % move classified twin images
-                if stru(iS).tProb(iCluster)>0.5
-                    copyfile(fullfile(twinImgPath,outputName),fullfile(allImgPath,'Classified_twin',outputName));
-                else
-                    copyfile(fullfile(twinImgPath,outputName),fullfile(allImgPath,'Classified_notwin',outputName));
-                end
+%                 % move classified twin images
+%                 if stru(iS).tProb(iCluster)>0.5
+%                     copyfile(fullfile(twinImgPath,outputName),fullfile(summaryImgPath,'Classified_twin',outputName));
+%                 else
+%                     copyfile(fullfile(twinImgPath,outputName),fullfile(summaryImgPath,'Classified_notwin',outputName));
+%                 end
                 
                 
                 iE_list = iE;
@@ -219,18 +219,18 @@ for iE = iE_start:iE_stop
                 
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
                     % save and close
-                    saveas(f, fullfile(allImgPath,'TwinEnabled',outputName));
+                    saveas(f, fullfile(summaryImgPath,'TwinEnabled',outputName));
                     
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
                     % save and close
-                    saveas(f, fullfile(allImgPath,'Twin',outputName));
+                    saveas(f, fullfile(summaryImgPath,'Twin',outputName));
                     
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
                     % save and close
-                    saveas(f, fullfile(allImgPath,'TwinDisabled',outputName));
+                    saveas(f, fullfile(summaryImgPath,'TwinDisabled',outputName));
                 else
                     % save and close
-                    saveas(f, fullfile(allImgPath,'Notwin',outputName));
+                    saveas(f, fullfile(summaryImgPath,'Notwin',outputName));
                 end
                 close(f);
             end
@@ -245,7 +245,7 @@ for iE = iE_start:iE_stop
                 
                 % Apply certain criterion to find the best matching twin system
                 pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain, 'minkowski', 2);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-                pdistCS(stru(iS).tSF < 0.1) = nan;             % [criterion-2] SF must > 0.35
+                pdistCS(stru(iS).tSF < -1) = nan;             % [criterion-2] SF must > 0.35
                 [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 m_dist = pdistCS(ind_t);
                 
@@ -331,27 +331,33 @@ end
 
 %% whatever to plot
 figure; hold on;
-% plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6).*varTwin(:,5),'ro');
-% plot3(varTwinEnabled(:,3),varTwinEnabled(:,4),varTwinEnabled(:,6).*varTwinEnabled(:,5),'mo');
-% plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6).*varNotwin(:,5),'bx');
-% try
-%     plot3(varTwinDisabled(:,3),varTwinDisabled(:,4),varTwinDisabled(:,6).*varTwinDisabled(:,5),'co');
-% end
+
 n=2;
-plot3(varTwin(:,3),varTwin(:,4),varTwin(:,5).*varTwin(:,6)*n,'ro');
-plot3(varTwinEnabled(:,3),varTwinEnabled(:,4),varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,'mo');
-plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,5).*varNotwin(:,6)*n,'bx');
+plot3(varTwin(:,3),         0.5-varTwin(:,4)-varTwin(:,5).*varTwin(:,6)*n,           varTwin(:,5).*varTwin(:,6)*n,               'r.');  % ro
+plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4)-varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,    varTwinEnabled(:,5).*varTwinEnabled(:,6)*n, 'm.');  % mo
+plot3(varNotwin(:,3),       0.5-varNotwin(:,4)-varNotwin(:,5).*varNotwin(:,6)*n,         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
 try
-    plot3(varTwinDisabled(:,3),varTwinDisabled(:,4),varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'co');
+    plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4)-varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.'); % co
 end
 
-xlabel('RSS');ylabel('SF');zlabel('vcInc');
+xlabel('RSS');ylabel('SF');zlabel('vol and tProb');
 
-set(gca,'xlim',[0 0.1]);
+% set(gca,'xlim',[0 0.04]);
+% 
+% set(gca,'ylim',[0 0.5]);
+% 
+% set(gca,'zlim',[0.01 1.7]);
 %%
 figure; hold on;
-plot(varTwin(:,3),varTwin(:,4),'ro');
-plot(varNotwin(:,3),varNotwin(:,4),'bx');
+n = 2;
+plot(varNotwin(:,3),varNotwin(:,4)+varNotwin(:,5).*varNotwin(:,6)*n,'bx');
+
+plot(varTwin(:,3),varTwin(:,4)+varTwin(:,5).*varTwin(:,6)*n,'ro');
+plot(varTwinEnabled(:,3),varTwinEnabled(:,4)+varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,'mo');
+
+try
+    plot(varTwinDisabled(:,3),varTwinDisabled(:,4)+varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'ko');
+end
 xlabel('RSS');ylabel('SF');
 %%
 fplot(@(x) 3*x+0.35,[0 0.05],'k');

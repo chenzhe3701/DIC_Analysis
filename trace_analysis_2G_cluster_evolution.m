@@ -224,16 +224,19 @@ for iE = iE_start:iE_stop
             % [2nd loop] copy
             if length(iE_list) >= 1
                 for ii = 1:length(iE_list)
-                    iE_current = iE_list(ii);
-                    iC_current = iC_list(ii);
+                    iE_to_assign = iE_list(ii);
+                    iC_to_assign = iC_list(ii);
                     
-                    struCell{iE_current}(iS).volEvo(iC_current,iE_list) = vol;    % record size history of the current cluster in the current iE
-                    struCell{iE_current}(iS).volEvoCleaned(iC_current,iE_list) = vol_cleaned;
-                    struCell{iE_current}(iS).tProbEvo(iC_current,iE_list) = tProbEvo;
+                    struCell{iE_to_assign}(iS).volEvo(iC_to_assign,iE_list) = vol;    % record size history of the current cluster in the current iE
+                    struCell{iE_to_assign}(iS).volEvoCleaned(iC_to_assign,iE_list) = vol_cleaned;
+                    struCell{iE_to_assign}(iS).tProbEvo(iC_to_assign,iE_list) = tProbEvo;
                     
-                    struCell{iE_current}(iS).cvInc(iC_current) = cvInc; 
-                    struCell{iE_current}(iS).tProbMax(iC_current) = max(tProbEvo(1:find(iE_list==iE)));
+                    struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc; 
+                    
+                    % The search is form iE_start to iE_to_assign  
+                    struCell{iE_to_assign}(iS).tProbMax(iC_to_assign) = max(tProbEvo(1:find(iE_list==iE_to_assign)));
                 end
+
             end
 
             
