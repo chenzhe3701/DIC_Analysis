@@ -16,7 +16,7 @@
 % Can use as ground truth, but in fact, it still contain mis-identified
 % clusters, because visualization can miss a lot of things ...
 
-clear;
+% clear;
 addChenFunction;
 %%
 dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
@@ -36,10 +36,14 @@ load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF'
 gIDwithTrace = gID(~isnan(gExx));
 
 allImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','Choose/make a parent path for output images/files. If have a new task, then make a new one.'),'\'];
-mkdir(allImgPath,'twin');
-mkdir(allImgPath,'notwin');
-mkdir(allImgPath,'enable');
-mkdir(allImgPath,'disable');
+mkdir(allImgPath,'Twin');
+mkdir(allImgPath,'TwinEnabled');
+mkdir(allImgPath,'TwinDisabled');
+mkdir(allImgPath,'Notwin');
+
+twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\twin_img_cleaned','choose the parent path for all the source twin images.'),'\'];
+mkdir(allImgPath,'Classified_twin');
+mkdir(allImgPath,'Classified_notwin');
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
@@ -72,14 +76,14 @@ end
 
 useStrain = 0;
 makeNewMap = 0;
-makeFigure = 0;
-summarizeTruth = 1;
+makeFigure = 1;
+summarizeTruth = 0;
 
-% for iE = iE_start:iE_stop
+for iE = iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
-    iE = 2;
+    % iE = 4;
     
     % use this as the ground truth. Note that the field 'tProb' and the map 'cnnTwinMap' might need to be processed by cnn.
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -111,8 +115,8 @@ summarizeTruth = 1;
         exy(ind_outlier) = nan;
         eyy(ind_outlier) = nan;
     end
-
-
+    
+    
     if makeNewMap
         map = zeros(size(exx)); % new map of interest
         map2 = zeros(size(exx)); % new map of interest
@@ -122,9 +126,6 @@ summarizeTruth = 1;
         varTwinEnabled = [];
         varTwinDisabled = [];
         varNotwin = [];
-        
-        varEnabled = [];
-        varDisabled = [];
     end
     
     hWaitbar = waitbar(0,'running each grain, each cluster, ...');
@@ -178,61 +179,60 @@ summarizeTruth = 1;
             clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
             clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
         end
-       
+        
         % [code here] to make a figure of something
         if makeFigure
             nCluster = length(stru(iS).cLabel);
             for iCluster = 1:nCluster
                 cNum = stru(iS).cLabel(iCluster);
                 outputName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
-  
+                
+                % move classified twin images
+                if stru(iS).tProb(iCluster)>0.5
+                    copyfile(fullfile(twinImgPath,outputName),fullfile(allImgPath,'Classified_twin',outputName));
+                else
+                    copyfile(fullfile(twinImgPath,outputName),fullfile(allImgPath,'Classified_notwin',outputName));
+                end
+                
+                
+                iE_list = iE;
+                iC_list = iCluster;
+                while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+                    iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+                    iE_list = [iE_list(1)-1, iE_list];
+                end
+                while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
+                    iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
+                    iE_list = [iE_list, iE_list(end)+1];
+                end
+                
                 % write img to parent folder, and then to each labeld folder
+                f = figure;
+                set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
+                % plot on figure
+                hold on;
+                try
+                    plot(iE_list, stru(iS).volEvo(iCluster,iE_list), '-ro');
+                    plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list), '-bx');
+                    plot(iE_list, max(stru(iS).volEvo(iCluster,iE_list)) * stru(iS).tProbEvo(iCluster,iE_list), '-gd');
+                end
+                
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
-                    f = figure;
-                    set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
-                    % plot on figure
-                        
-                    iE_list = iE;
-                    iC_list = iCluster;
-                    while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
-                        iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
-                        iE_list = [iE_list(1)-1, iE_list];
-                    end
-                    while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
-                        iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
-                        iE_list = [iE_list, iE_list(end)+1];
-                    end
-                    
-                    plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
-       
                     % save and close
-                    saveas(f, fullfile(allImgPath,'enable',outputName));
-                    close(f);
-
+                    saveas(f, fullfile(allImgPath,'TwinEnabled',outputName));
                     
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
-                    f = figure;
-                    set(f,'Visible','off','CreateFcn','set(gcf,''Visible'',''on'')','ResizeFcn','set(gcf,''visible'',''on'')');
-                    % plot on figure
-                    
-                    iE_list = iE;
-                    iC_list = iCluster;
-                    while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
-                        iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
-                        iE_list = [iE_list(1)-1, iE_list];
-                    end
-                    while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
-                        iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
-                        iE_list = [iE_list, iE_list(end)+1];
-                    end
-                    
-                    plot(iE_list, stru(iS).volEvoCleaned(iCluster,iE_list));
-                    
                     % save and close
-                    saveas(f, fullfile(allImgPath,'disable',outputName));
-                    close(f);
-
+                    saveas(f, fullfile(allImgPath,'Twin',outputName));
+                    
+                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
+                    % save and close
+                    saveas(f, fullfile(allImgPath,'TwinDisabled',outputName));
+                else
+                    % save and close
+                    saveas(f, fullfile(allImgPath,'Notwin',outputName));
                 end
+                close(f);
             end
         end
         
@@ -245,11 +245,11 @@ summarizeTruth = 1;
                 
                 % Apply certain criterion to find the best matching twin system
                 pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain, 'minkowski', 2);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-                % pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
+                pdistCS(stru(iS).tSF < 0.1) = nan;             % [criterion-2] SF must > 0.35
                 [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 m_dist = pdistCS(ind_t);
                 
-
+                
                 if useStrain
                     % calculate the within-cluster-distance: a vector d
                     indClusterLocal = (clusterNumMapLocal==cNum);
@@ -264,47 +264,24 @@ summarizeTruth = 1;
                 
                 
                 % summarize something [varTwin, varNotwin], Catogory based on Ground-Truth result, but variable can be calculated in different ways
+                v = [];
+                v(1) = ID_current;
+                v(2) = iCluster;
+                v(3) = m_dist;                 % (a) RSS, disSimilarity, distance
+                v(4) = stru(iS).tSF(ind_t);    % (b) Schmid factor
+                v(5) = stru(iS).cvInc(iCluster);
+                v(6) = stru(iS).tProbMax(iCluster);   % (d) cnnTwinProb
+                v(7) = stru(iS).tProb(iCluster);
+                
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
-                    va = m_dist;                 % (a) RSS, disSimilarity, distance
-                    vb = stru(iS).tSF(ind_t);    % (b) Schmid factor
-                    vc = stru(iS).tProb(iCluster);   % (c) cnnTwinProb
-                    vd = stru(iS).cvInc(iCluster);
-                    
-                    varTwin = [varTwin; ID_current, iCluster, va, vb, vc, vd];
+                    varTwin = [varTwin; v];
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
-                    va = m_dist;
-                    vb = stru(iS).tSF(ind_t);
-                    vc = stru(iS).tProb(iCluster);
-                    vd = stru(iS).cvInc(iCluster);
-                    
-                    varTwinEnabled = [varTwinEnabled; ID_current, iCluster, va, vb, vc, vd];
+                    varTwinEnabled = [varTwinEnabled; v];
                 elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
-                    va = m_dist;
-                    vb = stru(iS).tSF(ind_t);
-                    vc = stru(iS).tProb(iCluster);
-                    vd = stru(iS).cvInc(iCluster);
-                    
-                    varTwinDisabled = [varTwinDisabled; ID_current, iCluster, va, vb, vc, vd];
+                    varTwinDisabled = [varTwinDisabled; v];
                 else
-                    va = m_dist;
-                    vb = stru(iS).tSF(ind_t);
-                    vc = stru(iS).tProb(iCluster);
-                    vd = stru(iS).cvInc(iCluster);
-                    
-                    varNotwin = [varNotwin; ID_current, iCluster, va, vb, vc, vd];
+                    varNotwin = [varNotwin; v];
                 end
-                
-                % summarize something [enabled, disabled], only for the manually enabled ones, and disabled ones
-                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>0)
-                    if stru(iS).cvInc(iCluster)<1
-                        varEnabled = [varEnabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];  % If need to be enabled, but vrFwd found to be = 0
-                    end
-                elseif (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)<0)
-                    if stru(iS).cvInc(iCluster)>0
-                        varDisabled = [varDisabled; ID_current, iCluster, stru(iS).cvInc(iCluster)];    % If need to be enabled, but vrFwd still > 1
-                    end
-                end
-                
                 
             end
         end
@@ -337,9 +314,9 @@ summarizeTruth = 1;
             
             % copy identified twin system number to twinMap
             map(indR_min:indR_max, indC_min:indC_max) = map(indR_min:indR_max, indC_min:indC_max) + mapLocal;
-%             map2(indR_min:indR_max, indC_min:indC_max) = map2(indR_min:indR_max, indC_min:indC_max) + mapLocal2;
+            %             map2(indR_min:indR_max, indC_min:indC_max) = map2(indR_min:indR_max, indC_min:indC_max) + mapLocal2;
         end
-       
+        
         
         
         waitbar(iS/length(stru), hWaitbar);
@@ -349,15 +326,28 @@ summarizeTruth = 1;
         close(hWaitbar);
     end
     warning('on','all');
-% end
+end
 
 
 %% whatever to plot
 figure; hold on;
-plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6),'ro');
-plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6),'bx');
-xlabel('RSS');ylabel('SF');zlabel('vrFwd');
-set(gca,'zlim',[0 3]);
+% plot3(varTwin(:,3),varTwin(:,4),varTwin(:,6).*varTwin(:,5),'ro');
+% plot3(varTwinEnabled(:,3),varTwinEnabled(:,4),varTwinEnabled(:,6).*varTwinEnabled(:,5),'mo');
+% plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,6).*varNotwin(:,5),'bx');
+% try
+%     plot3(varTwinDisabled(:,3),varTwinDisabled(:,4),varTwinDisabled(:,6).*varTwinDisabled(:,5),'co');
+% end
+n=2;
+plot3(varTwin(:,3),varTwin(:,4),varTwin(:,5).*varTwin(:,6)*n,'ro');
+plot3(varTwinEnabled(:,3),varTwinEnabled(:,4),varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,'mo');
+plot3(varNotwin(:,3),varNotwin(:,4),varNotwin(:,5).*varNotwin(:,6)*n,'bx');
+try
+    plot3(varTwinDisabled(:,3),varTwinDisabled(:,4),varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'co');
+end
+
+xlabel('RSS');ylabel('SF');zlabel('vcInc');
+
+set(gca,'xlim',[0 0.1]);
 %%
 figure; hold on;
 plot(varTwin(:,3),varTwin(:,4),'ro');
@@ -377,8 +367,7 @@ myplot(X,Y,map,boundaryTFB); caxis([0,2])
 myplot(X,Y,map2,boundaryTFB); caxis([0,2])
 
 
-%% 
-save('s4_vrFwd_not_worked','varEnabled','varDisabled')
+
 
 
 
