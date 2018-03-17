@@ -17,11 +17,6 @@ load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF'
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
-twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose the parent path for all twin image.'),'\'];
-[fileNet,pathNet] = uigetfile([saveDataPath,'\trainedAlexNet.mat'],'select the trained cnn net');
-net = load([pathNet,fileNet],'netTransfer');
-net = net.netTransfer;
-kk = find(cellfun(@(x) strcmp(x,'twin'),net.Layers(end).ClassNames));
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -50,6 +45,10 @@ for iE = iE_start:iE_stop
     end
     % Create a few maps to record the criterion.
     cnnTwinMap = zeros(size(exx));
+    %%%%%%%%% new map for TMS
+    simScoreMap = zeros(size(exx));
+    shapeScoreMap = zeros(size(exx));
+    trueTwinMap = zeros(size(exx));
     
     hWaitbar = waitbar(0,'Matching cluster with twin system ...');
     for iS =1:length(stru)
@@ -67,27 +66,45 @@ for iE = iE_start:iE_stop
         clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
         
         cnnTwinMapLocal = zeros(size(ID_local));
+        %%%%%%%%%% new map for TMS
+        simScoreMapLocal = zeros(size(ID_local));
+        shapeScoreMapLocal = zeros(size(ID_local));
+        trueTwinMapLocal = zeros(size(ID_local));
         
         % ==== change cluster number into twin system number, or 0
         nCluster = length(stru(iS).cLabel);
-
-        stru(iS).tProb = zeros(nCluster,1);
+        
+        %%%%%%%%%% for TMS summary new
+        stru(iS).dis = zeros(nCluster,1);
+        stru(iS).sf = zeros(nCluster,1);
+        stru(iS).t = zeros(nCluster,1);
+        stru(iS).trueTwin = zeros(nCluster,1);
+        
         for iCluster = 1:nCluster
             cNum = stru(iS).cLabel(iCluster);
             indClusterLocal = (clusterNumMapLocal==cNum);
             
-            % cnn identify twin
-            imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
-            I = imread([twinImgPath,imgName]);
-            predictedLabels = classify(net,I);
-            predictedProb = predict(net,I);
+            %%%%%%%%%% for TMS summary
+            pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);
+            [m_dist, ind_t] = nanmin(pdistCS,[],2);
+            tsNum = stru(iS).tLabel(ind_t); 
+            stru(iS).dis(iCluster) = m_dist;
+            stru(iS).sf(iCluster) = stru(iS).tSF(ind_t);
+            stru(iS).t(iCluster) = tsNum;
             
-            stru(iS).tProb(iCluster) = predictedProb(kk);
-            cnnTwinMapLocal(indClusterLocal) = predictedProb(kk);
+            if (stru(iS).c2t(iCluster)>0)||(stru(iS).cEnable(iCluster)==1)
+                stru(iS).trueTwin(iCluster) = tsNum;
+                trueTwinMapLocal(indClusterLocal) = tsNum;
+            end
+           	simScoreMapLocal(indClusterLocal) = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
+            shapeScoreMapLocal(indClusterLocal) = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
+          
         end
         
         % copy identified twin system number to twinMap
-        cnnTwinMap(indR_min:indR_max, indC_min:indC_max) = cnnTwinMap(indR_min:indR_max, indC_min:indC_max) + cnnTwinMapLocal;
+        simScoreMap(indR_min:indR_max, indC_min:indC_max) = simScoreMap(indR_min:indR_max, indC_min:indC_max) + simScoreMapLocal;
+        shapeScoreMap(indR_min:indR_max, indC_min:indC_max) = shapeScoreMap(indR_min:indR_max, indC_min:indC_max) + shapeScoreMapLocal;
+        trueTwinMap(indR_min:indR_max, indC_min:indC_max) = trueTwinMap(indR_min:indR_max, indC_min:indC_max) + trueTwinMapLocal;
         
         waitbar(iS/length(stru), hWaitbar);
     end
@@ -100,7 +117,7 @@ for iE = iE_start:iE_stop
     
     disp('append cnn result to stru');
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    save([saveDataPath,fName_c2t_result],'stru','cnnTwinMap','-append')
+    save([saveDataPath,fName_c2t_result],'stru','simScoreMap','shapeScoreMap','trueTwinMap','-append')
 end
 
 

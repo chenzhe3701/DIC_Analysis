@@ -25,7 +25,8 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% plot dissimilarity vs schmid factor 
-
+SF = [];
+Dis = [];
 for iE = iE_start:iE_stop
     
     name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];    % with or without 'fly_rss'
@@ -43,11 +44,38 @@ for iE = iE_start:iE_stop
             
         end
     end
-    figure;plot(rtss_cCen_tStrain,schmidfactor,'.');
-    title(['Strain level: ',num2str(STOP{iE+B})]);
-    xlabel('RootSS Cluster Center - Twin Strain');
-    ylabel('Schmid Factor');
+    Dis{iE} = rtss_cCen_tStrain;
+    SF{iE} = schmidfactor;
+end
+
+%% plot
+saveFig = 1;
+if saveFig
+    saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+end
+close all;
+for iE = iE_start:iE_stop
     
+    figure;plot(Dis{iE},SF{iE},'.');
+    title(['Strain level: ',num2str(STOP{iE+B})]);
+    xlabel('Dissimilarity');
+    ylabel('Schmid Factor');    
+    set(gca,'fontsize',18);
+    
+    imgName = (['s',num2str(iE),'_Dis_vs_SF.tif']);
+    if saveFig
+        print(fullfile(saveDataPath,imgName),'-dtiff');   % to parent folder
+        close all;
+    end
+    figure;plot(Dis{iE},SF{iE},'.');
+    set(gca,'fontsize',18);
+    set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
+    
+    imgName = (['s',num2str(iE),'_Dis_vs_SF_zoom.tif']);
+    if saveFig
+        print(fullfile(saveDataPath,imgName),'-dtiff');   % to parent folder
+        close all;
+    end
 %     figure;plot(rtss_cMed_tStrain,schmidfactor,'.');
 %     title(['Strain level: ',num2str(STOP{iE+B})]);
 %     xlabel('RootSS Cluster Medium - Twin Strain');
