@@ -94,7 +94,7 @@ xTo = x+u;  % interp [img] to position [xp yp], then if plot using [x y], it is 
 yTo = y+v;
 xTo = inpaint_nans(xTo);
 yTo = inpaint_nans(yTo);
-img2 = interp_data(xFrom,yFrom,img,xTo,yTo,t,'interp','nearest');
+img2 = interp_data(xFrom,yFrom,img,xTo,yTo,t,'interp','nearest');   % This actually need down-sampling to work.
 
 myplot(xTo,yTo,img2)
 myplot(x,y,img2)
