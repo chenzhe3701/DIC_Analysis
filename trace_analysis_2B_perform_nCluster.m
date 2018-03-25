@@ -25,7 +25,7 @@ gIDwithTrace = gID(~isnan(gExx));
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
-iE_stop = 5;
+iE_stop = 6;
 resReduceRatio = 3;         % to save space, reduce map resolution
 grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 % file name prefixes
@@ -35,6 +35,7 @@ f2 = '_';
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 method2 = 0;        % if use method-2, maybe not use...
+useClusterCentroid = 1; % use clusterCentroid, otherwise use clusterMedium
 
 %% Can load strain data for a specific strain level
 rng(1);
@@ -78,7 +79,7 @@ for iE = iE_start:iE_stop
     clusterNumMap = zeros(size(exx));
     twinMap = zeros(size(exx));
     sfMap = zeros(size(exx));
-    rssMap = zeros(size(exx));
+    mDistMap = zeros(size(exx));
     scoreMap = zeros(size(exx));
     
     if method2
@@ -194,7 +195,7 @@ for iE = iE_start:iE_stop
             % ==================== continue method-1, assign cluster to twin system on the fly ==========================
             twinMapLocal = zeros(size(exx_local));          % local map to record twin_system_number
             sfMapLocal = zeros(size(exx_local));            % local map to record schmid_factor
-            rssMapLocal = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
+            mDistMapLocal = zeros(size(exx_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
             scoreMapLocal = zeros(size(exx_local));
             
             
@@ -216,14 +217,17 @@ for iE = iE_start:iE_stop
                 stru(iS).cMed(iCluster,:) = median(data_cluster,'omitnan');
                 % [For debug end] whatever------------------------------------------------------------------------------------
                 
-                
-                pdistCS = pdist2(stru(iS).cMed(iCluster,:), stru(iS).tStrain);       % pair distance between cluster median (used to be centroids) and twinSystem strain components. Non-candidate twinSys lead to nan.
+                if useClusterCentroid 
+                    pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);
+                else
+                    pdistCS = pdist2(stru(iS).cMed(iCluster,:), stru(iS).tStrain);       % pair distance between cluster median (used to be centroids) and twinSystem strain components. Non-candidate twinSys lead to nan.
+                end
                 %             pdistCS(pdistCS > distCI) = nan;                 % [criterion-1] can do this: if a cluster center-slip system center distance is too large, this cluster shouldn't be a twin system
                 %             pdistCS(stru(iS).tSF < sfCI) = nan;             % [criterion-2] SF must > sfCI
                 %             [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 
                 % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
-                score = pdistCS * 3 + (0.5 - stru(iS).tSF);
+                score = pdistCS * 7 - stru(iS).tSF;
                 [m_score, ind_t] = nanmin(score,[],2);  % could be score
                 m_dist = pdistCS(ind_t);
                 
@@ -233,7 +237,7 @@ for iE = iE_start:iE_stop
                     % Note global assign like: twinMap(ind_c_on_map) = tsNum; is very slow.
                     twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map
                     sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
-                    rssMapLocal(indClusterLocal) = m_dist;
+                    mDistMapLocal(indClusterLocal) = m_dist;
                     scoreMapLocal(indClusterLocal) = m_score;
                 end
                 
@@ -249,7 +253,7 @@ for iE = iE_start:iE_stop
             % copy identified twin system number to twinMap
             twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
             sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
-            rssMap(indR_min:indR_max, indC_min:indC_max) = rssMap(indR_min:indR_max, indC_min:indC_max) + rssMapLocal;
+            mDistMap(indR_min:indR_max, indC_min:indC_max) = mDistMap(indR_min:indR_max, indC_min:indC_max) + mDistMapLocal;
             scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMap(indR_min:indR_max, indC_min:indC_max) + scoreMapLocal;
             
             
@@ -338,7 +342,7 @@ for iE = iE_start:iE_stop
     %%
     timeStr = datestr(now,'yyyymmdd_HHMM')
     name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly_',timeStr,'.mat'];
-    save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','rssMap','scoreMap','stru');
+    save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','mDistMap','scoreMap','stru');
     try
         save([saveDataPath,name_result_on_the_fly] ,'twinMap_2','shearMap','sfMap_2','costMap','-append');
     end
