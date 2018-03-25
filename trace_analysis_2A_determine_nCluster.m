@@ -152,7 +152,7 @@ for iE = iE_start:iE_stop
         
         % ======================= kmeans, determine optimum number of clusters ====================================
         maxCluster = 5;
-        nPoints = 8100;
+        nPoints = 10000;    % try 10000 points 
         ind_reduce = ~isnan(sum(data_t,2));
         data_reduce = data_t(ind_reduce,:);
         reduce_ratio = ceil(size(data_reduce,1)/nPoints);
@@ -190,8 +190,9 @@ for iE = iE_start:iE_stop
                 score_cluster_mean_min(nc) = min(score_cluster_mean{nc});
                 score_neg_sum(nc) = sum(score_cluster_neg_sum{nc});
             end
-            %         [~,nCluster] = max(score_cluster_mean_min);
-            [~,nCluster] = max(score_neg_sum);
+            % [~,nCluster] = max(score_cluster_mean_min);
+            % [~,nCluster] = max(score_neg_sum);
+            [~,nCluster] = max(score_avg);
             disp([char(9), 'ID= ',num2str(ID_current),', nCluster=',num2str(nCluster)]);
             
             struNC(iS).gID = ID_current;
