@@ -214,7 +214,7 @@ for iE = iE_start:iE_stop
                 data_cluster = [exx_cluster(indClusterLocal),exy_cluster(indClusterLocal),eyy_cluster(indClusterLocal)];    % matrix
                 
                 egcName = [num2str(iE*100000+ID_current*10+iCluster)];  % name = strain-grain-cluster, for saving purpose
-                stru(iS).cMed(iCluster,:) = median(data_cluster,'omitnan');
+                stru(iS).cMed(iCluster,:) = median(data_cluster,1,'omitnan');
                 % [For debug end] whatever------------------------------------------------------------------------------------
                 
                 if useClusterCentroid 
