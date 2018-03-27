@@ -1,3 +1,7 @@
+% plot twin size vs. compressive strain.
+%
+% code original for TMS 2018
+
 close all;
 figure;
 plot(slevel,twinSizePct*100,'-o')
