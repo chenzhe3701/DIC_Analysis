@@ -1,5 +1,5 @@
 % script
-% chenzhe, 20180308
+% chenzhe, 20180308, prepare figures for TMS
 
 addChenFunction;
 grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder that contains the grain data'),'\'];
@@ -71,7 +71,7 @@ end
 %% [1] plot the strain, RGB map at the strain level you are interested in: iE = 5
 
 % iE of interest ----------------------------- !!! -------------------------------------
-iE = 2;
+iE = 5;
 
 fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
 load(fullfile(grainDataPath,fname),'data');
@@ -94,7 +94,7 @@ clusterNumMapLocal = s.clusterNumMapLocal;
 clusterNumMapCleanedLocal = s.clusterNumMapCleanedLocal;
 
 %% (1) plot/adjust strain map here -------------------------------------------------
-[f,a,c] = myplot(x_local-x_local(1), y_local-y_local(1), exx_local); % caxis([-0.14, 0.07]);
+[f,a,c] = myplot(x_local-x_local(1), y_local-y_local(1), exx_local); % caxis([-0.1, 0.00]);% caxis([-0.14, 0.07]);
 title(a,'\epsilon_x_x');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
@@ -102,7 +102,7 @@ imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exx.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
 
-[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), exy_local); % caxis([-0.07, 0.07]);
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), exy_local); % caxis([-0.03, 0.03]);% caxis([-0.07, 0.07]);
 title(a,'\epsilon_x_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
@@ -110,7 +110,7 @@ imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exy.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
 
-[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), eyy_local); % caxis([-0.07, 0.14]);
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), eyy_local); % caxis([-0.02, 0.06])% caxis([-0.07, 0.14]);
 title(a,'\epsilon_y_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
@@ -588,7 +588,7 @@ colors = lines(7);
 colors(2,:) = [];
 rng(0);     % adjust this if you don't like the cluster color
 
-maxCluster = 3;
+maxCluster = 5;
 
 ind = find((ID_local==ID_current)); % ind = find((ID_local==ID_current)&(~isnan(exx_local))&(~isnan(exy_local))&(~isnan(eyy_local)));
 exx_t = exx_local(ind);
@@ -703,7 +703,132 @@ imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eij_scatter_nc_3.tif']);
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_3.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
     
+
+%% continue on 2018-03-21, examine pointwise distance to twin strain
+% try using K=2-5 clusters, plot 
+% (1) pointwise distance of strain components to highest-SFed twin center. 
+% This could be used to make a contour plot of equi-distance, but it turned
+% out hard to see, so just use this pointwise distance map.
+% (2) The histogram of this distance. The boundary of twin vs non-twin can
+% be guessed from the position between peaks. -- Important thing is, the
+% boundary position does not seem to be constant.
+
+% First, iE of interest ----------------------------- !!! -------------------------------------
+iE = 5;
+fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
+load(fullfile(grainDataPath,fname),'data');
+s = data(iE);
+
+indR_min = s.indR_min;
+indR_max = s.indR_max;
+indC_min = s.indC_min;
+indC_max = s.indC_max;
+boundaryTF_local = s.boundaryTF_local;
+x_local = s.x_local;
+y_local = s.y_local;
+ID_current = s.ID_current;
+ID_local = s.ID_local;
+exx_local = s.exx_local;
+exy_local = s.exy_local;
+eyy_local = s.eyy_local;
+sigma_local = s.sigma_local;
+
+% summarize the distribution of exx data at different iE level
+% figure;histogram(exx_local(:));
+% figure;histogram(exy_local(:));
+% figure;histogram(eyy_local(:));
+edges_xx = linspace(-0.2,0.05,100);
+edges_xy = linspace(-0.04,0.06,100);
+edges_yy = linspace(-0.04,0.06,100);
+exx_distribution{iE} = histcounts(exx_local(:),edges_xx);
+exy_distribution{iE} = histcounts(exy_local(:),edges_xx);
+eyy_distribution{iE} = histcounts(eyy_local(:),edges_xx);
+
+
+% close all;
+colors = lines(7);
+colors(2,:) = [];
+rng(0);     % adjust this if you don't like the cluster color
+
+maxCluster = 1;
+
+ind = find((ID_local==ID_current)); % ind = find((ID_local==ID_current)&(~isnan(exx_local))&(~isnan(exy_local))&(~isnan(eyy_local)));
+exx_t = exx_local(ind);
+exy_t = exy_local(ind);
+eyy_t = eyy_local(ind);
+data_t = [exx_t(:), exy_t(:), eyy_t(:)];
+
+% first, predict centroid
+[~,ind_centroid_initial] = max(stru(iS).tSF);
+centroid_initial = stru(iS).tStrain(ind_centroid_initial,:);
+
+% To fit here:
+data_reduce = data_t(1:end,:);
+
+if(~isempty(data_reduce))
+    % compare the silhouette, by actually do kmeans on down-sampled samples.
+    disp(['ID=',num2str(ID_current)]);
+    nRep = 1;
+    c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
     
+    pointWiseDistMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
+    pointWiseDist = pdist2(centroid_initial, data_reduce);
+    pointWiseDistMapLocal(ind) = pointWiseDist;
     
-    
-    
+    myplot(pointWiseDistMapLocal); caxis([0 0.05]);
+    figure;histogram(pointWiseDist);
+   
+    for nc = 2:maxCluster
+        [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
+        clusterNumMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
+        clusterNumMapLocal(ind) = idx;
+  
+        %         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_',num2str(nc),'_withAvg.tif']);
+        %         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+    end
+end
+
+%% After the previous section, plot distribution of exx, exy, and eyy
+close all;
+colors = lines(7);
+
+figure; hold on;
+plot(edges_xx(1:end-1),exx_distribution{3},'-','color',colors(1,:),'linewidth',2);
+plot(edges_xx(1:end-1),exx_distribution{4},'-','color',colors(2,:),'linewidth',2);
+plot(edges_xx(1:end-1),exx_distribution{5},'-','color',colors(4,:),'linewidth',2);
+
+legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_x_x value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',18)
+
+
+figure; hold on;
+plot(edges_xy(1:end-1),exy_distribution{3},'-x','color',colors(1,:),'linewidth',2);
+plot(edges_xy(1:end-1),exy_distribution{4},'-x','color',colors(2,:),'linewidth',2);
+plot(edges_xy(1:end-1),exy_distribution{5},'-x','color',colors(4,:),'linewidth',2);
+
+legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_x_y value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',18)
+
+
+figure; hold on;
+plot(edges_yy(1:end-1),eyy_distribution{3},'-','color',colors(1,:),'linewidth',2);
+plot(edges_yy(1:end-1),eyy_distribution{4},'-','color',colors(2,:),'linewidth',2);
+plot(edges_yy(1:end-1),eyy_distribution{5},'-','color',colors(4,:),'linewidth',2);
+
+legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_y_y value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',18)
+
+
+
+
+
+
+
+
