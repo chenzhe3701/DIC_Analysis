@@ -126,7 +126,7 @@ data_y = eEff_r(ind);
 
 figure; myboxplot(data_y,Labels,'Whisker',[0.023 0.977]);
 set(gca,'ylim',[0,0.15],'fontsize',12,'xticklabel',legend_text,'xticklabelrotation',30);
-xlabel('Distance to Grain Boundary, micron');ylabel('Effective Strain');
+xlabel('Distance to Grain Boundary, \mum');ylabel('Effective Strain');
 
 
 %% (2) boxplot for eEff vs basalSF, pixel wise
