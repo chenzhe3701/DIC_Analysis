@@ -59,23 +59,25 @@ eyy(ind_outlier) = nan;
 ss = crystal_to_cart_ss(ssa,c_a);
 
 % =========== match cluster with twin system again, if need to change parameter ============================
-name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat']    % data from previous step.
-load([saveDataPath,name_result_on_the_fly]);
+% name_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat']    % data from previous step.
+name_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat']    % data from previous step.
+load([saveDataPath,name_source]);
 
 scoreCF = 0.1;
 scoreForDisabled = 1;   % arbitrary, but depend on data distribution.  Assign to score for disabled clusters. 
-if strcmpi(sampleName,'WE43_T6_C1')
-    switch iE
-        case 5
-            scoreCF = 0.230;
-        case 4
-            scoreCF = 0.215;
-        case 3
-            scoreCF = 0.217;
-        case 2
-            scoreCF = 0.291;
-    end
-end
+% if strcmpi(sampleName,'WE43_T6_C1')
+%     switch iE
+%         case 5
+%             scoreCF = 0.230;
+%         case 4
+%             scoreCF = 0.215;
+%         case 3
+%             scoreCF = 0.217;
+%         case 2
+%             scoreCF = 0.291;
+%     end
+% end
+
 % new ones for: 7*Dis-SF
 if strcmpi(sampleName,'WE43_T6_C1')
     switch iE
@@ -96,7 +98,7 @@ end
 % shearTarget = 0.1289;
 % shearCF = 0.05;
 % costCF = 0.055;
-msgbox('check scoreCF, iE, etc');
+msgbox('check source file, scoreCF, iE, etc');
 
 if ~exist('tNote','var')
     tNote.enable = [0 0];
@@ -145,6 +147,11 @@ for iS =1:length(stru)
     stru(iS).cEnable = zeros(nCluster,1);
     stru(iS).c2t = zeros(nCluster,1);
     for iCluster = 1:nCluster
+        % if cVolCleaned==0, move on to the next cluster. The following 3 lines is east to comment out if necessary. 
+        if (isfield(stru,'cVolCleaned'))&&(stru(iS).cVolCleaned(iCluster)<=0)
+            continue;
+        end
+        
         cNum = stru(iS).cLabel(iCluster);
         indClusterLocal = (clusterNumMapLocal==cNum);
         
@@ -317,6 +324,11 @@ for iS =1:length(stru)
         stru(iS).cEnable = zeros(nCluster,1);
         stru(iS).c2t = zeros(nCluster,1);
         for iCluster = 1:nCluster
+            % if cVolCleaned==0, move on to the next cluster. The following 3 lines is east to comment out if necessary.
+            if (isfield(stru,'cVolCleaned'))&&(stru(iS).cVolCleaned(iCluster)<=0)
+                continue;
+            end
+        
             cNum = stru(iS).cLabel(iCluster);
             indClusterLocal = (clusterNumMapLocal==cNum);
             
@@ -425,7 +437,10 @@ save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tN
 %% save the result (including stru, tNote, maps) at the end
 name_cluster_to_twin_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
 
-save([saveDataPath,name_cluster_to_twin_result],'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','stru','tNote','scoreCF');
+save([saveDataPath,name_cluster_to_twin_result],'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','stru','tNote','scoreCF','-append');
+try
+    save([saveDataPath,name_cluster_to_twin_result],'clusterNumMapCleaned','-append');
+end
 % save([saveDataPath,name_result_modified],'stru','-append');
 % save([saveDataPath,name_result_modified],'twinMap_2','shearMap','sfMap_2','costMap','-append');
 disp('saved cluster_to_twin_result');
