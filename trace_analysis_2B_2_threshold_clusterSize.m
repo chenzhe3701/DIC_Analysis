@@ -34,7 +34,7 @@ threshold = 1000;
 for iE = iE_start:iE_stop
     fName_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result]);
+    copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result],'f');
     
     load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
     
