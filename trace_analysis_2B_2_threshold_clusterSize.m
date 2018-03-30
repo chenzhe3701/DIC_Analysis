@@ -38,6 +38,8 @@ for iE = iE_start:iE_stop
     
     load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
     
+    clusterNumMap = abs(clusterNumMap);
+    clusterNumMapCleaned = abs(clusterNumMapCleaned);
     for iS = 1:length(stru)
         
         % initialize
@@ -51,7 +53,6 @@ for iE = iE_start:iE_stop
             sz = sum(ind(:));
             if sz > threshold
                 stru(iS).cVol(iCluster) = sz;
-                clusterNumMap(ind) = cNum;
             else
                 stru(iS).cVol(iCluster) = -sz;
                 clusterNumMap(ind) = -cNum;
@@ -62,7 +63,6 @@ for iE = iE_start:iE_stop
             sz = sum(ind(:));
             if sz > threshold
                 stru(iS).cVolCleaned(iCluster) = sz;
-                clusterNumMapCleaned(ind) = cNum;
             else
                 stru(iS).cVolCleaned(iCluster) = -sz;
                 clusterNumMapCleaned(ind) = -cNum;
