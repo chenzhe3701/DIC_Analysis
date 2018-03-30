@@ -32,7 +32,10 @@ iE_stop = 5;
 threshold = 1000;
 %% data
 for iE = iE_start:iE_stop
+    fName_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result]);
+    
     load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
     
     for iS = 1:length(stru)
@@ -50,7 +53,7 @@ for iE = iE_start:iE_stop
                 stru(iS).cVol(iCluster) = sz;
                 clusterNumMap(ind) = cNum;
             else
-                stru(iS).cVol(iCluster) = 0;
+                stru(iS).cVol(iCluster) = -sz;
                 clusterNumMap(ind) = -cNum;
                 disp(['small cluster detected: ID=',num2str(stru(iS).gID),', cluster=',num2str(cNum),', size=',num2str(sz)]);
             end
@@ -61,7 +64,7 @@ for iE = iE_start:iE_stop
                 stru(iS).cVolCleaned(iCluster) = sz;
                 clusterNumMapCleaned(ind) = cNum;
             else
-                stru(iS).cVolCleaned(iCluster) = 0;
+                stru(iS).cVolCleaned(iCluster) = -sz;
                 clusterNumMapCleaned(ind) = -cNum;
                 disp(['small cluster_cleaned detected: ID=',num2str(stru(iS).gID),', cluster=',num2str(cNum),', size=',num2str(sz)]);
             end
