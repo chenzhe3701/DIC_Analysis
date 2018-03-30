@@ -33,7 +33,8 @@ useParallel = 1;
 % [option 1] not use parallel
 if ~useParallel
     for iE = iE_start:iE_stop
-        fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+%         fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+        fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
         load([saveDataPath,fName_c2t_result],'clusterNumMap','stru');
         
         clusterNumMapCleaned = zeros(size(exx)); % new map of interest
@@ -67,7 +68,8 @@ end
 %% [option 2] use parallel
 if useParallel    
     for iE = iE_start:iE_stop
-        fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+%         fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+        fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
         load([saveDataPath,fName_c2t_result],'clusterNumMap','stru');
         
         npool = 3;
