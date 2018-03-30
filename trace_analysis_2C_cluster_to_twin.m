@@ -10,10 +10,13 @@ addChenFunction;
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
+% DIC data, sometimes useful
+dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx','gPhi1','gPhi','gPhi2');
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -27,6 +30,31 @@ iE_stop = 5;
 %% select iE to analyze
 iE = 5;
 
+% strain data
+strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
+clear('exy_corrected');
+load(strainFile,'exx','exy','eyy','sigma','exy_corrected');     % if 'exy_corrected' does not exist, this does not give error, rather, just warning. % ----------------------------------------------------------------------------------
+if exist('exy_corrected','var')&&(1==exy_corrected)
+    disp('================= exy already corrected ! ========================');
+    exy_corrected = 1;
+else
+    disp('================= exy being corrected here ! =======================');
+    exy = -exy;
+    exy_corrected = 1;
+end
+% remove bad data points
+exx(sigma==-1) = nan;
+exy(sigma==-1) = nan;
+eyy(sigma==-1) = nan;
+qt_exx = quantile(exx(:),[0.0013,0.9987]); qt_exx(1)=min(-1,qt_exx(1)); qt_exx(2)=max(1,qt_exx(2));
+qt_exy = quantile(exy(:),[0.0013,0.9987]); qt_exy(1)=min(-1,qt_exy(1)); qt_exy(2)=max(1,qt_exy(2));
+qt_eyy = quantile(eyy(:),[0.0013,0.9987]); qt_eyy(1)=min(-1,qt_eyy(1)); qt_eyy(2)=max(1,qt_eyy(2));
+ind_outlier = (exx<qt_exx(1))|(exx>qt_exx(2))|(exy<qt_exy(1))|(exy>qt_exy(2))|(eyy<qt_eyy(1))|(eyy>qt_eyy(2));
+exx(ind_outlier) = nan;
+exy(ind_outlier) = nan;
+eyy(ind_outlier) = nan;
+% end strain data    
+    
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 ss = crystal_to_cart_ss(ssa,c_a);
 
@@ -35,6 +63,7 @@ name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_o
 load([saveDataPath,name_result_on_the_fly]);
 
 scoreCF = 0.1;
+scoreForDisabled = 1;   % arbitrary, but depend on data distribution.  Assign to score for disabled clusters. 
 if strcmpi(sampleName,'WE43_T6_C1')
     switch iE
         case 5
@@ -45,6 +74,19 @@ if strcmpi(sampleName,'WE43_T6_C1')
             scoreCF = 0.217;
         case 2
             scoreCF = 0.291;
+    end
+end
+% new ones for: 7*Dis-SF
+if strcmpi(sampleName,'WE43_T6_C1')
+    switch iE
+        case 5
+            scoreCF = -0.243;
+        case 4
+            scoreCF = -0.218;
+        case 3
+            scoreCF = -0.218;
+        case 2
+            scoreCF = -0.218;
     end
 end
 % scoreCF = 0.15;  % can manually modify
@@ -113,7 +155,7 @@ for iS =1:length(stru)
         %         [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
         
         % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
-        score = pdistCS * 7 + (0.5 - stru(iS).tSF);
+        score = pdistCS * 7 - stru(iS).tSF;
         
         [m_score, ind_t] = nanmin(score,[],2);
         m_dist = pdistCS(ind_t);
@@ -135,17 +177,22 @@ for iS =1:length(stru)
             disSimiMapLocal(indClusterLocal) = m_dist;
             scoreMapLocal(indClusterLocal) = m_score;
             if ((m_score < scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
-                % if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
+
                 if m_score < scoreCF
+                    % (1) condition: if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
                     stru(iS).cEnable(iCluster) = 0;
+                    scoreMapLocal(indClusterLocal) = m_score;
+                else
+                    % (2) condition: else, it needs to be enabled
+                    scoreMapLocal(indClusterLocal) = scoreCF;
                 end
                 twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
-                scoreMapLocal(indClusterLocal) = m_score/10;
                 stru(iS).c2t(iCluster) = tsNum;     % c2t is the identification label.  Cluster->Twin
             end
             if (-1 == stru(iS).cEnable(iCluster))
+                % (3) condition: if disabled
                 twinMapLocal(indClusterLocal) = -tsNum;
-                scoreMapLocal(indClusterLocal) = m_score*10;
+                scoreMapLocal(indClusterLocal) = scoreForDisabled;
                 stru(iS).c2t(iCluster) = tsNum;
             end
         end
@@ -200,11 +247,32 @@ timeStr = datestr(now,'yyyymmdd_HHMM');
 save(['temp_tNote_s',num2str(iE),'_',timeStr,'.mat'],'tNote','scoreCF');
 save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
 
+%%
+myplotc(exx,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+colormapA('parula');
 %% 
-myplot(X, Y, twinMap,boundaryTFB);
-
+myplot(X, Y, twinMap,boundaryTFB); caxis([0 24]);
+%%
+myplot(X, Y, grow_boundary((shrink_boundary((twinMap>0)))),boundaryTFB);
+%%
+myplot(X, Y, grow_boundary(grow_boundary(shrink_boundary(shrink_boundary((twinMap>0))))),boundaryTFB);
 %% adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap.
-[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',3);
+[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTF,'r',2);
+% colormapA;
+cl = caxis;
+caxis([scoreCF,cl(2)])
+
+%% try this for disable using twinMap
+[f,a,c,s,v]= myplotc(twinMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+caxis([-20,10]);
+
+%% get ID from map, then plot unit cell to check trace, one at a time
+ids = find_ID_on_map(X,Y,ID,f,a);
+ind = find(gID==ids(1));
+hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0 0; 0 0 0; 0 0 0]);
+
+%% label_grain of interest on map to observe
+label_grain( 967,X,Y,ID,gcf);
 
 %% Use tNote to modify
 hWaitbar = waitbar(0,'Re-matching cluster with twin system ...');
@@ -233,11 +301,11 @@ for iS =1:length(stru)
         clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
         clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
         
-        twinMapLocal = zeros(size(ID_local));          % local map to record twin_system_number
-        sfMapLocal = zeros(size(ID_local));            % local map to record schmid_factor
-        disSimiMapLocal = zeros(size(ID_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
-        scoreMapLocal = zeros(size(ID_local));
-        
+        % to modify, first copy the old values.
+        twinMapLocal = twinMap(indR_min:indR_max, indC_min:indC_max);
+        sfMapLocal = sfMap(indR_min:indR_max, indC_min:indC_max);
+        disSimiMapLocal = disSimiMap(indR_min:indR_max, indC_min:indC_max);
+        scoreMapLocal = scoreMap(indR_min:indR_max, indC_min:indC_max);
         
         %     twinMapLocal_2 = zeros(size(ID_local));          % local map to record twin_system_number
         %     shearMapLocal = zeros(size(ID_local));            % local map to record schmid_factor
@@ -259,7 +327,7 @@ for iS =1:length(stru)
             %         [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
             
             % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
-            score = pdistCS * 7 + (0.5 - stru(iS).tSF);
+            score = pdistCS * 7 - stru(iS).tSF;
             
             [m_score, ind_t] = nanmin(score,[],2);
             m_dist = pdistCS(ind_t);
@@ -280,21 +348,26 @@ for iS =1:length(stru)
                 sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
                 disSimiMapLocal(indClusterLocal) = m_dist;
                 scoreMapLocal(indClusterLocal) = m_score;
+
                 if ((m_score < scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
-                    % if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
                     if m_score < scoreCF
+                        % (1) condition: if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
                         stru(iS).cEnable(iCluster) = 0;
+                        scoreMapLocal(indClusterLocal) = m_score;
+                    else
+                        % (2) condition: else, it needs to be enabled
+                        scoreMapLocal(indClusterLocal) = scoreCF;
                     end
                     twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
-                    scoreMapLocal(indClusterLocal) = m_score/10;
                     stru(iS).c2t(iCluster) = tsNum;     % c2t is the identification label.  Cluster->Twin
-
                 end
                 if (-1 == stru(iS).cEnable(iCluster))
+                    % (3) condition: if disabled
                     twinMapLocal(indClusterLocal) = -tsNum;
-                    scoreMapLocal(indClusterLocal) = m_score*10;
+                    scoreMapLocal(indClusterLocal) = scoreForDisabled;
                     stru(iS).c2t(iCluster) = tsNum;
                 end
+                
             end
             
             %         % ================ method-2 ==========================
@@ -323,10 +396,10 @@ for iS =1:length(stru)
         end
         
         % copy identified twin system number to twinMap
-        twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
-        sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
-        disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMap(indR_min:indR_max, indC_min:indC_max) + disSimiMapLocal;
-        scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMap(indR_min:indR_max, indC_min:indC_max) + scoreMapLocal;
+        twinMap(indR_min:indR_max, indC_min:indC_max) = twinMapLocal;
+        sfMap(indR_min:indR_max, indC_min:indC_max) = sfMapLocal;
+        disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMapLocal;
+        scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMapLocal;
         
         %     twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal_2;
         %     shearMap(indR_min:indR_max, indC_min:indC_max) = shearMap(indR_min:indR_max, indC_min:indC_max) + shearMapLocal;
