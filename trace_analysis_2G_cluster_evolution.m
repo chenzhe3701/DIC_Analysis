@@ -29,6 +29,7 @@ f2 = '_';
 
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 
+modify_cVol_TF = 0; % if already have 'cVol', do not modify again. very important!
 %% (0) initialize something
 cNumMaps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
 cNumMaps_cleaned = cell(1,length(STOP)-1);
@@ -44,8 +45,10 @@ for iE = iE_start:iE_stop
     end
     % initialize/zero fields
     for iS =1:length(stru)
-        stru(iS).cVol = zeros(size(stru(iS).cLabel));   % the volume of this cluster
-        stru(iS).cVolCleaned = zeros(size(stru(iS).cLabel)); % the cluster volume overlap with postCluster, and cleaned
+        if modify_cVol_TF
+            stru(iS).cVol = zeros(size(stru(iS).cLabel));   % the volume of this cluster
+            stru(iS).cVolCleaned = zeros(size(stru(iS).cLabel)); % the cluster volume overlap with postCluster, and cleaned
+        end
         stru(iS).preCluster = zeros(size(stru(iS).cLabel));
         stru(iS).postCluster = zeros(size(stru(iS).cLabel));
         
@@ -96,11 +99,14 @@ for iE = iE_start:iE_stop-1
             cNumA = struA(iS).cLabel(ii);
             for jj=1:length(struP(iS).cLabel)
                 cNumP = struP(iS).cLabel(jj);
-                struA(iS).cVol(ii) = sum(cMapA(:)==cNumA);  % count the volume for the current cluster
-                struA(iS).cVolCleaned(ii) = sum(cMapA_cleaned(:)==cNumA);  % count the volume for the current cluster
-                if iE==(iE_stop-1)
-                    struP(iS).cVol(jj) = sum(cMapP(:)==cNumP);  % count the volume for the postCluster
-                    struP(iS).cVolCleaned(jj) = sum(cMapP(:)==cNumP);  % count the volume for the postCluster
+                
+                if modify_cVol_TF
+                    struA(iS).cVol(ii) = sum(cMapA(:)==cNumA);  % count the volume for the current cluster
+                    struA(iS).cVolCleaned(ii) = sum(cMapA_cleaned(:)==cNumA);  % count the volume for the current cluster
+                    if iE==(iE_stop-1)
+                        struP(iS).cVol(jj) = sum(cMapP(:)==cNumP);  % count the volume for the postCluster
+                        struP(iS).cVolCleaned(jj) = sum(cMapP(:)==cNumP);  % count the volume for the postCluster
+                    end
                 end
                 cOverlap(ii,jj) =sum(sum((cMapA_cleaned==cNumA)&(cMapP_cleaned==cNumP)));   % use cleaned map to calculate how good they overlap !!! But NOT the actual cluster size ------------------
             end
