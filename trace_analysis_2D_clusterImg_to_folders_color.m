@@ -64,16 +64,16 @@ for iE = iE_start:iE_stop
     eyy(ind_outlier) = nan;
     
     % scale the value, prepare for image. !!!
-    exx = color_sc(exx, -0.14, 0.07);
-    exy = color_sc(exy, -0.07, 0.07);
-    eyy = color_sc(eyy, -0.07, 0.14);
+    exx = mat_to_image(exx, [-0.14, 0.07], 'index');
+    exy = mat_to_image(exy, [-0.07, 0.07], 'index');
+    eyy = mat_to_image(eyy, [-0.07, 0.14], 'index');
 
     % load data for this iE
     warning('off','all');
     %     iE = 5;
 
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result]);
+    load([saveDataPath,fName_c2t_result],'clusterNumMap','clusterNumMapCleaned');
     
     if useCleanedMap
         clusterNumMap = clusterNumMapCleaned;
@@ -129,6 +129,11 @@ for iE = iE_start:iE_stop
         % ==== change cluster number into twin system number, or 0
         nCluster = length(stru(iS).cLabel);
         for iCluster = 1:nCluster
+            % if cVolCleaned==0, move on to the next cluster. The following 3 lines is east to comment out if necessary.
+            if (isfield(stru,'cVolCleaned'))&&(stru(iS).cVolCleaned(iCluster)<=0)
+                continue;
+            end
+        
             cNum = stru(iS).cLabel(iCluster);
             % imgLocal = uint8((img_local_cNum==cNum)*255);
             exx_R_Local = uint8(  img_exx_local.*(img_local_cNum==cNum) *255);
