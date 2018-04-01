@@ -73,7 +73,7 @@ for iE = iE_start:iE_stop
     %     iE = 5;
 
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'clusterNumMap','clusterNumMapCleaned');
+    load([saveDataPath,fName_c2t_result],'clusterNumMap','clusterNumMapCleaned','stru');
     
     if useCleanedMap
         clusterNumMap = clusterNumMapCleaned;

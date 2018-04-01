@@ -27,8 +27,9 @@ B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
+saveTF = 0;
 %% select iE to analyze
-iE = 5;
+iE = 2;
 
 % strain data
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
@@ -250,10 +251,12 @@ try
     close(hWaitbar);
 catch
 end
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(['temp_tNote_s',num2str(iE),'_',timeStr,'.mat'],'tNote','scoreCF');
-save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
 
+if saveTF
+    timeStr = datestr(now,'yyyymmdd_HHMM');
+    save(['temp_tNote_s',num2str(iE),'_',timeStr,'.mat'],'tNote','scoreCF');
+    save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
+end
 %%
 myplotc(exx,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
 colormapA('parula');
@@ -428,11 +431,12 @@ try
     close(hWaitbar);
 catch
 end
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(['temp_tNote_s',num2str(iE),'_',timeStr,'.mat'],'tNote','scoreCF');
-save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
 
-
+if saveTF
+    timeStr = datestr(now,'yyyymmdd_HHMM');
+    save(['temp_tNote_s',num2str(iE),'_',timeStr,'.mat'],'tNote','scoreCF');
+    save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
+end
 
 %% save the result (including stru, tNote, maps) at the end
 name_cluster_to_twin_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
