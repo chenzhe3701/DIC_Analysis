@@ -282,7 +282,7 @@ ind = find(gID==ids(1));
 hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0 0; 0 0 0; 0 0 0]);
 
 %% label_grain of interest on map to observe
-label_grain( 967,X,Y,ID,gcf);
+label_grain( 1556 ,X,Y,ID,gcf);
 
 %% Use tNote to modify
 hWaitbar = waitbar(0,'Re-matching cluster with twin system ...');
@@ -464,4 +464,37 @@ if 0
     %     myplot(X,Y,twinMap_2, boundaryTFB); caxis([18,24]);
     %     myplot(X,Y,sfMap_2, boundaryTFB);
     %     myplot(X,Y,costMap, boundaryTFB);
+end
+
+
+%% interactively compare the clusterNumMap at each stop, to see if need to add or delete
+for iE = iE_start:iE_stop
+    name_cluster_to_twin_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,name_cluster_to_twin_result],'clusterNumMap');
+    cnMap{iE} = clusterNumMap;
+    
+    strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
+    clear('exy_corrected');
+    load(strainFile,'exx','exy_corrected');     % if 'exy_corrected' does not exist, this does not give error, rather, just warning. % ----------------------------------------------------------------------------------
+    %     load(strainFile,'exx','exy','eyy','sigma','exy_corrected');
+    if exist('exy_corrected','var')&&(1==exy_corrected)
+        disp('================= exy already corrected ! ========================');
+        exy_corrected = 1;
+    else
+        disp('================= exy being corrected here ! =======================');
+        exy = -exy;
+        exy_corrected = 1;
+    end
+    % remove bad data points
+    exx(sigma==-1) = nan;
+    %     exy(sigma==-1) = nan;
+    %     eyy(sigma==-1) = nan;
+    qt_exx = quantile(exx(:),[0.0013,0.9987]); qt_exx(1)=min(-1,qt_exx(1)); qt_exx(2)=max(1,qt_exx(2));
+    %     qt_exy = quantile(exy(:),[0.0013,0.9987]); qt_exy(1)=min(-1,qt_exy(1)); qt_exy(2)=max(1,qt_exy(2));
+    %     qt_eyy = quantile(eyy(:),[0.0013,0.9987]); qt_eyy(1)=min(-1,qt_eyy(1)); qt_eyy(2)=max(1,qt_eyy(2));
+    ind_outlier = (exx<qt_exx(1))|(exx>qt_exx(2))|(exy<qt_exy(1))|(exy>qt_exy(2))|(eyy<qt_eyy(1))|(eyy>qt_eyy(2));
+    exx(ind_outlier) = nan;
+    %     exy(ind_outlier) = nan;
+    %     eyy(ind_outlier) = nan;
+    es{iE} = exx;
 end
