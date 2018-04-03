@@ -37,6 +37,10 @@ twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twi
 method2 = 0;        % if use method-2, maybe not use...
 useClusterCentroid = 1; % use clusterCentroid, otherwise use clusterMedium
 
+% can define how to determine nCluster.
+nClusterCriterion = {'maxAllAvg','maxClusterNegSum'};
+nClusterCriterion = nClusterCriterion{2};
+
 %% Can load strain data for a specific strain level
 rng(1);
 for iE = iE_start:iE_stop
@@ -179,6 +183,9 @@ for iE = iE_start:iE_stop
         if(~isempty(struNC(iS).nCluster))
             ii = find(arrayfun(@(x) x.gID == stru(iS).gID, struNC));
             nCluster = struNC(ii).nCluster;
+            if strcmpi(nClusterCriterion,'maxClusterNegSum')
+                [~,nCluster] = max(struNC(ii).score_neg_sum);
+            end
             
             % ========================= (1) perform kmeans cluster ============================
             %         nCluster = 4;       % total number of clusters
