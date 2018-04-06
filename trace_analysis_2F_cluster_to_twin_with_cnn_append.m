@@ -76,9 +76,13 @@ for iE = iE_start:iE_stop
             cNum = stru(iS).cLabel(iCluster);
             indClusterLocal = (clusterNumMapLocal==cNum);
             
-            % cnn identify twin
+            % cnn identify twin. Note that for my processed data, if there is no image, that means the cluster is so small/noisy, so no pixels left for image.     
             imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
-            I = imread([twinImgPath,imgName]);
+            try
+                I = imread([twinImgPath,imgName]);
+            catch
+                I=uint8(zeros(227,227,3));
+            end
             predictedLabels = classify(net,I);
             predictedProb = predict(net,I);
             
