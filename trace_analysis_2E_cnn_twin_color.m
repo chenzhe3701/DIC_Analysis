@@ -71,6 +71,21 @@ netTransfer = trainNetwork(trainingImages,layers,options);
 % calculate the classification accuracy.
 predictedLabels = classify(netTransfer,validationImages);
 accuracy = mean(predictedLabels == validationImages.Labels)
+
+%% can also test on the groud truth data
+truthFolder_twin = uigetdir(allImgPath,'select parent folder 1 of twin grouth truth images');
+truthImages_twin = imageDatastore({truthFolder_twin},'IncludeSubfolders',true,'LabelSource','foldernames');
+
+truthFolder_notwin = uigetdir(allImgPath,'select parent folder 1 of nontwin training images');
+truthImages_notwin = imageDatastore({truthFolder_notwin},'IncludeSubfolders',true,'LabelSource','foldernames');
+
+predictedLabels = classify(netTransfer,truthImages_twin);
+disp('accuracy of twin:');
+accuracy = mean(predictedLabels == truthImages_twin.Labels)
+
+predictedLabels = classify(netTransfer,truthImages_notwin);
+disp('accuracy of notwin:');
+accuracy = mean(predictedLabels == truthImages_notwin.Labels)
 %%
 timeStr = datestr(now,'yyyymmdd_HHMM');
 save([saveDataPath,'\trainedAlexNet.mat'],'netTransfer');
@@ -120,18 +135,20 @@ for iE = iE_start:iE_stop
             
             % cnn identify twin
             imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
-            I = imread(fullfile(allImgPath,imgName));
-            predictedLabels = classify(net,I);
-            predictedProb = predict(net,I);
-            
-            prob = predictedProb(kk);
-            
-            
-            % move classified twin images
-            if prob>0.5
-                copyfile(fullfile(allImgPath,imgName),fullfile(classifyImgPath,'Classified_twin',imgName));
-            else
-                copyfile(fullfile(allImgPath,imgName),fullfile(classifyImgPath,'Classified_notwin',imgName));
+            try
+                I = imread(fullfile(allImgPath,imgName));
+                predictedLabels = classify(net,I);
+                predictedProb = predict(net,I);
+                
+                prob = predictedProb(kk);
+                
+                
+                % move classified twin images
+                if prob>0.5
+                    copyfile(fullfile(allImgPath,imgName),fullfile(classifyImgPath,'Classified_twin',imgName));
+                else
+                    copyfile(fullfile(allImgPath,imgName),fullfile(classifyImgPath,'Classified_notwin',imgName));
+                end
             end
             
         end

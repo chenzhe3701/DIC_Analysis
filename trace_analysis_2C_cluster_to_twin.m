@@ -29,7 +29,7 @@ iE_stop = 5;
 
 saveTF = 0;
 %% select iE to analyze
-iE = 2;
+iE = 5;
 
 % strain data
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
@@ -267,7 +267,7 @@ myplot(X, Y, grow_boundary((shrink_boundary((twinMap>0)))),boundaryTFB);
 %%
 myplot(X, Y, grow_boundary(grow_boundary(shrink_boundary(shrink_boundary((twinMap>0))))),boundaryTFB);
 %% adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap.
-[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTF,'r',2);
+[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
 % colormapA;
 cl = caxis;
 caxis([scoreCF,cl(2)])

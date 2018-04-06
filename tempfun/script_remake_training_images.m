@@ -10,7 +10,7 @@
 dira = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\train_img_color\twin';
 names = dir(dira);
 dirb = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\A_all_img_standard_silhouette\twin';
-dirc = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\B_train_img_standard_silhouette\twin';
+dirc = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\A_train_img_standard_silhouette\twin';
 ii = 0;
 %%
 ii = ii + 1
