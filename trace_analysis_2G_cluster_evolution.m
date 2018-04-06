@@ -161,12 +161,12 @@ for iE = iE_start:iE_stop-1
     
 end
 
-% (after 1) update to Save. Disabled temporarily to prevent data loss.
-% for iE = iE_start:iE_stop
-%     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-%     stru = struCell{iE};
-%     save([saveDataPath,fName_c2t_result],'stru','-append');
-% end
+% (after 1) update to Save. Can disable to temporarily to prevent data loss.
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    stru = struCell{iE};
+    save([saveDataPath,fName_c2t_result],'stru','-append');
+end
 
 
 %% (2) after tracking all strain level pairs, get volume history in the whole strain levels, and analyze. Related fields: volEvo, volEvoCleaned, cvInc
@@ -258,12 +258,12 @@ for iE = iE_start:iE_stop
     end
 end
 
-% (after 2) update to save. Disabled temporarily to prevent data loss.
-% for iE = iE_start:iE_stop
-%     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-%     stru = struCell{iE};
-%     save([saveDataPath,fName_c2t_result],'stru','-append');
-% end
+% (after 2) update to save. Can disable to temporarily to prevent data loss.
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    stru = struCell{iE};
+    save([saveDataPath,fName_c2t_result],'stru','-append');
+end
 
 
 %% [for debug directly]
