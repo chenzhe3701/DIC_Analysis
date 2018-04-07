@@ -14,11 +14,9 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx');
-
-
 
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -30,8 +28,10 @@ iE_stop = 5;
 f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
+ID_target = 1144;
 
-% The strain data part
+
+%% The strain data part
 clear data;
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -116,3 +116,4 @@ end
 
 fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
 save(fullfile(grainDataPath,fname),'data');
+
