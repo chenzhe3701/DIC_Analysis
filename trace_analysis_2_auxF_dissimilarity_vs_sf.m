@@ -53,23 +53,37 @@ saveFig = 1;
 if saveFig
     saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 end
+
+%%
 close all;
+titleString = {'','Global Uniaxial Strain = -0.6%','Global Uniaxial Strain = -1.2%',...
+    'Global Uniaxial Strain = -2.1%', 'Global Uniaxial Strain = -3.7%'};
+
 for iE = iE_start:iE_stop
     
     figure;plot(Dis{iE},SF{iE},'.');
-    title(['Strain level: ',num2str(STOP{iE+B})]);
+    title(titleString{iE},'fontweight','normal','fontsize',18);
     xlabel('Dissimilarity');
     ylabel('Schmid Factor');    
     set(gca,'fontsize',18);
+    set(gca,'xlim',[0 0.8]);
     
     imgName = (['s',num2str(iE),'_Dis_vs_SF.tif']);
     if saveFig
         print(fullfile(saveDataPath,imgName),'-dtiff');   % to parent folder
+        
+        imgNameA = (['s',num2str(iE),'_Dis_vs_SF_a.tif']);
+        title(['Strain Level: ',num2str(STOP{iE+B})],'fontweight','normal','fontsize',18);
+        print(fullfile(saveDataPath,imgNameA),'-dtiff');   % to parent folder
         close all;
     end
+    
+    % zoom-in view
     figure;plot(Dis{iE},SF{iE},'.');
+    hold on; fplot(@(x) 7*x+0.15,[0 0.05],'--k','linewidth',5);
     set(gca,'fontsize',18);
     set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
+    
     
     imgName = (['s',num2str(iE),'_Dis_vs_SF_zoom.tif']);
     if saveFig
