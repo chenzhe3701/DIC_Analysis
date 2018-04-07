@@ -1,6 +1,10 @@
 
 % summarize if tNote was used
 % chenzhe, 2018-02-26
+%
+% chenzhe, 2018-04-06 add note:
+% for very small clusters that cleaned to cVol<0, the 'c2t' field is 0, so
+% that 'cEnable' is not used.
 
 enable_used = 0;
 disable_used = 0;
