@@ -131,6 +131,7 @@ close(f);
 
 
 %% (2) convert to RGB image
+img_size = 227;
 [nR,nC] = size(clusterNumMapLocal);
 sz = max(nR,nC);
 img_local_cNum = zeros(sz)*nan;
@@ -156,9 +157,9 @@ img_exy_local = img_exy_local(ratio:ratio:end,ratio:ratio:end);
 img_eyy_local = img_eyy_local(ratio:ratio:end,ratio:ratio:end);
 
 % scale the value, prepare for image. !!!
-img_exx_local = color_sc(img_exx_local, -0.14, 0.07);
-img_exy_local = color_sc(img_exy_local, -0.07, 0.07);
-img_eyy_local = color_sc(img_eyy_local, -0.07, 0.14);
+img_exx_local = mat_to_image(img_exx_local, [-0.14, 0.07], 'index');
+img_exy_local = mat_to_image(img_exy_local, [-0.07, 0.07], 'index');
+img_eyy_local = mat_to_image(img_eyy_local, [-0.07, 0.14], 'index');
 
 %% do the RGB image of here ---------------------------------------------------------
 % [A] cluster by cluster
@@ -705,8 +706,8 @@ print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
     
 
 %% continue on 2018-03-21, examine pointwise distance to twin strain
-% try using K=2-5 clusters, plot 
-% (1) pointwise distance of strain components to highest-SFed twin center. 
+% try using K=2-5 clusters, plot
+% (1) pointwise distance of strain components to highest-SFed twin center.
 % This could be used to make a contour plot of equi-distance, but it turned
 % out hard to see, so just use this pointwise distance map.
 % (2) The histogram of this distance. The boundary of twin vs non-twin can
@@ -758,74 +759,40 @@ exy_t = exy_local(ind);
 eyy_t = eyy_local(ind);
 data_t = [exx_t(:), exy_t(:), eyy_t(:)];
 
-% first, predict centroid
-[~,ind_centroid_initial] = max(stru(iS).tSF);
-centroid_initial = stru(iS).tStrain(ind_centroid_initial,:);
-
-% To fit here:
-data_reduce = data_t(1:end,:);
-
-if(~isempty(data_reduce))
-    % compare the silhouette, by actually do kmeans on down-sampled samples.
-    disp(['ID=',num2str(ID_current)]);
-    nRep = 1;
-    c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
+if 0 % re-cluster and analyze.  But turned out not able to make contour plot well.  So just keep code and disable.
+    % first, predict centroid
+    [~,ind_centroid_initial] = max(stru(iS).tSF);
+    centroid_initial = stru(iS).tStrain(ind_centroid_initial,:);
     
-    pointWiseDistMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
-    pointWiseDist = pdist2(centroid_initial, data_reduce);
-    pointWiseDistMapLocal(ind) = pointWiseDist;
+    % To fit here:
+    data_reduce = data_t(1:end,:);
     
-    myplot(pointWiseDistMapLocal); caxis([0 0.05]);
-    figure;histogram(pointWiseDist);
-   
-    for nc = 2:maxCluster
-        [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
-        clusterNumMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
-        clusterNumMapLocal(ind) = idx;
-  
-        %         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_',num2str(nc),'_withAvg.tif']);
-        %         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
-
+    if(~isempty(data_reduce))
+        % compare the silhouette, by actually do kmeans on down-sampled samples.
+        disp(['ID=',num2str(ID_current)]);
+        nRep = 1;
+        c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
+        
+        pointWiseDistMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
+        pointWiseDist = pdist2(centroid_initial, data_reduce);
+        pointWiseDistMapLocal(ind) = pointWiseDist;
+        
+        myplot(pointWiseDistMapLocal); caxis([0 0.05]);
+        figure;histogram(pointWiseDist);
+        
+        for nc = 2:maxCluster
+            [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
+            clusterNumMapLocal = zeros(size(exx_local));      % record raw clusterNumberMap
+            clusterNumMapLocal(ind) = idx;
+            
+            %         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_',num2str(nc),'_withAvg.tif']);
+            %         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+            
+        end
     end
+    
 end
-
-%% After the previous section, plot distribution of exx, exy, and eyy
-close all;
-colors = lines(7);
-
-figure; hold on;
-plot(edges_xx(1:end-1),exx_distribution{3},'-','color',colors(1,:),'linewidth',2);
-plot(edges_xx(1:end-1),exx_distribution{4},'-','color',colors(2,:),'linewidth',2);
-plot(edges_xx(1:end-1),exx_distribution{5},'-','color',colors(4,:),'linewidth',2);
-
-legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_x_x value, mm/mm');
-ylabel('Counts');
-set(gca,'fontsize',18)
-
-
-figure; hold on;
-plot(edges_xy(1:end-1),exy_distribution{3},'-x','color',colors(1,:),'linewidth',2);
-plot(edges_xy(1:end-1),exy_distribution{4},'-x','color',colors(2,:),'linewidth',2);
-plot(edges_xy(1:end-1),exy_distribution{5},'-x','color',colors(4,:),'linewidth',2);
-
-legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_x_y value, mm/mm');
-ylabel('Counts');
-set(gca,'fontsize',18)
-
-
-figure; hold on;
-plot(edges_yy(1:end-1),eyy_distribution{3},'-','color',colors(1,:),'linewidth',2);
-plot(edges_yy(1:end-1),eyy_distribution{4},'-','color',colors(2,:),'linewidth',2);
-plot(edges_yy(1:end-1),eyy_distribution{5},'-','color',colors(4,:),'linewidth',2);
-
-legend({'Macroscopic Strain -1.2%','Macroscopic Strain -2.1%','Macroscopic Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_y_y value, mm/mm');
-ylabel('Counts');
-set(gca,'fontsize',18)
-
-
+disp(['strain level: ',num2str(iE),' analyzed']);
 
 
 
