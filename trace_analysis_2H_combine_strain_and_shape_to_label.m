@@ -54,7 +54,7 @@ for iE = iE_start:iE_stop
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
     
     % can try to remove some fields
-    stru = rmfield(stru,{'dis','sf','t','trueTwin'});
+    stru = rmfield(stru,{'dis','sf','ts','trueTwin'});
     
     if useCleanedMap
         clusterNumMap = clusterNumMapCleaned;
@@ -108,7 +108,9 @@ for iE = iE_start:iE_stop
             stru(iS).sf(iCluster) = stru(iS).tSF(ind_t);
             stru(iS).ts(iCluster) = tsNum;
             
-            if (stru(iS).c2t(iCluster)>0)||(stru(iS).cEnable(iCluster)==1)
+            % c2t>0 means its either a twin, or satisfied the strainScore criterion but disabled.    
+            % So, c2t>0 && cEnable>=0 means it is a real twin.
+            if (stru(iS).c2t(iCluster)>0)&&(stru(iS).cEnable(iCluster)>=0)
                 stru(iS).trueTwin(iCluster) = tsNum;
                 trueTwinMapLocal(indClusterLocal) = tsNum;
             end
