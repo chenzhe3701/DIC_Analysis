@@ -9,7 +9,9 @@
 %  stru(iS).dis = dissimilarity of cluster centroid to the twin strain of the best matching twin system 
 %  stru(iS).sf = schmid factor of the best matching twin system
 %  stru(iS).ts = twin system number of the best matching twin system 
-%  stru(iS).trueTwin = confirmed (ground truth) twin system number 
+%  stru(iS).trueTwin = confirmed (ground truth) twin system number
+%  stru(iS).strainScore = 7*dis-sf
+%  stru(iS).shapeScore = cvInc * tProbMax
 %
 % Also, generates a few maps and append to 'cluster_to_twin_result.mat'
 % including 'strainScoreMap','shapeScoreMap','trueTwinMap'.
@@ -107,6 +109,9 @@ for iE = iE_start:iE_stop
             stru(iS).dis(iCluster) = m_dist;
             stru(iS).sf(iCluster) = stru(iS).tSF(ind_t);
             stru(iS).ts(iCluster) = tsNum;
+                        
+            stru(iS).strainScore(iCluster) =  7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
+            stru(iS).shapeScore(iCluster) = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
             
             % c2t>0 means its either a twin, or satisfied the strainScore criterion but disabled.    
             % So, c2t>0 && cEnable>=0 means it is a real twin.
@@ -116,6 +121,7 @@ for iE = iE_start:iE_stop
             end
            	strainScoreMapLocal(indClusterLocal) = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
             shapeScoreMapLocal(indClusterLocal) = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
+
           
         end
         
@@ -133,7 +139,6 @@ for iE = iE_start:iE_stop
     catch
     end
     
-    disp('append cnn result to stru');
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','-append')
 end
