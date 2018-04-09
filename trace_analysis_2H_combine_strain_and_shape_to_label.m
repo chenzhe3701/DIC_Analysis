@@ -1,7 +1,19 @@
-
 % relabel twin, separated from previous trace_analysis_2().
 % chenzhe, 2018-02-05
 % chenzhe, 2018-02-26, based on 2_label_twins_post().
+%
+% chenzhe, 2018-04-09 add note
+% This code, based on manual clean results, labels twins and consider them
+% as 'ground truth'.
+% Fields added to 'stru'
+%  stru(iS).dis = dissimilarity of cluster centroid to the twin strain of the best matching twin system 
+%  stru(iS).sf = schmid factor of the best matching twin system
+%  stru(iS).ts = twin system number of the best matching twin system 
+%  stru(iS).trueTwin = confirmed (ground truth) twin system number 
+%
+% Also, generates a few maps and append to 'cluster_to_twin_result.mat'
+% including 'strainScoreMap','shapeScoreMap','trueTwinMap'.
+
 
 clear;
 addChenFunction;
@@ -40,13 +52,17 @@ for iE = iE_start:iE_stop
     
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
+    
+    % can try to remove some fields
+    stru = rmfield(stru,{'dis','sf','t','trueTwin'});
+    
     if useCleanedMap
         clusterNumMap = clusterNumMapCleaned;
     end
     % Create a few maps to record the criterion.
     cnnTwinMap = zeros(size(exx));
     %%%%%%%%% new map for TMS
-    simScoreMap = zeros(size(exx));
+    strainScoreMap = zeros(size(exx));
     shapeScoreMap = zeros(size(exx));
     trueTwinMap = zeros(size(exx));
     
@@ -67,7 +83,7 @@ for iE = iE_start:iE_stop
         
         cnnTwinMapLocal = zeros(size(ID_local));
         %%%%%%%%%% new map for TMS
-        simScoreMapLocal = zeros(size(ID_local));
+        strainScoreMapLocal = zeros(size(ID_local));
         shapeScoreMapLocal = zeros(size(ID_local));
         trueTwinMapLocal = zeros(size(ID_local));
         
@@ -77,7 +93,7 @@ for iE = iE_start:iE_stop
         %%%%%%%%%% for TMS summary new
         stru(iS).dis = zeros(nCluster,1);
         stru(iS).sf = zeros(nCluster,1);
-        stru(iS).t = zeros(nCluster,1);
+        stru(iS).ts = zeros(nCluster,1);
         stru(iS).trueTwin = zeros(nCluster,1);
         
         for iCluster = 1:nCluster
@@ -90,19 +106,19 @@ for iE = iE_start:iE_stop
             tsNum = stru(iS).tLabel(ind_t); 
             stru(iS).dis(iCluster) = m_dist;
             stru(iS).sf(iCluster) = stru(iS).tSF(ind_t);
-            stru(iS).t(iCluster) = tsNum;
+            stru(iS).ts(iCluster) = tsNum;
             
             if (stru(iS).c2t(iCluster)>0)||(stru(iS).cEnable(iCluster)==1)
                 stru(iS).trueTwin(iCluster) = tsNum;
                 trueTwinMapLocal(indClusterLocal) = tsNum;
             end
-           	simScoreMapLocal(indClusterLocal) = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
+           	strainScoreMapLocal(indClusterLocal) = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
             shapeScoreMapLocal(indClusterLocal) = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
           
         end
         
         % copy identified twin system number to twinMap
-        simScoreMap(indR_min:indR_max, indC_min:indC_max) = simScoreMap(indR_min:indR_max, indC_min:indC_max) + simScoreMapLocal;
+        strainScoreMap(indR_min:indR_max, indC_min:indC_max) = strainScoreMap(indR_min:indR_max, indC_min:indC_max) + strainScoreMapLocal;
         shapeScoreMap(indR_min:indR_max, indC_min:indC_max) = shapeScoreMap(indR_min:indR_max, indC_min:indC_max) + shapeScoreMapLocal;
         trueTwinMap(indR_min:indR_max, indC_min:indC_max) = trueTwinMap(indR_min:indR_max, indC_min:indC_max) + trueTwinMapLocal;
         
@@ -117,7 +133,7 @@ for iE = iE_start:iE_stop
     
     disp('append cnn result to stru');
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    save([saveDataPath,fName_c2t_result],'stru','simScoreMap','shapeScoreMap','trueTwinMap','-append')
+    save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','-append')
 end
 
 
