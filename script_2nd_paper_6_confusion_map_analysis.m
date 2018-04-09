@@ -1,8 +1,13 @@
-% confusion analysis for simScore criterion vs shapeScore criterion.
+% confusion analysis for strainScore criterion vs shapeScore criterion.
+%
+% chenzhe, 2018-04-09 add note
+% This code, based on manual labeled results, generate a 'confusion map'
+% which plot clusters with different color to indicate the TP, FP, TN cases
+% in classification. 
 
 
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
-load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
+load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
@@ -18,36 +23,26 @@ B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
-%% (1)
+%% (1) Generate a confusion map for selected iE. Label TP, FP, TN with different color. 
+iE = 5;
+
 colors = lines(7);
 colorMap = [0 0 0; 0 0 1; colors(3,:); 1 0 0];
-iE = 4;
 
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','simScoreMap','shapeScoreMap','trueTwinMap');
+load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF');
 
+strainScoreCF = scoreCF;
 
-if strcmpi(sampleName,'WE43_T6_C1')
-    switch iE
-        case 5
-            strainScoreCF = 0.230-0.5;
-        case 4
-            strainScoreCF = 0.215-0.5;
-        case 3
-            strainScoreCF = 0.217-0.5;
-        case 2
-            strainScoreCF = 0.291-0.5;
-    end
-end
 % strainScoreCF = -0.5 + 0.285;   % s4, use default, or 0.284
 shapeScoreCF = 0.1;
 % previous criterion, 7Dis+(0.5-SF)< scoreCF
 % i.e., new criterion, 7Dis-SF<socre-0.5
 
 % select use strainScore or shapeScore
-useStrainScore = 0;
+useStrainScore = 1;
 useShapeScore = 0;
-useBothScore = 1;
+useBothScore = 0;
 
 
 TP = 0;    % hit
@@ -64,6 +59,7 @@ if useStrainScore
                     TP = TP + 1;
                 else
                     FN = FN + 1;
+                    disp(iS)
                 end
             else        % ground false
                 if strainScore < strainScoreCF
@@ -119,29 +115,28 @@ end
 
 
 
-
-
-% plot map
-map = zeros(size(exx));
+% plot 'confusion map'
+confMap = zeros(size(exx));
 
 % so that 3=TP(hit), 2=FP(false alarm), 1=FN(miss), 0=gb
-map(trueTwinMap>0)=1;   % true twin
+confMap(trueTwinMap>0)=1;   % true twin
 
+% add by 2. So if it's TP, it will be 1+2=3. If it's FP, it will be 0+2=2.
 if useStrainScore
-    % (1) simScore as criterion
-    map(simScoreMap<strainScoreCF) = map(simScoreMap<strainScoreCF)+2;
+    % (1) strainScore as criterion
+    confMap(strainScoreMap<strainScoreCF) = confMap(strainScoreMap<strainScoreCF)+2;
 elseif useShapeScore
     % (2) shapeScore as criterion
-    map(shapeScoreMap>shapeScoreCF) = map(shapeScoreMap>shapeScoreCF)+2;
+    confMap(shapeScoreMap>shapeScoreCF) = confMap(shapeScoreMap>shapeScoreCF)+2;
 elseif useBothScore
     % (3) combine both as criterion
-    map((simScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF)) = map((simScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF))+2;
+    confMap((strainScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF)) = confMap((strainScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF))+2;
 end
 % make only boundary as 0, others nan
-map(map==0) = nan;
-map(boundaryTFB==1) = 0;
+confMap(confMap==0) = nan;
+confMap(boundaryTFB==1) = 0;
 
-[f,a,c] = myplot(map);
+[f,a,c] = myplot(confMap);
 colormap(colorMap);
 set(c,'limits',[0.75,3]);
 c.Ticks = [1.125, 1.875, 2.625];
@@ -153,12 +148,16 @@ title(a,'');
 
 print('rename.tif','-dtiff');   % to parent folder
 
-%%
-for iE = 2:5
-
-fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','simScoreMap','shapeScoreMap','trueTwinMap');
-twinSizePct(iE) = sum(trueTwinMap(:)>0)/sum(trueTwinMap(:)>=0)
-
+%% (2) summarize the twin area/vol fraction at strain levels 2-5
+for iE = 2:5    
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap');
+    twinSizePct(iE) = sum(trueTwinMap(:)>0)/sum(trueTwinMap(:)>=0);    
 end
+
+figure;
+plot(strainPauses(2:5),twinSizePct(2:5)*100,'-or','linewidth',1.5);
+set(gca,'xdir','reverse','fontsize',18);
+xlabel('Global Uniaxial Strain, mm/mm');
+ylabel('Twin Area Percent, %');
 
