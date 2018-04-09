@@ -1,5 +1,12 @@
 % script
 % chenzhe, 20180308, prepare figures for TMS
+%
+% chenzhe, 2018-04-08 add note
+% This code accompolishes the following tasks:
+% (1) plot the strain map, and strain distribution bell curve, at strain levels [3:5]
+% (2) Show the conversion to RGB image, at iE=5 (the strain level of interest) 
+% (3) Show how the cluster size tracking problem was processed (plot clusterNumMap, cluster size evolution curve, text summary)  
+% (4) Show the determination of nCluster(K) value (compare results if use different K values)       
 
 addChenFunction;
 grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder that contains the grain data'),'\'];
@@ -11,7 +18,7 @@ dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
-load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
+load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
@@ -68,10 +75,11 @@ end
 
 
 
-%% [1] plot the strain, RGB map at the strain level you are interested in: iE = 5
+%% (1) plot the strain map, and strain distribution, at strain levels [3:5]
 
-% iE of interest ----------------------------- !!! -------------------------------------
-iE = 5;
+clear exx_distribution exy_distribution eyy_distribution
+
+for iE = 3:5
 
 fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
 load(fullfile(grainDataPath,fname),'data');
@@ -93,31 +101,117 @@ sigma_local = s.sigma_local;
 clusterNumMapLocal = s.clusterNumMapLocal;
 clusterNumMapCleanedLocal = s.clusterNumMapCleanedLocal;
 
-%% (1) plot/adjust strain map here -------------------------------------------------
-[f,a,c] = myplot(x_local-x_local(1), y_local-y_local(1), exx_local); % caxis([-0.1, 0.00]);% caxis([-0.14, 0.07]);
+% summarize the distribution of exx data at different iE level
+% figure;histogram(exx_local(:));
+% figure;histogram(exy_local(:));
+% figure;histogram(eyy_local(:));
+edges_xx = linspace(-0.2,0.05,100);
+edges_xy = linspace(-0.04,0.06,100);
+edges_yy = linspace(-0.04,0.06,100);
+exx_distribution{iE} = histcounts(exx_local(:),edges_xx);
+exy_distribution{iE} = histcounts(exy_local(:),edges_xx);
+eyy_distribution{iE} = histcounts(eyy_local(:),edges_xx);
+
+%% (1.1) plot/adjust strain map here -------------------------------------------------
+[f,a,c] = myplot(x_local-x_local(1), y_local-y_local(1), exx_local);  % caxis([-0.1, 0.00]);  % caxis([-0.14, 0.07]);
+caxis([-0.1, 0.00]);
 title(a,'\epsilon_x_x');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
-imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exx.tif']);
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exx_scaleA.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
 
-[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), exy_local); % caxis([-0.03, 0.03]);% caxis([-0.07, 0.07]);
+[f,a,c] = myplot(x_local-x_local(1), y_local-y_local(1), exx_local);  % caxis([-0.1, 0.00]);  % caxis([-0.14, 0.07]);
+caxis([-0.14, 0.07]);
+title(a,'\epsilon_x_x');
+set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+axis equal;
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exx_scaleB.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+close(f);
+
+
+
+
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), exy_local);  % caxis([-0.03, 0.03]);  % caxis([-0.07, 0.07]);
 title(a,'\epsilon_x_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
-imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exy.tif']);
+caxis([-0.03, 0.03]);
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exy_scaleA.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
 
-[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), eyy_local); % caxis([-0.02, 0.06])% caxis([-0.07, 0.14]);
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), exy_local);  % caxis([-0.03, 0.03]);  % caxis([-0.07, 0.07]);
+title(a,'\epsilon_x_y');
+set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+axis equal;
+caxis([-0.07, 0.07]);
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exy_scaleB.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+close(f);
+
+
+
+
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), eyy_local);  % caxis([-0.02, 0.06]);  % caxis([-0.07, 0.14]);
 title(a,'\epsilon_y_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
-imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eyy.tif']);
+caxis([-0.02, 0.06]);
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eyy_scaleA.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
 
+[f,a,c]=myplot(x_local-x_local(1), y_local-y_local(1), eyy_local);  % caxis([-0.02, 0.06]);  % caxis([-0.07, 0.14]);
+title(a,'\epsilon_y_y');
+set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+axis equal;
+caxis([-0.07, 0.14]);
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eyy_scaleB.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+close(f);
+
+end
+
+%% (1.2) After the previous section, plot the [distribution, bell-shape curve] of exx, exy, and eyy
+close all;
+colors = lines(7);
+
+figure; hold on;
+plot(edges_xx(1:end-1),exx_distribution{3},'-','color',colors(1,:),'linewidth',1.5);
+plot(edges_xx(1:end-1),exx_distribution{4},'-','color',colors(2,:),'linewidth',1.5);
+plot(edges_xx(1:end-1),exx_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
+
+legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_x_x value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',16);
+print(fullfile(grainDataPath,'exx_distrib_curve.tif'),'-dtiff');
+
+
+figure; hold on;
+plot(edges_xy(1:end-1),exy_distribution{3},'-','color',colors(1,:),'linewidth',1.5);
+plot(edges_xy(1:end-1),exy_distribution{4},'-','color',colors(2,:),'linewidth',1.5);
+plot(edges_xy(1:end-1),exy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
+
+legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_x_y value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',16)
+print(fullfile(grainDataPath,'exy_distrib_curve.tif'),'-dtiff');
+
+figure; hold on;
+plot(edges_yy(1:end-1),eyy_distribution{3},'-','color',colors(1,:),'linewidth',1.5);
+plot(edges_yy(1:end-1),eyy_distribution{4},'-','color',colors(2,:),'linewidth',1.5);
+plot(edges_yy(1:end-1),eyy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
+
+legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
+xlabel('\epsilon_y_y value, mm/mm');
+ylabel('Counts');
+set(gca,'fontsize',16)
+print(fullfile(grainDataPath,'eyy_distrib_curve.tif'),'-dtiff');
 
 
 
@@ -125,13 +219,14 @@ close(f);
 
 
 
+%% (2) Convert to RGB image, show the conversion process, using the strain_level_of_interest
+% iE of interest ----------------------------- !!! -------------------------------------
+iE_strain_level_of_interest = 5;
+iE = iE_strain_level_of_interest;
 
-
-
-
-
-%% (2) convert to RGB image
+%% (2.1) conversion
 img_size = 227;
+
 [nR,nC] = size(clusterNumMapLocal);
 sz = max(nR,nC);
 img_local_cNum = zeros(sz)*nan;
@@ -161,7 +256,7 @@ img_exx_local = mat_to_image(img_exx_local, [-0.14, 0.07], 'index');
 img_exy_local = mat_to_image(img_exy_local, [-0.07, 0.07], 'index');
 img_eyy_local = mat_to_image(img_eyy_local, [-0.07, 0.14], 'index');
 
-%% do the RGB image of here ---------------------------------------------------------
+%% (2.2) do the RGB image of here ---------------------------------------------------------
 % [A] cluster by cluster
 stru = struCell{iE};
 nCluster = length(stru(iS).cLabel);
@@ -347,12 +442,13 @@ close(f);
 
 
 
-%% [2] the cluster number map of the grain of interest at different strain levels
+%% (3) Show how the cluster size tracking problem was processed
+% (3.1) the cluster number map of the grain of interest at different strain levels, [2:5]
 close all;
 ID_local = ID(indR_min:indR_max, indC_min:indC_max);
 colorMap = parula(3);   % This may need to be adjusted to 5 in some cases
-colorMap = lines(4);
-colorMap(2,:) = [];
+colorMap = lines(7);
+colorMap([2,4],:) = [];
 colorMap = [.98 .98 .98; colorMap];
 
 for ii = 1:length(iE_list)
@@ -397,8 +493,8 @@ for ii = 1:length(iE_list)
 end
 
 
-%% [2 text summary] summary of overlap at different strain levels, overlap of all clusters.  [No plot, just display some value.]
-clc
+%% (3.2) [text summary] summary of overlap at different strain levels, overlap of all clusters.  [No plot, just display some value.]
+clc;
 for iE = iE_list(1:end-1)
     
     struA = struCell{iE};   % pre
@@ -507,12 +603,14 @@ for iE = iE_list(1:end-1)
     
 end
 
-%% [2 something else] Plot cluster size/volume evolution
+%% (3.3) Plot() cluster size/volume evolution, in different strain level 
 close all;
 stru = struCell{iE_target};
 volEvo = stru(iS).volEvo(iC_target,iE_list);
 volEvoCleaned = stru(iS).volEvoCleaned(iC_target,iE_list);
 
+% In strain level
+% (1) cVol (not cleaned) evolution
 f = figure;
 ax = axes;
 plot(iE_list,volEvo,'-bo','linewidth',1.5,'markersize',8);
@@ -520,11 +618,25 @@ xlabel('Strain Level');
 ylabel('Cluster Size, pixels');
 title('Cluster Size Evolution');
 set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
-annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
-imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution.tif']);
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_notCleaned.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
+% (2) cVol (cleaned) evolution
+f = figure;
+ax = axes;
+plot(iE_list,volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
+xlabel('Strain Level');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution');
+set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_cleaned.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+% (3) cVol (both not cleaned and cleaned) evolution
 f = figure;
 ax = axes;
 hold on;
@@ -535,16 +647,59 @@ ylabel('Cluster Size, pixels');
 title('Cluster Size Evolution');
 set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
 legend({'uncleand','cleaned'},'Location','best');
-annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
-imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_withClean.tif']);
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_both.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
 
+% in strain value
+% (4) cVol (not cleaned) evolution
+f = figure;
+ax = axes;
+plot(strainPauses(iE_list),volEvo,'-bo','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_notCleaned_a.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+% (5) cVol (cleaned) evolution
+f = figure;
+ax = axes;
+plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_cleaned_a.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+% (6) cVol (both not cleaned and cleaned) evolution
+f = figure;
+ax = axes;
+hold on;
+plot(strainPauses(iE_list),volEvo,'-bo','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
+legend({'uncleand','cleaned'},'Location','best');
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_both_a.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
 
-
-%% [3] Evaluate the applied cluster result, by 3D scatter plot
+%% (4) Show the determination of nCluster(K) value
+% (4.1) First, show how the strain data are distributed, for the selected grain, at selected strain iE=5 (the strain level of interest), by 3D scatter plot
+iE = iE_strain_level_of_interest;
 % close all;
 colors = lines(7);
 colors(2,:) = [];
@@ -583,7 +738,7 @@ view(25,45);
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eij_distribution.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
-%% Illustrate the [process] of how to determine [nCluster] to use.  Here are some comparisons of using different nCluster to try. 
+%% (4.2) Illustrate the [process] of how to determine [nCluster] to use.  Here are some comparisons of using different nCluster to try. 
 close all;
 colors = lines(7);
 colors(2,:) = [];
@@ -602,15 +757,15 @@ data_t = [exx_t(:), exy_t(:), eyy_t(:)];
 centroid_initial = stru(iS).tStrain(ind_centroid_initial,:);
 
 % ======================= kmeans, determine optimum number of clusters ====================================
-% % The way it was actually used.
-% nPoints = 8100;
-% ind_reduce = ~isnan(sum(data_t,2));
-% data_reduce = data_t(ind_reduce,:);
-% reduce_ratio = ceil(size(data_reduce,1)/nPoints);
-% data_reduce = data_reduce(1:reduce_ratio:end,:);
+% The way it was actually used.
+nPoints = 10000;
+ind_reduce = ~isnan(sum(data_t,2));
+data_reduce = data_t(ind_reduce,:);
+reduce_ratio = ceil(size(data_reduce,1)/nPoints);
+data_reduce = data_reduce(1:reduce_ratio:end,:);
 
-% To fit here:
-data_reduce = data_t(1:step:end,:);
+% To fit here, make number of data points small enough to make the scatter plot :
+% data_reduce = data_t(1:step:end,:);
 
 if(~isempty(data_reduce))
     % compare the silhouette, by actually do kmeans on down-sampled samples.
@@ -620,6 +775,7 @@ if(~isempty(data_reduce))
     score_neg_sum = -inf*ones(1, maxCluster);
     nRep = 1;
     c0 = kmeans_pp_init(data_reduce,maxCluster,nRep,centroid_initial);
+    
     for nc = 2:maxCluster
         [idx, centroid, sumd] = kmeans(data_reduce, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:));   % 'correlation' distance not good.
         sil_score = silhouette(data_reduce,idx);
@@ -627,10 +783,13 @@ if(~isempty(data_reduce))
         wssd(nc) = mean(sumd);
         score_avg(nc) = nanmean(sil_score); % avg score for the condition of nc clusters
         
+        % record the vol pct of each cluster, in order to match clusterNum later    
+        clear cvPctK;
         for ii=1:nc
             sil_this_cluster = sil_score(idx==ii);
             score_cluster_mean{nc}(ii) = mean(sil_this_cluster); % silhouette for each cluster
             score_cluster_neg_sum{nc}(ii) = sum(sil_this_cluster(sil_this_cluster<0));
+            cvPctK(ii) = sum(idx(:)==ii)/sum(idx>0);
         end
         
         score_cluster_mean_min(nc) = min(score_cluster_mean{nc});
@@ -647,6 +806,9 @@ if(~isempty(data_reduce))
         figure; silhouette(data_reduce,idx);
         set(gca,'fontsize',18,'xlim',[-0.5,1]);
         hold on; fplot(@(x) (x-score_avg(nc))*2^64,'--r','linewidth',2);
+        
+        title(['K = ',num2str(nc),', Avg Silhouette = ',num2str(score_avg(nc),'%.3f')],'fontweight','normal');
+        
         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_',num2str(nc),'_withAvg.tif']);
         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
         
@@ -683,7 +845,51 @@ if(~isempty(data_reduce))
         view(25,45);
         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eij_scatter_nc_',num2str(nc),'.tif']);
         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+        
+        % (4) clusterNumMap if using this nCluster
+        [idx, centroid, sumd] = kmeans(data_t, nc, 'Distance','sqeuclidean','MaxIter',1000,'start',c0(1:nc,:,:)); 
+        % reorder idx
+        clear cvPct;
+        for ii=1:nc
+           cvPct(ii) = sum(idx==ii)/sum(idx>0);
+        end
+        [~,c_template] = sort(cvPctK,'descend');
+        [~,c_this] = sort(cvPct,'descend');
+        for ii=1:nc
+           idx(idx==(c_this(ii))) = c_template(ii)+100; 
+        end        
+        idx = idx - 100;
+        
+        cNumMapTemp = zeros(size(ID_local));
+        cNumMapTemp(ind) = idx;
+        cNumMapTemp(ID_local~=ID_current) = 0;
+        cNums = unique(cNumMapTemp(:));
+        cNums(isnan(cNums)) = [];
+        n = length(cNums);
+        % plot
+        [f,a,c] = myplot(cNumMapTemp);
+        colormap(colorMap(1:n,:));
+        caxis(caxis+[-0.5 0.5]);
+        c.Ticks = 1:n;
+        set(c,'limits',[0.5,n-0.5]);
+        title(a,'Cluster Label Map');
+        set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+        axis equal;
+        imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap_with_K_',num2str(nc),'.tif']);
+        print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+        close(f);
+    
     end
+    
+    figure; 
+    plot(2:maxCluster, score_avg(2:end),'-or','linewidth',1.5);
+    xlabel('Number of Clusters (K)');
+    ylabel('Average Silhouette Value');
+    set(gca,'fontsize',18,'XTick',[1:6]);
+    imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_vs_k.tif']);
+    print(fullfile(grainDataPath,imgName),'-dtiff');  
+    
+    
     %         [~,nCluster] = max(score_cluster_mean_min);
     [~,nCluster] = max(score_neg_sum);
     disp([char(9), 'ID= ',num2str(ID_current),', nCluster=',num2str(nCluster)]);
@@ -696,14 +902,22 @@ if(~isempty(data_reduce))
     sNC.score_cluster_neg_sum = score_cluster_neg_sum;
     sNC.score_cluster_mean_min = score_cluster_mean_min;
     sNC.score_neg_sum = score_neg_sum;
+    
 end
 
 %% [caution!] when satisfied, use this template to save image
 % view(25,45);
-imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eij_scatter_nc_3.tif']);
-imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_3.tif']);
-print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
-    
+% imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eij_scatter_nc_3.tif']);
+% imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_silhouette_nc_3.tif']);
+% print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+close all;
+
+
+
+
+
+
 
 %% continue on 2018-03-21, examine pointwise distance to twin strain
 % try using K=2-5 clusters, plot
