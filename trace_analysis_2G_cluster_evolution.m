@@ -232,6 +232,10 @@ for iE = iE_start:iE_stop
                 cvInc = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
                 cvInc = mean(cvInc);
             end
+            % replace 'nan' with '0'
+            if isnan(cvInc)
+                cvInc = 0;
+            end
             
             % [2nd loop] copy
             if length(iE_list) >= 1
