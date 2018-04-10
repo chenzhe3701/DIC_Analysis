@@ -67,6 +67,9 @@ for iE = iE_start:iE_stop
     strainScoreMap = zeros(size(exx));
     shapeScoreMap = zeros(size(exx));
     trueTwinMap = zeros(size(exx));
+    cvIncMap = zeros(size(exx));
+    cvIncAfterMap = zeros(size(exx));
+    tProbMaxMap = zeros(size(exx));
     
     hWaitbar = waitbar(0,'Matching cluster with twin system ...');
     for iS =1:length(stru)
@@ -88,6 +91,9 @@ for iE = iE_start:iE_stop
         strainScoreMapLocal = zeros(size(ID_local));
         shapeScoreMapLocal = zeros(size(ID_local));
         trueTwinMapLocal = zeros(size(ID_local));
+        cvIncMapLocal = zeros(size(ID_local));
+        cvIncAfterMapLocal = zeros(size(ID_local));
+        tProbMaxMapLocal = zeros(size(ID_local));
         
         % ==== change cluster number into twin system number, or 0
         nCluster = length(stru(iS).cLabel);
@@ -121,7 +127,9 @@ for iE = iE_start:iE_stop
             end
            	strainScoreMapLocal(indClusterLocal) = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
             shapeScoreMapLocal(indClusterLocal) = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
-
+            cvIncMapLocal(indClusterLocal) = stru(iS).cvInc(iCluster);
+            cvIncAfterMapLocal(indClusterLocal) = stru(iS).cvIncAfter(iCluster);
+            tProbMaxMapLocal(indClusterLocal) = stru(iS).tProbMax(iCluster);
           
         end
         
@@ -129,6 +137,9 @@ for iE = iE_start:iE_stop
         strainScoreMap(indR_min:indR_max, indC_min:indC_max) = strainScoreMap(indR_min:indR_max, indC_min:indC_max) + strainScoreMapLocal;
         shapeScoreMap(indR_min:indR_max, indC_min:indC_max) = shapeScoreMap(indR_min:indR_max, indC_min:indC_max) + shapeScoreMapLocal;
         trueTwinMap(indR_min:indR_max, indC_min:indC_max) = trueTwinMap(indR_min:indR_max, indC_min:indC_max) + trueTwinMapLocal;
+        cvIncMap(indR_min:indR_max, indC_min:indC_max) = cvIncMap(indR_min:indR_max, indC_min:indC_max) + cvIncMapLocal;
+        cvIncAfterMap(indR_min:indR_max, indC_min:indC_max) = cvIncAfterMap(indR_min:indR_max, indC_min:indC_max) + cvIncAfterMapLocal;
+        tProbMaxMap(indR_min:indR_max, indC_min:indC_max) = tProbMaxMap(indR_min:indR_max, indC_min:indC_max) + tProbMaxMapLocal;
         
         waitbar(iS/length(stru), hWaitbar);
     end
@@ -140,7 +151,7 @@ for iE = iE_start:iE_stop
     end
     
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','-append')
+    save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','cvIncMap','cvIncAfterMap','tProbMaxMap','-append')
 end
 
 
