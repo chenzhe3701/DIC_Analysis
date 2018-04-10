@@ -2,7 +2,7 @@
 % chenzhe, 2018-03-01
 
 
-% clear;
+clear;
 addChenFunction;
 
 % looks like have to include this part to read the sample name.
@@ -185,6 +185,7 @@ for iE = iE_start:iE_stop
         stru(iS).tProbEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
         stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
+        stru(iS).cvIncAfter = zeros(size(stru(iS).cLabel)); 
     end
     struCell{iE} = stru;
 end
@@ -205,7 +206,7 @@ for iE = iE_start:iE_stop
             vol = struCell{iE}(iS).cVol(iCluster);    % record size of the current cluster in the current iE
             vol_cleaned = struCell{iE}(iS).cVolCleaned(iCluster);    % record size of the current cluster overlaid with the post cluster, and cleaned
             tProbEvo = struCell{iE}(iS).tProb(iCluster);
-            
+                      
             % search to earlier strain (or try not to...)
             while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
                 iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
@@ -223,9 +224,9 @@ for iE = iE_start:iE_stop
                 tProbEvo = [tProbEvo, struCell{iE_list(end)}(iS).tProb(iC_list(end))];
             end
             
-            
             % evaluate if volume seems to be increasing. Is this method OK?
-            vol_valid = vol_cleaned;   % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
+            vol_valid = vol_cleaned; % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
+                      
             if 1==length(vol_valid)
                 cvInc = 0;
             else
@@ -236,6 +237,21 @@ for iE = iE_start:iE_stop
             if isnan(cvInc)
                 cvInc = 0;
             end
+            
+            % Method-(2): volume evolution from this point on, added on 2018-04-10.
+            vol_valid = vol_cleaned(find(iE_list==iE):end);
+            if 1==length(vol_valid)
+                cvIncAfter = 0;
+            else
+                cvIncAfter = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
+                cvIncAfter = mean(cvIncAfter);
+            end
+            % replace 'nan' with '0'
+            if isnan(cvIncAfter)
+                cvIncAfter = 0;
+            end
+
+            
             
             % [2nd loop] copy
             if length(iE_list) >= 1
@@ -248,6 +264,10 @@ for iE = iE_start:iE_stop
                     struCell{iE_to_assign}(iS).tProbEvo(iC_to_assign,iE_list) = tProbEvo;
                     
                     struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc;
+                    
+                    if iE_to_assign>=iE
+                        struCell{iE_to_assign}(iS).cvIncAfter(iC_to_assign) = cvIncAfter;
+                    end
                     
                     % The search is form iE_start to iE_to_assign
                     struCell{iE_to_assign}(iS).tProbMax(iC_to_assign) = max(tProbEvo(1:find(iE_list==iE_to_assign)));
