@@ -61,7 +61,7 @@ for iE = iE_start:iE_stop
     struCell{iE} = stru;
 end
 
-% (1) match clusters and track volume evolution, fields related: cVol, cVolCleaned, preCluster, postCluster
+%% (1) match clusters and track volume evolution, fields related: cVol, cVolCleaned, preCluster, postCluster
 for iE = iE_start:iE_stop-1
     struA = struCell{iE};   % pre
     struP = struCell{iE+1}; % post
@@ -226,28 +226,31 @@ for iE = iE_start:iE_stop
             
             % evaluate if volume seems to be increasing. Is this method OK?
             vol_valid = vol_cleaned; % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
-                      
+            vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
+            
             if 1==length(vol_valid)
                 cvInc = 0;
             else
-                cvInc = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
+                cvInc = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
                 cvInc = mean(cvInc);
             end
-            % replace 'nan' with '0'
-            if isnan(cvInc)
+            % replace 'nan' 'inf' with '0'
+            if isnan(cvInc)||isinf(cvInc)
                 cvInc = 0;
             end
             
             % Method-(2): volume evolution from this point on, added on 2018-04-10.
             vol_valid = vol_cleaned(find(iE_list==iE):end);
+            vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
+            
             if 1==length(vol_valid)
                 cvIncAfter = 0;
             else
-                cvIncAfter = diff(vol_valid)./conv(vol_valid, [0.5, 0.5], 'valid');
+                cvIncAfter = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
                 cvIncAfter = mean(cvIncAfter);
             end
-            % replace 'nan' with '0'
-            if isnan(cvIncAfter)
+            % replace 'nan' 'inf' with '0'
+            if isnan(cvIncAfter)||isinf(cvIncAfter)
                 cvIncAfter = 0;
             end
 
@@ -265,7 +268,7 @@ for iE = iE_start:iE_stop
                     
                     struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc;
                     
-                    if iE_to_assign>=iE
+                    if (iE_to_assign>=iE)&&(iE~=iE_stop)
                         struCell{iE_to_assign}(iS).cvIncAfter(iC_to_assign) = cvIncAfter;
                     end
                     
@@ -291,142 +294,142 @@ end
 
 
 %% [for debug directly]
-for iE = iE_start:iE_stop
-    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
-    cNumMaps{iE} = clusterNumMap;
-    cNumMaps_cleaned{iE} = clusterNumMapCleaned;
-    
-    struCell{iE} = stru;
-end
-%% [for debug] plot map of a cluster of intereted in all strain levels
-
-egc = 211442;
-egc = 210121;
-iC_target = mod(egc,10);
-egc = (egc-iC_target)/10;
-ID_target = mod(egc,10000);
-iE_target = (egc-ID_target)/10000;
-
-
-debug = 1;
-if debug
-    close all;
-
-    iS = find(arrayfun(@(x) x.gID == ID_target,struCell{iE_start}));
-    
-    % a good method to, from the starting iE and iC, fill all useful iEs and iCs
-    iE_list = iE_target;
-    iC_list = iC_target;
-    while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
-        iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
-        iE_list = [iE_list(1)-1, iE_list];
-    end
-    
-    while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
-        iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
-        iE_list = [iE_list, iE_list(end)+1];
-    end
-    
-    
-    ID_current=ID_target;
-    
-    ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
-    indC_min = find(sum(ind_local, 1), 1, 'first');
-    indC_max = find(sum(ind_local, 1), 1, 'last');
-    indR_min = find(sum(ind_local, 2), 1, 'first');
-    indR_max = find(sum(ind_local, 2), 1, 'last');
-    
-    ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-    
-    
-    for ii = 1:length(iE_list)
-        
-        iE = iE_list(ii);
-        iC = iC_list(ii);
-        
-        cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
-        cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
-        
-        cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
-        cMapA_cleaned(ID_local~=ID_current) = 0;
-        
-        cMapA(cMapA==iC) = cMapA(cMapA==iC);
-        myplot(cMapA);
-        myplot(cMapA_cleaned);
-        
-    end
-end
-
-%%
-close all
-for iE = 2
-    struA = struCell{iE};   % pre
-    struP = struCell{iE+1}; % post
-    
-    
-    iS = find(arrayfun(@(x) x.gID == ID_target,stru));  % for debugging
-    
-    
-    ID_current = gIDwithTrace(iS);
-    
-    ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
-    indC_min = find(sum(ind_local, 1), 1, 'first');
-    indC_max = find(sum(ind_local, 1), 1, 'last');
-    indR_min = find(sum(ind_local, 2), 1, 'first');
-    indR_max = find(sum(ind_local, 2), 1, 'last');
-    
-    ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-    
-    cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
-    cMapP = cNumMaps{iE+1}(indR_min:indR_max, indC_min:indC_max);
-    cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
-    cMapP_cleaned = cNumMaps_cleaned{iE+1}(indR_min:indR_max, indC_min:indC_max);
-    
-    cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
-    cMapP(ID_local~=ID_current) = 0;
-    cMapA_cleaned(ID_local~=ID_current) = 0;
-    cMapP_cleaned(ID_local~=ID_current) = 0;
-    
-    % match clusters, and find the one with area grown.
-    cOverlap_noClean = [];
-    cOverlap = [];
-    for ii=1:length(struA(iS).cLabel)
-        cNumA = struA(iS).cLabel(ii);
-        for jj=1:length(struP(iS).cLabel)
-            cNumP = struP(iS).cLabel(jj);
-            %%%%%%%%%%%%%%%
-            cOverlap(ii,jj) =sum(sum((cMapA_cleaned==cNumA)&(cMapP_cleaned==cNumP)));   % use cleaned map to calculate how good they overlap !!! But NOT the actual cluster size ------------------
-            cOverlap_noClean(ii,jj) =sum(sum((cMapA==cNumA)&(cMapP==cNumP)));
-        end
-    end
-    volA_cleaned = sum(cOverlap,2);
-    
-    % this is more precise:
-    volA_noClean = struA(iS).cVol;
-    volA_cleaned = struA(iS).cVolCleaned;
-    
-    % vrFwd = volP./volA;
-    overlapPctA = cOverlap./volA_cleaned;
-    
-    % do an additional clean up of cOverlap, ignore those which only have <15% overlap with post-cluster
-    cOverlap(overlapPctA<0.15) = 0;
-    
-    [cFrom,cTo] = hungarian_assign(max(cOverlap(:))-cOverlap);
-    link = false(size(cOverlap));
-    for ii = 1:length(cFrom)
-        if (cFrom(ii)>0)&&(cTo(ii)>0)
-            link(cFrom(ii),cTo(ii)) = true;
-        end
-    end
-    %%%%%%%%%%%%%%%%%%%%%%
-    
-    
-    myplot(cMapA_cleaned);
-    myplot(cMapP_cleaned);
-
-    struCell{iE} = struA;   % pre
-    struCell{iE+1} = struP; % post
-    
-end
-run('D:\p\m\DIC_Analysis\tempfun\script_help_summarize_2018_03_04.m')
+% for iE = iE_start:iE_stop
+%     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+%     load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
+%     cNumMaps{iE} = clusterNumMap;
+%     cNumMaps_cleaned{iE} = clusterNumMapCleaned;
+%     
+%     struCell{iE} = stru;
+% end
+% %% [for debug] plot map of a cluster of intereted in all strain levels
+% 
+% egc = 211442;
+% egc = 210121;
+% iC_target = mod(egc,10);
+% egc = (egc-iC_target)/10;
+% ID_target = mod(egc,10000);
+% iE_target = (egc-ID_target)/10000;
+% 
+% 
+% debug = 1;
+% if debug
+%     close all;
+% 
+%     iS = find(arrayfun(@(x) x.gID == ID_target,struCell{iE_start}));
+%     
+%     % a good method to, from the starting iE and iC, fill all useful iEs and iCs
+%     iE_list = iE_target;
+%     iC_list = iC_target;
+%     while 0 ~= struCell{iE_list(1)}(iS).preCluster(iC_list(1))
+%         iC_list = [struCell{iE_list(1)}(iS).preCluster(iC_list(1)), iC_list];
+%         iE_list = [iE_list(1)-1, iE_list];
+%     end
+%     
+%     while 0 ~= struCell{iE_list(end)}(iS).postCluster(iC_list(end))
+%         iC_list = [iC_list,struCell{iE_list(end)}(iS).postCluster(iC_list(end))];
+%         iE_list = [iE_list, iE_list(end)+1];
+%     end
+%     
+%     
+%     ID_current=ID_target;
+%     
+%     ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+%     indC_min = find(sum(ind_local, 1), 1, 'first');
+%     indC_max = find(sum(ind_local, 1), 1, 'last');
+%     indR_min = find(sum(ind_local, 2), 1, 'first');
+%     indR_max = find(sum(ind_local, 2), 1, 'last');
+%     
+%     ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+%     
+%     
+%     for ii = 1:length(iE_list)
+%         
+%         iE = iE_list(ii);
+%         iC = iC_list(ii);
+%         
+%         cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
+%         cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+%         
+%         cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
+%         cMapA_cleaned(ID_local~=ID_current) = 0;
+%         
+%         cMapA(cMapA==iC) = cMapA(cMapA==iC);
+%         myplot(cMapA);
+%         myplot(cMapA_cleaned);
+%         
+%     end
+% end
+% 
+% %%
+% close all
+% for iE = 2
+%     struA = struCell{iE};   % pre
+%     struP = struCell{iE+1}; % post
+%     
+%     
+%     iS = find(arrayfun(@(x) x.gID == ID_target,stru));  % for debugging
+%     
+%     
+%     ID_current = gIDwithTrace(iS);
+%     
+%     ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+%     indC_min = find(sum(ind_local, 1), 1, 'first');
+%     indC_max = find(sum(ind_local, 1), 1, 'last');
+%     indR_min = find(sum(ind_local, 2), 1, 'first');
+%     indR_max = find(sum(ind_local, 2), 1, 'last');
+%     
+%     ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+%     
+%     cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
+%     cMapP = cNumMaps{iE+1}(indR_min:indR_max, indC_min:indC_max);
+%     cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+%     cMapP_cleaned = cNumMaps_cleaned{iE+1}(indR_min:indR_max, indC_min:indC_max);
+%     
+%     cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
+%     cMapP(ID_local~=ID_current) = 0;
+%     cMapA_cleaned(ID_local~=ID_current) = 0;
+%     cMapP_cleaned(ID_local~=ID_current) = 0;
+%     
+%     % match clusters, and find the one with area grown.
+%     cOverlap_noClean = [];
+%     cOverlap = [];
+%     for ii=1:length(struA(iS).cLabel)
+%         cNumA = struA(iS).cLabel(ii);
+%         for jj=1:length(struP(iS).cLabel)
+%             cNumP = struP(iS).cLabel(jj);
+%             %%%%%%%%%%%%%%%
+%             cOverlap(ii,jj) =sum(sum((cMapA_cleaned==cNumA)&(cMapP_cleaned==cNumP)));   % use cleaned map to calculate how good they overlap !!! But NOT the actual cluster size ------------------
+%             cOverlap_noClean(ii,jj) =sum(sum((cMapA==cNumA)&(cMapP==cNumP)));
+%         end
+%     end
+%     volA_cleaned = sum(cOverlap,2);
+%     
+%     % this is more precise:
+%     volA_noClean = struA(iS).cVol;
+%     volA_cleaned = struA(iS).cVolCleaned;
+%     
+%     % vrFwd = volP./volA;
+%     overlapPctA = cOverlap./volA_cleaned;
+%     
+%     % do an additional clean up of cOverlap, ignore those which only have <15% overlap with post-cluster
+%     cOverlap(overlapPctA<0.15) = 0;
+%     
+%     [cFrom,cTo] = hungarian_assign(max(cOverlap(:))-cOverlap);
+%     link = false(size(cOverlap));
+%     for ii = 1:length(cFrom)
+%         if (cFrom(ii)>0)&&(cTo(ii)>0)
+%             link(cFrom(ii),cTo(ii)) = true;
+%         end
+%     end
+%     %%%%%%%%%%%%%%%%%%%%%%
+%     
+%     
+%     myplot(cMapA_cleaned);
+%     myplot(cMapP_cleaned);
+% 
+%     struCell{iE} = struA;   % pre
+%     struCell{iE+1} = struP; % post
+%     
+% end
+% run('D:\p\m\DIC_Analysis\tempfun\script_help_summarize_2018_03_04.m')
