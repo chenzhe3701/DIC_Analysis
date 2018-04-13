@@ -263,11 +263,13 @@ xlabel('Global Uniaxial Strain, mm/mm');
 ylabel('Twin Area Percent, %');
 
 
+%% (3) Confusion analysis using ACC/F1-score, accuracy, plot ACC curve vs criterion threshold
+useACC = 1;
+useF1 = 1-useACC;
 
-%% (3) confusion analysis, plot curve showing F-score vs criterion threshold
 % (3.1) using strainScore alone, compare all strain levels
 close all;
-clear scoreSorted F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
+clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best TN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
 
@@ -305,46 +307,79 @@ for iE=iE_start:iE_stop
     PPV = TP./(TP+FP);  % precision, positive predictive value. (How many identified are the real positives).
     
     % accuracy
-    ACC = (TP+TN)./(TP+FP+FN+TN);
+    ACC{iE} = (TP+TN)./(TP+FP+FN+TN);
     % F1 score. F1 is the harmonic average of the precision=TP/(TP+FP), and
     % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
     F1{iE} = 2*TP./(2*TP+FP+FN);
     
-    [F1_max(iE),ind] = max(F1{iE});
-    bestScore(iE) = scoreSorted{iE}(ind);
-    TP_best(iE) = TP(ind);
-    FP_best(iE) = FP(ind);
-    FN_best(iE) = FN(ind);
-    PPV_best(iE) = PPV(ind);
-    TPR_best(iE) = TPR(ind);
-    
+    if useACC
+        [ACC_max(iE),ind] = max(ACC{iE});
+        bestScore(iE) = scoreSorted{iE}(ind);
+        TP_best(iE) = TP(ind);
+        FP_best(iE) = FP(ind);
+        FN_best(iE) = FN(ind);
+        TN_best(iE) = TN(ind);
+        PPV_best(iE) = PPV(ind);
+        TPR_best(iE) = TPR(ind);
+    elseif useF1
+        [F1_max(iE),ind] = max(F1{iE});
+        bestScore(iE) = scoreSorted{iE}(ind);
+        TP_best(iE) = TP(ind);
+        FP_best(iE) = FP(ind);
+        FN_best(iE) = FN(ind);
+        TN_best(iE) = TN(ind);
+        PPV_best(iE) = PPV(ind);
+        TPR_best(iE) = TPR(ind);
+    end
     
     % plot(scoreSorted, F1,'linewidth',1.5,'color',colors(iE-1,:));
     
 end
 
-plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
-plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
-plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
-plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
-
-xlabel('StrainScore Threshold')
-ylabel('F1-score');
-set(gca,'fontsize',18,'xlim',[-1,6]);
-legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
-
-t1 = table(bestScore(iE_start:iE_stop)',...
-    F1_max(iE_start:iE_stop)',...
-    TP_best(iE_start:iE_stop)',...
-    FP_best(iE_start:iE_stop)',...
-    FN_best(iE_start:iE_stop)',...
-    PPV_best(iE_start:iE_stop)',...
-    TPR_best(iE_start:iE_stop)',...
-    'VariableNames',{'StrainScore_th','F1_score','TP','FP','FN','Precision','Sensitivity'})
+if useACC
+    plot(scoreSorted{2}, ACC{2},'linewidth',1.5,'color',colors(2,:));
+    plot(scoreSorted{3}, ACC{3},'linewidth',1.5,'color',colors(3,:));
+    plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
+    plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
+    
+    ylabel('Accuracy');
+    xlabel('StrainScore Threshold');
+    set(gca,'fontsize',18,'xlim',[-1,6]);
+    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+    
+    t1 = table(bestScore(iE_start:iE_stop)',...
+        ACC_max(iE_start:iE_stop)',...
+        TP_best(iE_start:iE_stop)',...
+        FP_best(iE_start:iE_stop)',...
+        FN_best(iE_start:iE_stop)',...
+        TN_best(iE_start:iE_stop)',...
+        PPV_best(iE_start:iE_stop)',...
+        TPR_best(iE_start:iE_stop)',...
+        'VariableNames',{'StrainScore_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
+elseif useF1
+    plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
+    plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
+    plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
+    plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
+    
+    ylabel('F1-score');
+    xlabel('StrainScore Threshold');
+    set(gca,'fontsize',18,'xlim',[-1,6]);
+    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+    
+    t1 = table(bestScore(iE_start:iE_stop)',...
+        F1_max(iE_start:iE_stop)',...
+        TP_best(iE_start:iE_stop)',...
+        FP_best(iE_start:iE_stop)',...
+        FN_best(iE_start:iE_stop)',...
+        TN_best(iE_start:iE_stop)',...
+        PPV_best(iE_start:iE_stop)',...
+        TPR_best(iE_start:iE_stop)',...
+        'VariableNames',{'StrainScore_th','F1_score','TP','FP','FN','TN','Precision','Sensitivity'})
+end
 
 %% (3.2) using shapeScore alone, compare all strain levels
-close all;
-clear scoreSorted F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
+clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best TN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
 
@@ -362,12 +397,13 @@ for iE=iE_start:iE_stop
         end
     end
     
-    % sort rows, based on col-3, shapeScore
+    
+    % sort rows, based on col-2, strainScore
     info = sortrows(info,3,'descend');
     scoreSorted{iE} = info(:,3);
     
     % true positive, ..., etc
-    TP = cumsum(info(:,1)>0);   % col-3 as threshold. Cumsum of entries to this point are the identified positives. Among which values in col-1 and >0 are the true positives.
+    TP = cumsum(info(:,1)>0);   % col-2 as threshold. Cumsum of entries to this point are the identified positives. Among which values in col-1 and >0 are the true positives.
     P = TP(end);                % The end of the cumsum is the total positive cases
     FN = P-TP;                  % Cumsum of entries below this point are the identified negatives. Among which the remaining (P-TP) are identified negative but actually positive, i.e., false negative.
     
@@ -381,47 +417,80 @@ for iE=iE_start:iE_stop
     PPV = TP./(TP+FP);  % precision, positive predictive value. (How many identified are the real positives).
     
     % accuracy
-    ACC = (TP+TN)./(TP+FP+FN+TN);
+    ACC{iE} = (TP+TN)./(TP+FP+FN+TN);
     % F1 score. F1 is the harmonic average of the precision=TP/(TP+FP), and
     % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
     F1{iE} = 2*TP./(2*TP+FP+FN);
     
-    [F1_max(iE),ind] = max(F1{iE});
-    bestScore(iE) = scoreSorted{iE}(ind);
-    TP_best(iE) = TP(ind);
-    FP_best(iE) = FP(ind);
-    FN_best(iE) = FN(ind);
-    PPV_best(iE) = PPV(ind);
-    TPR_best(iE) = TPR(ind);
-    
+    if useACC
+        [ACC_max(iE),ind] = max(ACC{iE});
+        bestScore(iE) = scoreSorted{iE}(ind);
+        TP_best(iE) = TP(ind);
+        FP_best(iE) = FP(ind);
+        FN_best(iE) = FN(ind);
+        TN_best(iE) = TN(ind);
+        PPV_best(iE) = PPV(ind);
+        TPR_best(iE) = TPR(ind);
+    elseif useF1
+        [F1_max(iE),ind] = max(F1{iE});
+        bestScore(iE) = scoreSorted{iE}(ind);
+        TP_best(iE) = TP(ind);
+        FP_best(iE) = FP(ind);
+        FN_best(iE) = FN(ind);
+        TN_best(iE) = TN(ind);
+        PPV_best(iE) = PPV(ind);
+        TPR_best(iE) = TPR(ind);
+    end
     
     % plot(scoreSorted, F1,'linewidth',1.5,'color',colors(iE-1,:));
     
 end
 
-plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
-plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
-plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
-plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
+if useACC
+    plot(scoreSorted{2}, ACC{2},'linewidth',1.5,'color',colors(2,:));
+    plot(scoreSorted{3}, ACC{3},'linewidth',1.5,'color',colors(3,:));
+    plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
+    plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
+    
+    ylabel('Accuracy');
+    xlabel('ShapeScore Threshold');
+    set(gca,'fontsize',18,'xlim',[-1,6]);
+    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+    
+    t1 = table(bestScore(iE_start:iE_stop)',...
+        ACC_max(iE_start:iE_stop)',...
+        TP_best(iE_start:iE_stop)',...
+        FP_best(iE_start:iE_stop)',...
+        FN_best(iE_start:iE_stop)',...
+        TN_best(iE_start:iE_stop)',...
+        PPV_best(iE_start:iE_stop)',...
+        TPR_best(iE_start:iE_stop)',...
+        'VariableNames',{'ShapeScore_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
+elseif useF1
+    plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
+    plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
+    plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
+    plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
+    
+    ylabel('F1-score');
+    xlabel('ShapeScore Threshold');
+    set(gca,'fontsize',18,'xlim',[-1,6]);
+    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+    
+    t1 = table(bestScore(iE_start:iE_stop)',...
+        F1_max(iE_start:iE_stop)',...
+        TP_best(iE_start:iE_stop)',...
+        FP_best(iE_start:iE_stop)',...
+        FN_best(iE_start:iE_stop)',...
+        TN_best(iE_start:iE_stop)',...
+        PPV_best(iE_start:iE_stop)',...
+        TPR_best(iE_start:iE_stop)',...
+        'VariableNames',{'ShapeScore_th','F1_score','TP','FP','FN','TN','Precision','Sensitivity'})
+end
 
-xlabel('ShapeScore Threshold')
-ylabel('F1-score');
-set(gca,'fontsize',18,'xlim',[-0.5 3.5]);
-legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
 
-t1 = table(bestScore(iE_start:iE_stop)',...
-    F1_max(iE_start:iE_stop)',...
-    TP_best(iE_start:iE_stop)',...
-    FP_best(iE_start:iE_stop)',...
-    FN_best(iE_start:iE_stop)',...
-    PPV_best(iE_start:iE_stop)',...
-    TPR_best(iE_start:iE_stop)',...
-    'VariableNames',{'ShapeScore_th','F1_score','TP','FP','FN','Precision','Sensitivity'})
-
-
-%% (3.3)  Just look at iE=4, how TP, FP, FN changes with threshold of StrainScore 
-close all;
-clear scoreSorted F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
+%% (3.3)  Just look at iE=4, how TP, FP, FN, TN changes with threshold of StrainScore 
+clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
 
@@ -465,28 +534,38 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
 F1 = 2*TP./(2*TP+FP+FN);
 
-[F1_max,ind] = max(F1);
+plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TN,'--k','linewidth',1.5);
+legend({'TP','FP','FN','TN'},'location','best');
 
-plot(scoreSorted(1:n:end), TP(1:n:end),'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted(1:n:end), FP(1:n:end),'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted(1:n:end), FN(1:n:end),'linewidth',1.5,'color',[0 0 1]);
-legend({'TP','FP','FN'},'location','best');
-
-xlabel('StrainScore Threshold')
+xlabel('StrainScore Threshold');
 ylabel('Count');
 set(gca,'fontsize',18,'xlim',[-0.5 6])%,'YScale','log','YTick',[0 10 100 1000 10000]);
 
 rectangle('Position',[-0.5 0 0.5 600],'edgecolor','k','linewidth',2)
 %% zoom in
 figure; hold on;
-plot(scoreSorted(1:n:end), TP(1:n:end),'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted(1:n:end), FP(1:n:end),'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted(1:n:end), FN(1:n:end),'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'xlim',[-0.5 0],'ylim',[0 600],'fontsize',18)
 
+%% how threshold of StrainScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
+figure; hold on;
+plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
+plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
+
+xlabel('StrainScore Threshold');
+ylabel('Rate');
+set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
+
+legend({'Accuracy','PPV (precision)','TPR (sensitivity)'},'location','best');
 
 %% (3.4)  Just look at iE=4, how TP, FP, FN changes with threshold of ShapeScore   
-
 clear scoreSorted F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
@@ -530,15 +609,14 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
 F1 = 2*TP./(2*TP+FP+FN);
 
-[F1_max,ind] = max(F1);
+plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TN,'--k','linewidth',1.5);
+legend({'TP','FP','FN','TN'},'location','best');
 
-plot(scoreSorted(1:n:end), TP(1:n:end),'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted(1:n:end), FP(1:n:end),'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted(1:n:end), FN(1:n:end),'linewidth',1.5,'color',[0 0 1]);
-legend({'TP','FP','FN'},'location','best');
 
-
-xlabel('ShapeScore Threshold')
+xlabel('ShapeScore Threshold');
 ylabel('Count');
 set(gca,'fontsize',18)%,'xlim',[-0.5 3.5],'YScale','log','YTick',[0 10 100 1000 10000]);
 
@@ -546,13 +624,23 @@ rectangle('Position',[-0.5 0 1 600],'edgecolor','k','linewidth',2)
 
 %% zoom in
 figure; hold on;
-plot(scoreSorted(1:n:end), TP(1:n:end),'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted(1:n:end), FP(1:n:end),'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted(1:n:end), FN(1:n:end),'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'fontsize',18,'xlim',[-0.5, 1],'ylim',[0 600])
 
+%% how threshold of ShapeScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
+figure; hold on;
+plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
+plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
+plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
-
-
+xlabel('StrainScore Threshold');
+ylabel('Rate');
+set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
+legend({'Accuracy','PPV (precision)','TPR (sensitivity)'},'location','best');
+%%
+print('xxx.tif','-dtiff');
 
 
