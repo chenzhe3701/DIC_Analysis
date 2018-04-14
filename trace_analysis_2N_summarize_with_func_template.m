@@ -41,9 +41,10 @@ mkdir(summaryImgPath,'TwinEnabled');
 mkdir(summaryImgPath,'TwinDisabled');
 mkdir(summaryImgPath,'Notwin');
 
-twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose the parent path for all the source twin images.'),'\'];
 mkdir(summaryImgPath,'Classified_twin');
 mkdir(summaryImgPath,'Classified_notwin');
+
+twinImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose the parent path for all the source twin images.'),'\'];
 
 img_size = 227; % 227 for alexnet, 224 for vgg, googlenet
 
@@ -79,7 +80,7 @@ makeNewMap = 0;
 makeFigure = 0;
 summarizeTruth = 1;
 
-for iE = 3%iE_start:iE_stop
+for iE = 4 %iE_start:iE_stop
     
     % load data for this iE
     warning('off','all');
@@ -246,7 +247,7 @@ for iE = 3%iE_start:iE_stop
                 
                 % Apply certain criterion to find the best matching twin system
                 pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain, 'minkowski', 2);       % pair distance between cluster centroids and twinSystem strain components. Non-candidate twinSys lead to nan.
-                pdistCS(stru(iS).tSF < 0) = nan;             % [criterion-2] SF must > 0.35
+                pdistCS(stru(iS).tSF < -1) = nan;             % [criterion-2] SF must > 0.35
                 [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 m_dist = pdistCS(ind_t);
                 
@@ -324,8 +325,8 @@ for iE = 3%iE_start:iE_stop
         
     end
     if summarizeTruth
-        vAll = [vAll;varTwin;varTwinEnabled;varTwinDisabled;varNotwin];
-        vAll(sum(isnan(vAll),2)>0,:)=[];
+        varAll = [varAll;varTwin;varTwinEnabled;varTwinDisabled;varNotwin];
+        varAll(sum(isnan(varAll),2)>0,:)=[];
     end
     
     
@@ -356,27 +357,28 @@ xlabel('RSS');ylabel('SF');zlabel('vol and tProb');
 figure; hold on;
 n=1;
 opt = 1;
+
 if 1==opt
-plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
-plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,5).*varTwin(:,6)*n,               'r.','markersize',12);  % ro
-plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,5).*varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
-try
-    plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.','markersize',12); % co
-end
-elseif 1==opt
-plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5)*n,           'b.');  % bx
-plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,5)*n,               'r.','markersize',12);  % ro
-plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,5)*n, 'm.','markersize',16);  % mo
-try
-    plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5)*n,'k.','markersize',12); % co
-end
-elseif 1==opt
-plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,6)*n,           'b.');  % bx
-plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,6)*n,               'r.','markersize',12);  % ro
-plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
-try
-    plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,6)*n,'k.','markersize',12); % co
-end
+    plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
+    plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,5).*varTwin(:,6)*n,               'r.','markersize',12);  % ro
+    plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,5).*varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
+    try
+        plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.','markersize',12); % co
+    end    
+elseif 2==opt
+    plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5)*n,           'b.');  % bx
+    plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,5)*n,               'r.','markersize',12);  % ro
+    plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,5)*n, 'm.','markersize',16);  % mo
+    try
+        plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5)*n,'k.','markersize',12); % co
+    end
+elseif 3==opt
+    plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,6)*n,           'b.');  % bx
+    plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,6)*n,               'r.','markersize',12);  % ro
+    plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
+    try
+        plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,6)*n,'k.','markersize',12); % co
+    end
 end
 
 xlabel('RSS');ylabel('SF');zlabel('vol and or tProb');
@@ -390,7 +392,7 @@ xlabel('RSS');ylabel('SF');zlabel('vol and or tProb');
 %%
 n = 1;
 figure;
-plot3(vAll(:,3), 0.5-vAll(:,4)-vAll(:,5).*vAll(:,6)*n, vAll(:,5).*vAll(:,6), 'b.');  % ro
+plot3(varAll(:,3), 0.5-varAll(:,4)-varAll(:,5).*varAll(:,6)*n, varAll(:,5).*varAll(:,6), 'b.');  % ro
 %%
 figure; hold on;
 
@@ -404,7 +406,7 @@ try
 end
 xlabel('RSS');ylabel('SF');
 %%
-fplot(@(x) 3*x+0.35,[0 0.05],'k');
+fplot(@(x) 7*x+0.15,[0 0.05],'k');
 
 %%
 figure;
