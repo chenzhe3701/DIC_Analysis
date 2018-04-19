@@ -5,7 +5,8 @@
 % which plot clusters with different color to indicate the TP, FP, TN cases
 % in classification.
 
-
+clear;clc;
+addChenFunction;
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
@@ -32,16 +33,21 @@ load(strainFile,'exx','u','v');
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
 load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF');
 
-% (0.0) clusterNumMap
+%% (0.0) clusterNumMap
 [f,a,c] = myplotm(clusterNumMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
 colors = lines(7);
 colorMap = [0 0 0; colors([3,1,5,2,4],:)];
 colormap(colorMap);
 caxis([-0.5 5.5]);
 set(c,'Limits',[0.5 5.5],'Ticks',[1:5]);
-set(a,'fontsize',24,'XTick',[],'yTick',[]);
+% set(a,'fontsize',24,'XTick',[],'yTick',[]);   % old scripts
 title('Cluster Label','fontweight','normal');
 
+%% [***] maximize plot and run this:
+script_make_double_axis;
+title(c,'Cluster ID','fontsize',24);
+print('clusterID iE=4.tif','-dtiff');
+%%
 % plot strain/u map, and enlarged part of a grain 1144
 % get data for enlarged grain
 ind_local = ismember(ID, 1144); %ismember(ID, [ID_current,ID_neighbor]);
@@ -73,41 +79,58 @@ xlabel('X, pixels');
 ylabel('Y, pixels');
 title('u, pixels','fontweight','normal');
 
-% (0.3) plot exx map whole, with grain boundary overlay
+%% (0.3) plot exx map whole, with grain boundary overlay
 [f,a,c]=myplotm(exx,'x',X,'y',Y,'tf',boundaryTFB,'r',1);
-caxis_m([-0.12, 0.02]);
+c = caxis_m([-0.12, 0.02]);
 set(gca,'fontsize',24)
 xlabel('X, pixels');
 ylabel('Y, pixels');
 title('\epsilon_x_x, mm/mm','fontweight','normal');
-
 rectangle('Position',[xLocal(1), yLocal(1), xLocal(end)-xLocal(1), yLocal(end)-yLocal(1)],'linewidth',4)
+%% [***] maximize plot and run this:
+script_make_double_axis;
+title(c,'\epsilon_{xx}','fontsize',24);
+print('exx iE=4.tif','-dtiff');
 
-% (0.4) plot u map whole, with grain boundary overlay
+%% (0.4) plot u map whole, with grain boundary overlay
 [f,a,c]=myplotm(u,'x',X,'y',Y,'tf',boundaryTFB,'r',1);
-caxis_m([-1800,200]);
+c = caxis_m([-1800,200]);
 set(gca,'fontsize',24)
 xlabel('X, pixels');
 ylabel('Y, pixels');
 title('u, pixels','fontweight','normal');
-
 rectangle('Position',[xLocal(1), yLocal(1), xLocal(end)-xLocal(1), yLocal(end)-yLocal(1)],'linewidth',4)
+%% [***] maximize plot and run this:
+script_make_double_axis;
+title(c,'u, pixels','fontsize',24);
+print('u iE=4.tif','-dtiff');
 
-%%
-print('rename.tif','-dtiff');
 
-%% (0.5) plot StrainScoreMap and ShapeScoreMap, adjust color so that high vs low scores are distinct
+%% (0.5) plot StrainScoreMap, adjust color so that high vs low scores are distinct
 [f,a,c] = myplot(X,Y,strainScoreMap,boundaryTFB,3);
-set(gca,'fontsize',24,'XTick',[],'YTick',[])
+% set(gca,'fontsize',24,'XTick',[],'YTick',[]);
 title('StrainScore','fontweight','normal');
 caxis([-0.4 1.2]);
 % colormap(parula(8));
+%% maximize plot and run this:
+script_make_double_axis;
+title(c,'\phi','fontsize',24);
+print('strain score iE=4.tif','-dtiff');
 
+%% (0.6) plot ShapeScoreMap, adjust color so that high vs low scores are distinct
 [f,a,c] = myplot(X,Y,shapeScoreMap,boundaryTFB,3);
-set(gca,'fontsize',24,'XTick',[],'YTick',[])
+% set(gca,'fontsize',24,'XTick',[],'YTick',[])
 title('ShapeScore','fontweight','normal');
 caxis([-0.4 1.2]);
 % colormap(parula(8));
+%% maximize plot and run this:
+script_make_double_axis;
+title(c,'\eta','fontsize',24);
+print('shape score iE=4.tif','-dtiff');
+
+
+
+
 
 %% (1) Generate a confusion map for selected iE. Label TP, FP, TN with different color.
 % This represents the 'forward' method: set-up a threshold by visual
