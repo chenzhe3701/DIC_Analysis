@@ -8,6 +8,7 @@
 % (3) Show how the cluster size tracking problem was processed (plot clusterNumMap, cluster size evolution curve, text summary)  
 % (4) Show the determination of nCluster(K) value (compare results if use different K values)       
 
+clear; clc;
 addChenFunction;
 grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder that contains the grain data'),'\'];
 
@@ -185,9 +186,10 @@ plot(edges_xx(1:end-1),exx_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_xx(1:end-1),exx_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_x_x value, mm/mm');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+xlabel('\fontsize{24}\epsilon\fontsize{18}_{xx}');
 ylabel('Counts');
-set(gca,'fontsize',16);
+set(gca,'fontsize',18);
 print(fullfile(grainDataPath,'exx_distrib_curve.tif'),'-dtiff');
 
 
@@ -197,9 +199,10 @@ plot(edges_xy(1:end-1),exy_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_xy(1:end-1),exy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_x_y value, mm/mm');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+xlabel('\fontsize{24}\epsilon\fontsize{18}_{xy}');
 ylabel('Counts');
-set(gca,'fontsize',16)
+set(gca,'fontsize',18)
 print(fullfile(grainDataPath,'exy_distrib_curve.tif'),'-dtiff');
 
 figure; hold on;
@@ -208,9 +211,10 @@ plot(edges_yy(1:end-1),eyy_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_yy(1:end-1),eyy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-xlabel('\epsilon_y_y value, mm/mm');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+xlabel('\fontsize{24}\epsilon\fontsize{18}_{yy}');
 ylabel('Counts');
-set(gca,'fontsize',16)
+set(gca,'fontsize',18)
 print(fullfile(grainDataPath,'eyy_distrib_curve.tif'),'-dtiff');
 
 
@@ -281,10 +285,10 @@ for iCluster = 1:nCluster
     colorMap(1,:) = linspace(0,1,64);
     colorMap = colorMap';
     image(ax,imgR);
-    title(ax,'R channel');
+    title(ax,'R channel','fontweight','normal');
     colormap(colorMap);
     c=colorbar;
-    title(c,'\epsilon_x_x')
+    title(c,'\epsilon_x_x');
     c.Ticks = [0,0.33,0.66,1];
     set(c,'TickLabels',{'-0.14','-0.07','0','0.07'});
     set(ax,'fontsize',18,'xTickLabel',{''},'yTickLabel',{''});
@@ -301,7 +305,7 @@ for iCluster = 1:nCluster
     colorMap(2,:) = linspace(0,1,64);
     colorMap = colorMap';
     image(ax,imgG);
-    title(ax,'G channel');
+    title(ax,'G channel','fontweight','normal');
     colormap(colorMap);
     c=colorbar;
     title(c,'\epsilon_x_y');
@@ -321,7 +325,7 @@ for iCluster = 1:nCluster
     colorMap(3,:) = linspace(0,1,64);
     colorMap = colorMap';
     image(ax,imgB);
-    title(ax,'B channel');
+    title(ax,'B channel','fontweight','normal');
     colormap(colorMap);
     c=colorbar;
     title(c,'\epsilon_y_y');
@@ -338,7 +342,7 @@ for iCluster = 1:nCluster
     f = figure;
     ax = axes;
     image(ax,imgLocal);
-    title(ax,'RGB channels');
+    title(ax,'RGB channels','fontweight','normal');
     set(ax,'fontsize',18,'xTickLabel',{''},'yTickLabel',{''});
     axis equal; axis off;
     
@@ -366,7 +370,7 @@ colorMap = zeros(3,64);
 colorMap(1,:) = linspace(0,1,64);
 colorMap = colorMap';
 image(ax,imgR);
-title(ax,'R channel');
+title(ax,'R channel','fontweight','normal');
 colormap(colorMap);
 c=colorbar;
 title(c,'\epsilon_x_x');
@@ -386,7 +390,7 @@ colorMap = zeros(3,64);
 colorMap(2,:) = linspace(0,1,64);
 colorMap = colorMap';
 image(ax,imgG);
-title(ax,'G channel');
+title(ax,'G channel','fontweight','normal');
 colormap(colorMap);
 c=colorbar;
 title(c,'\epsilon_x_y');
@@ -406,7 +410,7 @@ colorMap = zeros(3,64);
 colorMap(3,:) = linspace(0,1,64);
 colorMap = colorMap';
 image(ax,imgB);
-title(ax,'B channel');
+title(ax,'B channel','fontweight','normal');
 colormap(colorMap);
 c=colorbar;
 title(c,'\epsilon_y_y');
@@ -423,7 +427,7 @@ close(f);
 f = figure;
 ax = axes;
 image(ax,imgLocal);
-title(ax,'RGB channels');
+title(ax,'RGB channels','fontweight','normal');
 set(ax,'fontsize',18,'xTickLabel',{''},'yTickLabel',{''});
 axis equal; axis off;
 
@@ -471,7 +475,7 @@ for ii = 1:length(iE_list)
     caxis(caxis+[-0.5 0.5]);
     c.Ticks = 1:n;
     set(c,'limits',[0.5,n-0.5]);
-    title(a,'Cluster Label Map');
+    title(a,'Cluster ID','fontweight','normal');
     set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
     axis equal;
     imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap.tif']);
@@ -484,7 +488,7 @@ for ii = 1:length(iE_list)
     caxis(caxis+[-0.5 0.5]);
     c.Ticks = 1:n;
     set(c,'limits',[0.5,n-0.5]);
-    title(a,'Cluster Label Map');
+    title(a,'Cluster ID','fontweight','normal');
     set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
     axis equal;
     imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap_cleaned.tif']);
@@ -492,6 +496,55 @@ for ii = 1:length(iE_list)
     close(f);
 end
 
+%% [artifical !!!] map for iE = 4, switch cluster ID 1 and 2
+ii = 3;
+iE = iE_list(ii);
+iC = iC_list(ii);
+
+cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
+cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+
+% change cluster ID
+cMapA(1==cMapA) = 12;
+cMapA(2==cMapA) = 11;
+cMapA(12==cMapA) = 2;
+cMapA(11==cMapA) = 1;
+cMapA_cleaned (1==cMapA_cleaned ) = 12;
+cMapA_cleaned (2==cMapA_cleaned ) = 11;
+cMapA_cleaned (12==cMapA_cleaned ) = 2;
+cMapA_cleaned (11==cMapA_cleaned ) = 1;
+
+cMapA(ID_local~=ID_current) = 0;  % cluster number just this grain
+cMapA_cleaned(ID_local~=ID_current) = 0;
+cNums = unique(cMapA(:));
+cNums(isnan(cNums)) = [];
+n = length(cNums);
+
+% cluster number map, not cleaned
+[f,a,c] = myplot(cMapA);
+colormap(colorMap(1:n,:));
+caxis(caxis+[-0.5 0.5]);
+c.Ticks = 1:n;
+set(c,'limits',[0.5,n-0.5]);
+title(a,'Cluster ID','fontweight','normal');
+set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+axis equal;
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_cNumMap_artificial.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+close(f);
+
+% cluster number map, not cleaned
+[f,a,c] = myplot(cMapA_cleaned);
+colormap(colorMap(1:n,:));
+caxis(caxis+[-0.5 0.5]);
+c.Ticks = 1:n;
+set(c,'limits',[0.5,n-0.5]);
+title(a,'Cluster ID','fontweight','normal');
+set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+axis equal;
+imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_cNumMap_cleaned_artificial.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+close(f);
 
 %% (3.2) [text summary] summary of overlap at different strain levels, overlap of all clusters.  [No plot, just display some value.]
 clc;
@@ -616,7 +669,7 @@ ax = axes;
 plot(iE_list,volEvo,'-bo','linewidth',1.5,'markersize',8);
 xlabel('Strain Level');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
@@ -629,7 +682,7 @@ ax = axes;
 plot(iE_list,volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
 xlabel('Strain Level');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
@@ -644,7 +697,7 @@ plot(iE_list,volEvo,'-bo','linewidth',1.5,'markersize',8);
 plot(iE_list,volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
 xlabel('Strain Level');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'fontsize',18,'xlim',[1.9, 5.1],'ylim',[0,65000]);
 legend({'uncleand','cleaned'},'Location','best');
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
@@ -659,8 +712,9 @@ f = figure;
 ax = axes;
 plot(strainPauses(iE_list),volEvo,'-bo','linewidth',1.5,'markersize',8);
 xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
@@ -672,8 +726,9 @@ f = figure;
 ax = axes;
 plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
 xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
@@ -687,8 +742,9 @@ hold on;
 plot(strainPauses(iE_list),volEvo,'-bo','linewidth',1.5,'markersize',8);
 plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
 xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
 ylabel('Cluster Size, pixels');
-title('Cluster Size Evolution');
+title('Cluster Size Evolution','fontweight','normal');
 set(ax,'xdir','reverse','fontsize',18,'ylim',[0,65000]);
 legend({'uncleand','cleaned'},'Location','best');
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
@@ -872,7 +928,7 @@ if(~isempty(data_reduce))
         caxis(caxis+[-0.5 0.5]);
         c.Ticks = 1:n;
         set(c,'limits',[0.5,n-0.5]);
-        title(a,'Cluster Label Map');
+        title(a,'Cluster ID', 'fontweight','normal');
         set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
         axis equal;
         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap_with_K_',num2str(nc),'.tif']);

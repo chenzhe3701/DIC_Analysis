@@ -58,13 +58,20 @@ end
 close all;
 titleString = {'','Global Uniaxial Strain = -0.6%','Global Uniaxial Strain = -1.2%',...
     'Global Uniaxial Strain = -2.1%', 'Global Uniaxial Strain = -3.7%'};
+titleString = {'',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.006',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.012',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.021',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.037'};
 
 for iE = iE_start:iE_stop
     
     figure;plot(Dis{iE},SF{iE},'.');
     title(titleString{iE},'fontweight','normal','fontsize',18);
     xlabel('Dissimilarity');
-    ylabel('Schmid Factor');    
+    xlabel('\psi^D_{min}');
+    ylabel('Schmid Factor'); 
+    ylabel('m');
     set(gca,'fontsize',18);
     set(gca,'xlim',[0 0.8]);
     
@@ -79,10 +86,12 @@ for iE = iE_start:iE_stop
     end
     
     % zoom-in view
+    asp = daspect;
     figure;plot(Dis{iE},SF{iE},'.');
     hold on; fplot(@(x) 7*x+0.15,[0 0.05],'--k','linewidth',5);
     set(gca,'fontsize',18);
     set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
+    daspect(asp);
     
     
     imgName = (['s',num2str(iE),'_Dis_vs_SF_zoom.tif']);
