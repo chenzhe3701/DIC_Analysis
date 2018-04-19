@@ -143,11 +143,12 @@ print('shape score iE=4.tif','-dtiff');
 iE = 4;
 
 colors = lines(7);
-colorMap = [0 0 0; 0 0 1; colors(5,:); 1 0 0];
+colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
 load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF');
 
+%%
 strainScoreCF = scoreCF*0 -0.22;    % 0.17
 
 % strainScoreCF = -0.5 + 0.285;   % s4, use default, or 0.284
@@ -157,7 +158,7 @@ shapeScoreCF = 0.2;
 % i.e., new criterion, 7Dis-SF<socre-0.5
 
 % select use strainScore or shapeScore
-useStrainScore = 1;
+useStrainScore = 0;
 useShapeScore = 0;
 useBothScore = 1;
 
@@ -249,28 +250,41 @@ elseif useBothScore
     confMap((strainScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF)) = confMap((strainScoreMap<strainScoreCF)|(shapeScoreMap>shapeScoreCF))+2;
 end
 % make only boundary as 0, others nan
-confMap(confMap==0) = nan;
-confMap(boundaryTFB==1) = 0;
+confMap(confMap==0) = 0;
+confMap(boundaryTFB==1) = nan;
 
-[f,a,c] = myplotm(confMap,'x',X,'y',Y,'TF',boundaryTFB,'r',1);
+[f,a,c] = myplot(X, Y, confMap, boundaryTFB, 5);
 colormap(colorMap);
-set(c,'limits',[0.75,3]);
-c.Ticks = [1.125, 1.875, 2.625];
-c.TickLabels={['FN: ',num2str(FN)],['FP: ',num2str(FP)],['TP: ',num2str(TP)]};
-set(a,'fontsize',18,'xticklabel',{''},'yticklabel',{''});
+% set(c,'limits',[0.75,3]);
+% c.Ticks = [1.125, 1.875, 2.625];
+% c.TickLabels={['FN: ',num2str(FN)],['FP: ',num2str(FP)],['TP: ',num2str(TP)]};
+caxis([-1.5 3.5]);set(c,'limits',[-0.5, 3.5]);
+c.Ticks = 0:3;
+c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['TP: ',num2str(TP)]};
+
+% set(a,'fontsize',18,'xticklabel',{''},'yticklabel',{''});
+set(a,'fontsize',18);
 if useStrainScore
-    title(a,['StrainScore=',num2str(strainScoreCF)],'fontweight','normal');
+    ttl = ['StrainScore=',num2str(strainScoreCF)];
+    ttlf = ['\phi_{th}= ',num2str(strainScoreCF)];
+    title(a,ttl,'fontweight','normal');
+    annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttlf, 'LineStyle','none', 'FontSize',24);
 elseif useShapeScore
-    title(a,['ShapeScore=',num2str(shapeScoreCF)],'fontweight','normal');
+    ttl = ['ShapeScore=',num2str(shapeScoreCF)];
+    ttlf = ['\eta_{th}= ',num2str(shapeScoreCF)];
+    title(a,ttl,'fontweight','normal');
+    annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttlf, 'LineStyle','none', 'FontSize',24);
 elseif useBothScore
-    title(a,['(StrainScore=',num2str(strainScoreCF),') OR (ShapeScore=',num2str(shapeScoreCF),')'],'fontweight','normal');
+    ttl = ['(StrainScore=',num2str(strainScoreCF),') OR (ShapeScore=',num2str(shapeScoreCF),')'];
+    ttlf = ['(\phi_{th}= ',num2str(strainScoreCF),') OR (\eta_{th}= ',num2str(shapeScoreCF),')'];
+    title(a,ttl,'fontweight','normal');
+    annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttlf, 'LineStyle','none', 'FontSize',24);
 end
+%% maximize plot and run this:
+script_make_double_axis;
+print([ttl,'.tif'],'-dtiff');
 
-% print('rename.tif','-dtiff');
 
-%%
-
-print('rename.tif','-dtiff');   % to parent folder
 
 %% (2) summarize the twin area/vol fraction at strain levels 2-5
 for iE = 2:5
@@ -282,9 +296,11 @@ end
 figure;
 plot(strainPauses(2:5),twinSizePct(2:5)*100,'-or','linewidth',1.5);
 set(gca,'xdir','reverse','fontsize',18);
-xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{16}^G'); % xlabel('Global Uniaxial Strain, mm/mm');
 ylabel('Twin Area Percent, %');
 
+%%
+print(['twin pct vs strain.tif'],'-dtiff');
 
 %% (3) Confusion analysis using ACC/F1-score, accuracy, plot ACC curve vs criterion threshold
 useACC = 1;
@@ -365,11 +381,8 @@ if useACC
     plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
     plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
     
-    ylabel('Accuracy');
-    xlabel('StrainScore Threshold');
-    set(gca,'fontsize',18,'xlim',[-1,6]);
-    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
-    
+    ylabel('ACC');
+
     t1 = table(bestScore(iE_start:iE_stop)',...
         ACC_max(iE_start:iE_stop)',...
         TP_best(iE_start:iE_stop)',...
@@ -386,9 +399,6 @@ elseif useF1
     plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
     
     ylabel('F1-score');
-    xlabel('StrainScore Threshold');
-    set(gca,'fontsize',18,'xlim',[-1,6]);
-    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
     
     t1 = table(bestScore(iE_start:iE_stop)',...
         F1_max(iE_start:iE_stop)',...
@@ -400,6 +410,12 @@ elseif useF1
         TPR_best(iE_start:iE_stop)',...
         'VariableNames',{'StrainScore_th','F1_score','TP','FP','FN','TN','Precision','Sensitivity'})
 end
+xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
+set(gca,'fontsize',18,'xlim',[-1,6]);
+legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.006','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.021','\fontsize{24}\epsilon\fontsize{16}^G = -0.037'},'location','best');
+%%
+print(['vs StrainScore_th.tif'],'-dtiff');
 
 %% (3.2) using shapeScore alone, compare all strain levels
 clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best TN_best PPV_best TPR_best;
@@ -475,10 +491,7 @@ if useACC
     plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
     plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
     
-    ylabel('Accuracy');
-    xlabel('ShapeScore Threshold');
-    set(gca,'fontsize',18,'xlim',[-1,6]);
-    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+    ylabel('ACC');
     
     t1 = table(bestScore(iE_start:iE_stop)',...
         ACC_max(iE_start:iE_stop)',...
@@ -496,9 +509,6 @@ elseif useF1
     plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
     
     ylabel('F1-score');
-    xlabel('ShapeScore Threshold');
-    set(gca,'fontsize',18,'xlim',[-1,6]);
-    legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
     
     t1 = table(bestScore(iE_start:iE_stop)',...
         F1_max(iE_start:iE_stop)',...
@@ -510,6 +520,12 @@ elseif useF1
         TPR_best(iE_start:iE_stop)',...
         'VariableNames',{'ShapeScore_th','F1_score','TP','FP','FN','TN','Precision','Sensitivity'})
 end
+xlabel('\eta_{th}'); % xlabel('ShapeScore Threshold');
+set(gca,'fontsize',18,'xlim',[-1,6]);
+legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
+legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.006','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.021','\fontsize{24}\epsilon\fontsize{16}^G = -0.037'},'location','best');
+%%
+print(['vs ShapeScore_th.tif'],'-dtiff');
 
 
 %% (3.3)  Just look at iE=4, how TP, FP, FN, TN changes with threshold of StrainScore 
@@ -563,11 +579,13 @@ plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
-xlabel('StrainScore Threshold');
+xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
 ylabel('Count');
 set(gca,'fontsize',18,'xlim',[-0.5 6])%,'YScale','log','YTick',[0 10 100 1000 10000]);
 
 rectangle('Position',[-0.5 0 0.5 600],'edgecolor','k','linewidth',2)
+
+print(['Events vs StrainScore_th.tif'],'-dtiff');
 %% zoom in
 figure; hold on;
 plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
@@ -576,17 +594,21 @@ plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'xlim',[-0.5 0],'ylim',[0 600],'fontsize',18)
 
+print(['Events vs StrainScore_th zoom.tif'],'-dtiff');
 %% how threshold of StrainScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
 figure; hold on;
 plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
 plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
 plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
-xlabel('StrainScore Threshold');
+xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
 ylabel('Rate');
 set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
 
-legend({'Accuracy','PPV (precision)','TPR (sensitivity)'},'location','best');
+legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
+
+print(['Event Proportion vs StrainScore_th.tif'],'-dtiff');
+
 
 %% (3.4)  Just look at iE=4, how TP, FP, FN changes with threshold of ShapeScore   
 clear scoreSorted F1 F1_max bestScore TP_best FP_best FN_best PPV_best TPR_best;
@@ -639,12 +661,13 @@ plot(scoreSorted, TN,'--k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
 
-xlabel('ShapeScore Threshold');
+xlabel('\eta_{th}'); % xlabel('ShapeScore Threshold');
 ylabel('Count');
 set(gca,'fontsize',18)%,'xlim',[-0.5 3.5],'YScale','log','YTick',[0 10 100 1000 10000]);
 
 rectangle('Position',[-0.5 0 1 600],'edgecolor','k','linewidth',2)
 
+print(['Events vs ShapeScore_th.tif'],'-dtiff');
 %% zoom in
 figure; hold on;
 plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
@@ -653,16 +676,19 @@ plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'fontsize',18,'xlim',[-0.5, 1],'ylim',[0 600])
 
+print(['Events vs ShapeScore_th zoom.tif'],'-dtiff');
 %% how threshold of ShapeScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
 figure; hold on;
 plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
 plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
 plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
-xlabel('StrainScore Threshold');
+xlabel('\eta_{th}'); % xlabel('StrainScore Threshold');
 ylabel('Rate');
 set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
-legend({'Accuracy','PPV (precision)','TPR (sensitivity)'},'location','best');
+legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
+
+print(['Event Proportion vs ShapeScore_th.tif'],'-dtiff');
 %%
 print('xxx.tif','-dtiff');
 
