@@ -149,7 +149,7 @@ fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result
 load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF');
 
 %%
-strainScoreCF = scoreCF*0 -0.22;    % 0.17
+strainScoreCF = scoreCF*0 -0.22;    % 0.22, 0.17
 
 % strainScoreCF = -0.5 + 0.285;   % s4, use default, or 0.284
 shapeScoreCF = 0.2;
@@ -158,7 +158,7 @@ shapeScoreCF = 0.2;
 % i.e., new criterion, 7Dis-SF<socre-0.5
 
 % select use strainScore or shapeScore
-useStrainScore = 0;
+useStrainScore = 1;
 useShapeScore = 0;
 useBothScore = 1;
 
@@ -253,7 +253,7 @@ end
 confMap(confMap==0) = 0;
 confMap(boundaryTFB==1) = nan;
 
-[f,a,c] = myplot(X, Y, confMap, boundaryTFB, 5);
+[f,a,c] = myplot(X, Y, confMap, boundaryTFB, 3);
 colormap(colorMap);
 % set(c,'limits',[0.75,3]);
 % c.Ticks = [1.125, 1.875, 2.625];
