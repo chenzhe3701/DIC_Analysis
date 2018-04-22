@@ -186,7 +186,7 @@ plot(edges_xx(1:end-1),exx_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_xx(1:end-1),exx_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.023','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.039'},'location','northwest');
 xlabel('\fontsize{24}\epsilon\fontsize{18}_{xx}');
 ylabel('Counts');
 set(gca,'fontsize',18);
@@ -199,7 +199,7 @@ plot(edges_xy(1:end-1),exy_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_xy(1:end-1),exy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.023','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.039'},'location','northwest');
 xlabel('\fontsize{24}\epsilon\fontsize{18}_{xy}');
 ylabel('Counts');
 set(gca,'fontsize',18)
@@ -211,7 +211,7 @@ plot(edges_yy(1:end-1),eyy_distribution{4},'-','color',colors(2,:),'linewidth',1
 plot(edges_yy(1:end-1),eyy_distribution{5},'-','color',colors(4,:),'linewidth',1.5);
 
 legend({'Global Uniaxial Strain -1.2%','Global Uniaxial Strain -2.1%','Global Uniaxial Strain -3.7%'},'location','northwest');
-legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.021','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.037'},'location','northwest');
+legend({'\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.012','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.023','\fontsize{18}\epsilon\fontsize{12}^G\fontsize{18} = -0.039'},'location','northwest');
 xlabel('\fontsize{24}\epsilon\fontsize{18}_{yy}');
 ylabel('Counts');
 set(gca,'fontsize',18)
