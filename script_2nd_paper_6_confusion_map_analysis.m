@@ -67,7 +67,7 @@ boundaryLocal = boundaryTFB(indR_min:indR_max, indC_min:indC_max);
 set(gca,'fontsize',24)
 xlabel('X, pixels');
 ylabel('Y, pixels');
-title('\epsilon_x_x, mm/mm','fontweight','normal');
+title('\epsilon_x_x','fontweight','normal');
 
 
 % (0.2) plot local u
@@ -85,7 +85,7 @@ c = caxis_m([-0.12, 0.02]);
 set(gca,'fontsize',24)
 xlabel('X, pixels');
 ylabel('Y, pixels');
-title('\epsilon_x_x, mm/mm','fontweight','normal');
+title('\epsilon_x_x','fontweight','normal');
 rectangle('Position',[xLocal(1), yLocal(1), xLocal(end)-xLocal(1), yLocal(end)-yLocal(1)],'linewidth',4)
 %% [***] maximize plot and run this:
 script_make_double_axis;
@@ -413,7 +413,7 @@ end
 xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
 set(gca,'fontsize',18,'xlim',[-1,6]);
 legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
-legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.006','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.021','\fontsize{24}\epsilon\fontsize{16}^G = -0.037'},'location','best');
+legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.004','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.023','\fontsize{24}\epsilon\fontsize{16}^G = -0.039'},'location','best');
 %%
 print(['vs StrainScore_th.tif'],'-dtiff');
 
@@ -523,7 +523,7 @@ end
 xlabel('\eta_{th}'); % xlabel('ShapeScore Threshold');
 set(gca,'fontsize',18,'xlim',[-1,6]);
 legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
-legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.006','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.021','\fontsize{24}\epsilon\fontsize{16}^G = -0.037'},'location','best');
+legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.004','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.023','\fontsize{24}\epsilon\fontsize{16}^G = -0.039'},'location','best');
 %%
 print(['vs ShapeScore_th.tif'],'-dtiff');
 
