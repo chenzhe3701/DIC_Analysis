@@ -71,7 +71,7 @@ for iE = iE_start:iE_stop
     xlabel('Dissimilarity');
     xlabel('\psi^D_{min}');
     ylabel('Schmid Factor'); 
-    ylabel('m');
+    ylabel('Schmid Factor (m)');
     set(gca,'fontsize',18);
     set(gca,'xlim',[0 0.8]);
     
