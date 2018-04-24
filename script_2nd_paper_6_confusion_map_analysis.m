@@ -298,9 +298,9 @@ plot(strainPauses(2:5),twinSizePct(2:5)*100,'-or','linewidth',1.5);
 set(gca,'xdir','reverse','fontsize',18);
 xlabel('\fontsize{24}\epsilon\fontsize{16}^G'); % xlabel('Global Uniaxial Strain, mm/mm');
 ylabel('Twin Area Percent, %');
-
 %%
 print(['twin pct vs strain.tif'],'-dtiff');
+
 
 %% (3) Confusion analysis using ACC/F1-score, accuracy, plot ACC curve vs criterion threshold
 useACC = 1;
@@ -311,6 +311,9 @@ close all;
 clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best TN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
+colors([2,3],:)=colors([3,2],:);
+colors(4,:) = [0 0 1];
+colors(5,:) = [0 0 0];    % black
 
 for iE=iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -376,10 +379,10 @@ for iE=iE_start:iE_stop
 end
 
 if useACC
-    plot(scoreSorted{2}, ACC{2},'linewidth',1.5,'color',colors(2,:));
-    plot(scoreSorted{3}, ACC{3},'linewidth',1.5,'color',colors(3,:));
-    plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
-    plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
+    plot(scoreSorted{2}, ACC{2},'-', 'linewidth',2,'color',colors(2,:));
+    plot(scoreSorted{3}, ACC{3},'--','linewidth',2,'color',colors(3,:));
+    plot(scoreSorted{4}, ACC{4},'-.','linewidth',2,'color',colors(4,:));
+    plot(scoreSorted{5}, ACC{5},':', 'linewidth',2,'color',colors(5,:));
     
     ylabel('ACC');
 
@@ -393,10 +396,10 @@ if useACC
         TPR_best(iE_start:iE_stop)',...
         'VariableNames',{'StrainScore_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
 elseif useF1
-    plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
-    plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
-    plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
-    plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
+    plot(scoreSorted{2}, F1{2},'-', 'linewidth',2,'color',colors(2,:));
+    plot(scoreSorted{3}, F1{3},'--','linewidth',2,'color',colors(3,:));
+    plot(scoreSorted{4}, F1{4},'-.','linewidth',2,'color',colors(4,:));
+    plot(scoreSorted{5}, F1{5},':', 'linewidth',2,'color',colors(5,:));
     
     ylabel('F1-score');
     
@@ -417,10 +420,14 @@ legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.004','\fontsize{24}\epsilon\f
 %%
 print(['vs StrainScore_th.tif'],'-dtiff');
 
+
 %% (3.2) using shapeScore alone, compare all strain levels
 clear scoreSorted ACC ACC_max F1 F1_max bestScore TP_best FP_best FN_best TN_best PPV_best TPR_best;
 figure; hold on;
 colors = lines(7);
+colors([2,3],:)=colors([3,2],:);
+colors(4,:) = [0 0 1];
+colors(5,:) = [0 0 0];    % black
 
 for iE=iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -486,10 +493,10 @@ for iE=iE_start:iE_stop
 end
 
 if useACC
-    plot(scoreSorted{2}, ACC{2},'linewidth',1.5,'color',colors(2,:));
-    plot(scoreSorted{3}, ACC{3},'linewidth',1.5,'color',colors(3,:));
-    plot(scoreSorted{4}, ACC{4},'linewidth',1.5,'color',colors(4,:));
-    plot(scoreSorted{5}, ACC{5},'linewidth',1.5,'color',colors(5,:));
+    plot(scoreSorted{2}, ACC{2},'-', 'linewidth',2,'color',colors(2,:));
+    plot(scoreSorted{3}, ACC{3},'--','linewidth',2,'color',colors(3,:));
+    plot(scoreSorted{4}, ACC{4},'-.','linewidth',2,'color',colors(4,:));
+    plot(scoreSorted{5}, ACC{5},':', 'linewidth',2,'color',colors(5,:));
     
     ylabel('ACC');
     
@@ -503,10 +510,10 @@ if useACC
         TPR_best(iE_start:iE_stop)',...
         'VariableNames',{'ShapeScore_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
 elseif useF1
-    plot(scoreSorted{2}, F1{2},'linewidth',1.5,'color',colors(2,:));
-    plot(scoreSorted{3}, F1{3},'linewidth',1.5,'color',colors(3,:));
-    plot(scoreSorted{4}, F1{4},'linewidth',1.5,'color',colors(4,:));
-    plot(scoreSorted{5}, F1{5},'linewidth',1.5,'color',colors(5,:));
+    plot(scoreSorted{2}, F1{2},'-', 'linewidth',2,'color',colors(2,:));
+    plot(scoreSorted{3}, F1{3},'--','linewidth',2,'color',colors(3,:));
+    plot(scoreSorted{4}, F1{4},'-.','linewidth',2,'color',colors(4,:));
+    plot(scoreSorted{5}, F1{5},':', 'linewidth',2,'color',colors(5,:));
     
     ylabel('F1-score');
     
@@ -573,9 +580,9 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
 F1 = 2*TP./(2*TP+FP+FN);
 
-plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
@@ -584,17 +591,21 @@ ylabel('Count');
 set(gca,'fontsize',18,'xlim',[-0.5 6])%,'YScale','log','YTick',[0 10 100 1000 10000]);
 
 rectangle('Position',[-0.5 0 0.5 600],'edgecolor','k','linewidth',2)
-
+%%
 print(['Events vs StrainScore_th.tif'],'-dtiff');
+
+
 %% zoom in
 figure; hold on;
-plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'xlim',[-0.5 0],'ylim',[0 600],'fontsize',18)
-
+%%
 print(['Events vs StrainScore_th zoom.tif'],'-dtiff');
+
+
 %% how threshold of StrainScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
 figure; hold on;
 plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
@@ -606,7 +617,7 @@ ylabel('Rate');
 set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
 
 legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
-
+%%
 print(['Event Proportion vs StrainScore_th.tif'],'-dtiff');
 
 
@@ -654,9 +665,9 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 % sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
 F1 = 2*TP./(2*TP+FP+FN);
 
-plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
@@ -666,17 +677,21 @@ ylabel('Count');
 set(gca,'fontsize',18)%,'xlim',[-0.5 3.5],'YScale','log','YTick',[0 10 100 1000 10000]);
 
 rectangle('Position',[-0.5 0 1 600],'edgecolor','k','linewidth',2)
-
+%%
 print(['Events vs ShapeScore_th.tif'],'-dtiff');
+
+
 %% zoom in
 figure; hold on;
-plot(scoreSorted, TP,'linewidth',1.5,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',1.5,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',1.5,'color',[0 0 1]);
+plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
+plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
 plot(scoreSorted, TN,'--k','linewidth',1.5);
 set(gca,'fontsize',18,'xlim',[-0.5, 1],'ylim',[0 600])
-
+%%
 print(['Events vs ShapeScore_th zoom.tif'],'-dtiff');
+
+
 %% how threshold of ShapeScore affect precision = PPV = TP/TP+FP, and sensitivity TPR=TP/TP+FN   
 figure; hold on;
 plot(scoreSorted, ACC,'linewidth',3,'color',[0 0 0]);
@@ -687,8 +702,10 @@ xlabel('\eta_{th}'); % xlabel('StrainScore Threshold');
 ylabel('Rate');
 set(gca,'fontsize',18,'xlim',[-0.5 5],'ylim',[0,1.1]);
 legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
-
+%%
 print(['Event Proportion vs ShapeScore_th.tif'],'-dtiff');
+
+
 %%
 print('xxx.tif','-dtiff');
 
