@@ -30,7 +30,7 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% plot dissimilarity vs schmid factor 
-postAnalysis = 0;
+postAnalysis = 1;
 SF = [];
 Dis = [];
 Twinned = [];
@@ -147,3 +147,33 @@ for iE = iE_start:iE_stop
 %     figure; histogram(rtss_cCen_tStrain - rtss_cMed_tStrain);
     
 end
+
+
+
+%% in post analysis, try to fit model
+for iE = 2:5
+    % [b,dev,stats] = mnrfit([Dis{iE}',SF{iE}'],Twinned{iE}');
+    % b
+    [b,dev,stats] = glmfit([Dis{iE}',SF{iE}'],Twinned{iE}'==1,'binomial','link','logit');
+    coef{iE} = b;
+end
+
+%% check. Fit, so that a = xb = b0 + x1b1 + x2b2, and prob = logsig(a) = exp(a)/(1+exp(a))
+iE = 5;
+dis = Dis{iE}(Twinned{iE}==1)';
+sf = SF{iE}(Twinned{iE}==1)';
+p1 = coef{iE}(1) + dis * coef{iE}(2) + sf * coef{iE}(3);
+% logsig(a) = exp(a)/(1+exp(a))
+p1 = logsig(p1);    
+% this is the same as  = glmval(coef{iE},[dis,sf],'logit');
+
+dis = Dis{iE}(Twinned{iE}==2)';
+sf = SF{iE}(Twinned{iE}==2)';
+p2 = coef{iE}(1) + dis * coef{iE}(2) + sf * coef{iE}(3);
+p2 = logsig(p2);    % = glmval(coef{iE},[dis,sf],'logit')
+
+figure; hold on;
+histogram(p1,'FaceColor','r');
+histogram(p2,'FaceColor','b');
+
+
