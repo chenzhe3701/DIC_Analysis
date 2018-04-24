@@ -127,6 +127,7 @@ close(f);
 caxis([-0.14, 0.07]);
 title(a,'\epsilon_x_x');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+set(c,'Ticks',[-0.14:0.07:0.07]);
 axis equal;
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exx_scaleB.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
@@ -149,6 +150,7 @@ title(a,'\epsilon_x_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
 caxis([-0.07, 0.07]);
+set(c,'Ticks',[-0.07:0.07:0.07]);
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_exy_scaleB.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
@@ -170,6 +172,7 @@ title(a,'\epsilon_y_y');
 set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
 caxis([-0.07, 0.14]);
+set(c,'Ticks',[-0.07:0.07:0.14]);
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_eyy_scaleB.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 close(f);
