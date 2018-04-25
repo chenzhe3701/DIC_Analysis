@@ -167,10 +167,23 @@ TP = 0;    % hit
 FP = 0;    % false alarm
 FN = 0;    % missing
 TN = 0;    % correct rejection
+
+% switch iE
+%     case 2
+%         C = 5.03;
+%     case 3
+%         C = 6.36;
+%     case 4
+%         C = 6.24;
+%     case 5
+%         C = 3.59;
+% end
+C = 7;      % default = 7, but we can look at other score: 5.03; 6.36; 6.24; 3.59; for iE = 2,3,4,5
+
 if useStrainScore
     for iS=1:length(stru)
         for iCluster=1:length(stru(iS).cLabel)
-            strainScore = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
+            strainScore = C*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
             shapeScore = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
             if stru(iS).trueTwin(iCluster)>0    % if ground true
                 if strainScore < strainScoreCF
@@ -191,7 +204,7 @@ if useStrainScore
 elseif useShapeScore
     for iS=1:length(stru)
         for iCluster=1:length(stru(iS).cLabel)
-            strainScore = 7*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
+            strainScore = C*stru(iS).dis(iCluster)-stru(iS).sf(iCluster);
             shapeScore = stru(iS).cvInc(iCluster)*stru(iS).tProbMax(iCluster);
             if stru(iS).trueTwin(iCluster)>0    % if ground true
                 if shapeScore > shapeScoreCF
@@ -319,13 +332,25 @@ for iE=iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru');
     
+    % add a 4th column to look at modified strainScore (with different slope).  When looking at it, remember to change to 'info = sortrows(inf,4)', etc, to use this score  
+    switch iE
+        case 2
+            C = 5.03;
+        case 3
+            C = 6.36;
+        case 4
+            C = 6.24;
+        case 5
+            C = 3.59;
+    end
+
     % create vectors containing necessary info
     info = [];
     for iS = 1:length(stru)
         for iCluster = 1:length(stru(iS).cLabel)
-            % [trueTwin, strainScore, shapeScore, dummy=1, ...]
+            % [trueTwin, strainScore, shapeScore, newStrainScoreBasedOnC, dummy=1, ...]
             info = [info;
-                stru(iS).trueTwin(iCluster), stru(iS).strainScore(iCluster), stru(iS).shapeScore(iCluster), 1];
+                stru(iS).trueTwin(iCluster), stru(iS).strainScore(iCluster), stru(iS).shapeScore(iCluster), C*stru(iS).dis(iCluster)-stru(iS).sf(iCluster), 1];
         end
     end
     
