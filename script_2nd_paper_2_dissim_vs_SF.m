@@ -30,7 +30,7 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% plot dissimilarity vs schmid factor 
-postAnalysis = 1;
+postAnalysis = 0;
 SF = [];
 Dis = [];
 Twinned = [];
@@ -98,7 +98,7 @@ for iE = iE_start:iE_stop
        plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.r','markersize',8);
        legend({'Non-twinned','Twinned'},'Position',[0.3 0.25 0.3 0.14]);
     else
-        figure;plot(Dis{iE},SF{iE},'.','markersize',8);
+        figure;plot(Dis{iE},SF{iE},'.b','markersize',8);
     end
     
     title(titleString{iE},'fontweight','normal','fontsize',18);
@@ -125,10 +125,25 @@ for iE = iE_start:iE_stop
        figure; hold on;
        plot(Dis{iE}(Twinned{iE}==2),SF{iE}(Twinned{iE}==2),'.b','markersize',10);
        plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.r','markersize',10);
+       switch iE
+           case 2
+               fplot(@(x) 5.03*x + 0.2724, [0 0.05],'-k','linewidth',4);
+               fplot(@(x) 7*x + 0.2255, [0 0.05],'--k','linewidth',4);
+           case 3
+               fplot(@(x) 6.26*x + 0.2574, [0 0.05],'-k','linewidth',4);
+               fplot(@(x) 7*x + 0.2217, [0 0.05],'--k','linewidth',4);
+           case 4
+               fplot(@(x) 6.24*x + 0.2798, [0 0.05],'-k','linewidth',4);
+               fplot(@(x) 7*x + 0.2186, [0 0.05],'--k','linewidth',4);
+           case 5
+               fplot(@(x) 3.59*x + 0.3491, [0 0.05],'-k','linewidth',4);
+               fplot(@(x) 7*x + 0.2517, [0 0.05],'--k','linewidth',4);
+       end
     else
-        figure;plot(Dis{iE},SF{iE},'.','markersize',10);
+        figure;plot(Dis{iE},SF{iE},'.b','markersize',10);
+        hold on; fplot(@(x) 7*x+0.15,[0 0.05],'--k','linewidth',4);
     end
-    hold on; fplot(@(x) 7*x+0.15,[0 0.05],'--k','linewidth',5);
+    
     set(gca,'fontsize',18);
     set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
     daspect(asp);
