@@ -30,7 +30,7 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 %% plot dissimilarity vs schmid factor 
-postAnalysis = 0;
+postAnalysis = 1;
 SF = [];
 Dis = [];
 Twinned = [];
@@ -167,10 +167,13 @@ end
 
 %% in post analysis, try to fit model
 for iE = 2:5
+    disp(['---------------', num2str(iE), '-------------']);
     % [b,dev,stats] = mnrfit([Dis{iE}',SF{iE}'],Twinned{iE}');
     % b
-    [b,dev,stats] = glmfit([Dis{iE}',SF{iE}'],Twinned{iE}'==1,'binomial','link','logit');
-    coef{iE} = b;
+    [b,dev,stats] = glmfit([Dis{iE}',SF{iE}'],Twinned{iE}'==1,'binomial','link','logit');   % 'logit' vs 'identity'
+    display(b);
+    display(b(2)/b(3));    
+    coef{iE} = b;    
 end
 
 %% check. Fit, so that a = xb = b0 + x1b1 + x2b2, and prob = logsig(a) = exp(a)/(1+exp(a))
@@ -192,3 +195,64 @@ histogram(p1,'FaceColor','r');
 histogram(p2,'FaceColor','b');
 
 
+%% plot after post analysis, plot the regression line (Not the line at phi_th)
+close all;
+titleString = {'',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.004',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.012',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.023',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.039'};
+
+for iE = iE_start:iE_stop
+    
+    if postAnalysis
+        figure; hold on;
+        plot(Dis{iE}(Twinned{iE}==2),SF{iE}(Twinned{iE}==2),'.b','markersize',8);
+        plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.r','markersize',8);
+        
+        fplot(@(x) -coef{iE}(2)/coef{iE}(3)*x -coef{iE}(1)/coef{iE}(3), [0 0.05],'-k','linewidth',2.5);
+        fplot(@(x) 7*x + 0.2255, [0 0.05],'--k','linewidth',2.5);
+        
+        legend({'Non-twinned','Twinned','Regression Boundary','Threshold Boundary'},'Position',[0.3 0.3 0.35 0.14],'fontsize',12);
+    else
+        figure;plot(Dis{iE},SF{iE},'.b','markersize',8);
+    end
+    
+    title(titleString{iE},'fontweight','normal','fontsize',18);
+    xlabel('Dissimilarity');
+    xlabel('\psi^D_{min}');
+    ylabel('Schmid Factor (m)');
+    set(gca,'fontsize',18);
+    set(gca,'xlim',[0 0.8]);
+        
+    imgName = (['s',num2str(iE),'_Dis_vs_SF_with_regression_line.tif']);
+    if saveFig
+        print(fullfile(saveFigurePath,imgName),'-dtiff');   % to parent folder
+    end
+    
+%     % zoom-in view
+%     asp = daspect;
+%     if postAnalysis
+%        figure; hold on;
+%        plot(Dis{iE}(Twinned{iE}==2),SF{iE}(Twinned{iE}==2),'.b','markersize',10);
+%        plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.r','markersize',10);
+%         
+%        fplot(@(x) -coef{iE}(2)/coef{iE}(3)*x -coef{iE}(1)/coef{iE}(3), [0 0.05],'-k','linewidth',4);
+%        fplot(@(x) 7*x + 0.2255, [0 0.05],'--k','linewidth',4);
+% 
+%     else
+%         figure;plot(Dis{iE},SF{iE},'.b','markersize',10);
+%         hold on; fplot(@(x) 7*x+0.15,[0 0.05],'--k','linewidth',4);
+%     end
+%     
+%     set(gca,'fontsize',18);
+%     set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
+%     daspect(asp);
+% 
+%     imgName = (['s',num2str(iE),'_Dis_vs_SF_zoom.tif']);
+%     if saveFig
+%         print(fullfile(saveFigurePath,imgName),'-dtiff');   % to parent folder
+%         close all;
+%     end
+    
+end
