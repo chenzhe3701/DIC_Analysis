@@ -172,14 +172,14 @@ for iE = iE_start:iE_stop
 end
 
 
-%% (2) after tracking all strain level pairs, get volume history in the whole strain levels, and analyze. Related fields: volEvo, volEvoCleaned, cvInc
+%% (2) after tracking all strain level pairs, get volume history in the whole strain levels, and analyze. Related fields: volEvo, volEvoCleaned, cvInc, (added later: cvIncAfter, cVolGrowthRatio)
 %  First, re-load stru in all strain levels
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru');
     try
-        stru = rmfield(stru,{'cVolGrowthRateNormalized'});
+        stru = rmfield(stru,{'cVolGrowthRateNormalizedEvo','cVolGrowthRateNormalizedMax','cVolGrowthRatio'});
     end
     % initialize/zero related fields
     for iS =1:length(stru)
@@ -189,8 +189,9 @@ for iE = iE_start:iE_stop
         stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
         stru(iS).cvIncAfter = zeros(size(stru(iS).cLabel));
-        stru(iS).cVolGrowthRateNormalizedEvo = zeros(length(stru(iS).cLabel),length(STOP)-1); 
-        stru(iS).cVolGrowthRateNormalizedMax = zeros(size(stru(iS).cLabel));
+%         stru(iS).cVolGrowthRateNormalizedEvo = zeros(length(stru(iS).cLabel),length(STOP)-1); 
+%         stru(iS).cVolGrowthRateNormalizedMax = zeros(size(stru(iS).cLabel));
+        stru(iS).cVolGrowthRatio = zeros(length(stru(iS).cLabel),length(STOP)-1);
     end
     struCell{iE} = stru;
 end
@@ -259,12 +260,21 @@ for iE = iE_start:iE_stop
                 cvIncAfter = 0;
             end
             
-            % Method-(3): at stop i, use cVol(i)-cVol(i-1) / gVol / strainPauses(i)-strainPauses(i-1) to normalize cVol change rate  
-            vol_valid = [vol_cleaned(1),vol_cleaned];
-            strainPauses_m = [0 ,strainPauses]; % pad previous strain value with 0
-            strain_valid = abs([strainPauses_m([iE_list(1)-1:iE_list])]); 
-            cVolGrowthRateNormalized = diff(vol_valid)./diff(strain_valid)./struCell{iE}(iS).gVol;
-            
+%             % First try on 2018-04-29, but I have a better idea
+%             % Method-(3): at stop i, use cVol(i)-cVol(i-1) / gVol / strainPauses(i)-strainPauses(i-1) to normalize cVol change rate  
+%             vol_valid = [vol_cleaned(1),vol_cleaned];
+%             strainPauses_m = [0 ,strainPauses]; % pad previous strain value with 0
+%             strain_valid = abs([strainPauses_m([iE_list(1)-1:iE_list])]); 
+%             cVolGrowthRateNormalized = diff(vol_valid)./diff(strain_valid)./struCell{iE}(iS).gVol;
+
+            % Method-(3), cVolGrowthRatio = (end_size - smallest_size_up_to_now)/grain_size  
+            vol_valid = vol_cleaned;
+            vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
+             
+            cVolGrowthRatio = zeros(size(vol_valid));
+            for ii=1:length(vol_valid)
+              cVolGrowthRatio(ii) = (vol_valid(end) - min(vol_valid(1:ii)))/struCell{iE}(iS).gVol; 
+            end            
             
             % [2nd loop] copy, consider all iE_to_assign values (should compare with iE, and assign accordingly and differently)
             % (a) if it is related to history, assign to all iE_to_assign values  
@@ -280,7 +290,8 @@ for iE = iE_start:iE_stop
                     struCell{iE_to_assign}(iS).tProbEvo(iC_to_assign,iE_list) = tProbEvo;
                     
                     struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc;
-                    struCell{iE_to_assign}(iS).cVolGrowthRateNormalizedEvo(iC_to_assign,iE_list) = cVolGrowthRateNormalized;
+%                     struCell{iE_to_assign}(iS).cVolGrowthRateNormalizedEvo(iC_to_assign,iE_list) = cVolGrowthRateNormalized;
+                    struCell{iE_to_assign}(iS).cVolGrowthRatio(iC_to_assign,iE_list) = cVolGrowthRatio;
                     
                     if (iE_to_assign>=iE)&&(iE~=iE_stop)
                         struCell{iE_to_assign}(iS).cvIncAfter(iC_to_assign) = cvIncAfter;
@@ -289,19 +300,15 @@ for iE = iE_start:iE_stop
                     % The search is form iE_start to iE_to_assign !!!
                     struCell{iE_to_assign}(iS).tProbMax(iC_to_assign) = max(tProbEvo(1:find(iE_list==iE_to_assign)));
                     
-                    % The search if from iE_list(2) to iE_to_assign 
-                    % If it is iE_list(1), leave it as '0', because we don't know if it is increasing rate or decrease.  
-                    if(iE_to_assign > iE_list(1))
-                        struCell{iE_to_assign}(iS).cVolGrowthRateNormalizedMax(iC_to_assign) = max(cVolGrowthRateNormalized(2:find(iE_list==iE_to_assign)));
-                    end                  
+%                     % The search if from iE_list(2) to iE_to_assign 
+%                     % If it is iE_list(1), leave it as '0', because we don't know if it is increasing rate or decrease.  
+%                     if(iE_to_assign > iE_list(1))
+%                         struCell{iE_to_assign}(iS).cVolGrowthRateNormalizedMax(iC_to_assign) = max(cVolGrowthRateNormalized(2:find(iE_list==iE_to_assign)));
+%                     end   
                 end
-                
+
             end
-            
-            
         end
-        
-        
     end
 end
 
@@ -320,29 +327,14 @@ for iE=2:5
     load([saveDataPath,fName_c2t_result],'stru');
     for iS = 1:length(stru)
         for iCluster = 1:length(stru(iS).cLabel)
-           rate = [rate,stru(iS).cVolGrowthRateNormalizedEvo(iCluster,iE)]; 
+           rate = [rate,stru(iS).cVolGrowthRatio(iCluster,iE)]; 
         end
     end
     subplot(2,2,iE-1);
-    histogram(rate);    
+    histogram(rate);   
     title(['iE=',num2str(iE)]);    
 end
 
-f = figure;
-for iE=2:5
-    rate = [];
-    rate = [];
-    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'stru');
-    for iS = 1:length(stru)
-        for iCluster = 1:length(stru(iS).cLabel)
-           rate = [rate,stru(iS).cVolGrowthRateNormalizedMax(iCluster)]; 
-        end
-    end 
-    subplot(2,2,iE-1);
-    histogram(rate);    
-    title(['iE=',num2str(iE)]);  
-end
 %% [for debug directly]
 % for iE = iE_start:iE_stop
 %     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
