@@ -274,6 +274,7 @@ for iE = 4 %iE_start:iE_stop
                 v(5) = stru(iS).cvInc(iCluster);
                 v(6) = stru(iS).tProbMax(iCluster);   % (d) cnnTwinProb
                 v(7) = stru(iS).tProb(iCluster);
+                v(8) = stru(iS).cVolGrowthRatio(iCluster,iE);
                 
                 if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)==0)
                     varTwin = [varTwin; v];
@@ -338,25 +339,20 @@ end
 
 
 %% whatever to plot
-figure; hold on;
-
-n=1;
-plot3(varNotwin(:,3),       0.5-varNotwin(:,4)-varNotwin(:,5).*varNotwin(:,6)*n,         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
-
-plot3(varTwin(:,3),         0.5-varTwin(:,4)-varTwin(:,5).*varTwin(:,6)*n,           varTwin(:,5).*varTwin(:,6)*n,               'r.','markersize',12);  % ro
-plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4)-varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,    varTwinEnabled(:,5).*varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
-
-try
-    plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4)-varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.','markersize',12); % co
-end
-
-xlabel('RSS');ylabel('SF');zlabel('vol and tProb');
-
+% figure; hold on;
+% n=1;
+% plot3(varNotwin(:,3),       0.5-varNotwin(:,4)-varNotwin(:,5).*varNotwin(:,6)*n,         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
+% plot3(varTwin(:,3),         0.5-varTwin(:,4)-varTwin(:,5).*varTwin(:,6)*n,           varTwin(:,5).*varTwin(:,6)*n,               'r.','markersize',12);  % ro
+% plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4)-varTwinEnabled(:,5).*varTwinEnabled(:,6)*n,    varTwinEnabled(:,5).*varTwinEnabled(:,6)*n, 'm.','markersize',16);  % mo
+% try
+%     plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4)-varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.','markersize',12); % co
+% end
+% xlabel('RSS');ylabel('SF');zlabel('vol and tProb');
 
 %% a useful way to plot, compare the effect of cvInc*tProbMax, vs individual of them alone  
 figure; hold on;
 n=1;
-opt = 1;
+opt = 3;
 
 if 1==opt
     plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5).*varNotwin(:,6)*n,           'b.');  % bx
@@ -366,11 +362,11 @@ if 1==opt
         plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5).*varTwinDisabled(:,6)*n,'k.','markersize',12); % co
     end    
 elseif 2==opt
-    plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,5)*n,           'b.');  % bx
-    plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,5)*n,               'r.','markersize',12);  % ro
-    plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,5)*n, 'm.','markersize',16);  % mo
+    plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,6).*(varNotwin(:,8)+1)/2*n,           'b.');  % bx
+    plot3(varTwin(:,3),         0.5-varTwin(:,4),           varTwin(:,6).*(varTwin(:,8)+1)/2*n,               'r.','markersize',12);  % ro
+    plot3(varTwinEnabled(:,3),  0.5-varTwinEnabled(:,4),    varTwinEnabled(:,6).*(varTwinEnabled(:,8)+1)/2*n, 'm.','markersize',16);  % mo
     try
-        plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,5)*n,'k.','markersize',12); % co
+        plot3(varTwinDisabled(:,3),0.5-varTwinDisabled(:,4),varTwinDisabled(:,6).*(varTwinDisabled(:,8)+1)/2*n,'k.','markersize',12); % co
     end
 elseif 3==opt
     plot3(varNotwin(:,3),       0.5-varNotwin(:,4),         varNotwin(:,6)*n,           'b.');  % bx
