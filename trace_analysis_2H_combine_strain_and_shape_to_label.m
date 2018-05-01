@@ -71,8 +71,12 @@ for iE = iE_start:iE_stop
     trueTwinMap = zeros(size(exx));
     cvIncMap = zeros(size(exx));
     cvIncAfterMap = zeros(size(exx));
+    % these are used for the new analysis based on shape
     tProbMaxMap = zeros(size(exx));
     cVolGrowthRatioMap = zeros(size(exx));
+    % These should be corrected to use for strain based analysis
+    mDistMap = zeros(size(exx));
+    sfMap = zeros(size(exx));
     
     hWaitbar = waitbar(0,'Matching cluster with twin system ...');
     for iS =1:length(stru)
@@ -98,6 +102,8 @@ for iE = iE_start:iE_stop
         cvIncAfterMapLocal = zeros(size(ID_local));
         tProbMaxMapLocal = zeros(size(ID_local));
         cVolGrowthRatioMapLocal = zeros(size(ID_local));
+        mDistMapLocal = zeros(size(ID_local));
+        sfMapLocal = zeros(size(ID_local));
         
         % ==== change cluster number into twin system number, or 0
         nCluster = length(stru(iS).cLabel);
@@ -112,7 +118,7 @@ for iE = iE_start:iE_stop
             cNum = stru(iS).cLabel(iCluster);
             indClusterLocal = (clusterNumMapLocal==cNum);
             
-            %%%%%%%%%% for TMS summary
+            %%%%%%%%%% for TMS summary. Added note 2018-04-30, Note that this is the way I described in the paper !!!!!!!!!!  
             pdistCS = pdist2(stru(iS).cCen(iCluster,:), stru(iS).tStrain);
             [m_dist, ind_t] = nanmin(pdistCS,[],2);
             tsNum = stru(iS).tLabel(ind_t); 
@@ -135,6 +141,8 @@ for iE = iE_start:iE_stop
             cvIncAfterMapLocal(indClusterLocal) = stru(iS).cvIncAfter(iCluster);
             tProbMaxMapLocal(indClusterLocal) = stru(iS).tProbMax(iCluster);
             cVolGrowthRatioMapLocal(indClusterLocal) = stru(iS).cVolGrowthRatio(iCluster,iE);
+            mDistMapLocal(indClusterLocal) = stru(iS).dis(iCluster);
+            sfMapLocal(indClusterLocal) = stru(iS).sf(iCluster);
         end
         
         % copy identified twin system number to twinMap
@@ -145,6 +153,8 @@ for iE = iE_start:iE_stop
         cvIncAfterMap(indR_min:indR_max, indC_min:indC_max) = cvIncAfterMap(indR_min:indR_max, indC_min:indC_max) + cvIncAfterMapLocal;
         tProbMaxMap(indR_min:indR_max, indC_min:indC_max) = tProbMaxMap(indR_min:indR_max, indC_min:indC_max) + tProbMaxMapLocal;
         cVolGrowthRatioMap(indR_min:indR_max, indC_min:indC_max) = cVolGrowthRatioMap(indR_min:indR_max, indC_min:indC_max) + cVolGrowthRatioMapLocal;
+        mDistMap(indR_min:indR_max, indC_min:indC_max) = mDistMap(indR_min:indR_max, indC_min:indC_max) + mDistMapLocal;
+        sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
         
         waitbar(iS/length(stru), hWaitbar);
     end
@@ -156,7 +166,7 @@ for iE = iE_start:iE_stop
     end
     
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','cvIncMap','cvIncAfterMap','tProbMaxMap','cVolGrowthRatioMap','-append')
+    save([saveDataPath,fName_c2t_result],'stru','strainScoreMap','shapeScoreMap','trueTwinMap','cvIncMap','cvIncAfterMap','tProbMaxMap','cVolGrowthRatioMap','mDistMap','sfMap','-append')
 end
 
 

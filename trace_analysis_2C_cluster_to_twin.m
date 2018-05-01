@@ -167,6 +167,13 @@ for iS =1:length(stru)
         
         [m_score, ind_t] = nanmin(score,[],2);
         m_dist = pdistCS(ind_t);
+        % chenzhe, 2018-04-30, 
+        % Note that the above was the initial analysis. It was not exactly as I would introduce in the paper.
+        % The final analysis as described in the paper should be summarized in code 2H_combine_().
+        % If want to follow the way described in the paper, I think the following code should be used instead of the above two. 
+        % I think I need to come back and fix and organize the codes, if this analysis will be repeated !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
+        % [m_dist, ind_t] = nanmin(pdistCS,[],2);
+        % m_score = score(ind_t);
         
         tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
         if ~isempty(tNote.enable) && ismember([ID_current,iCluster],tNote.enable,'rows')
