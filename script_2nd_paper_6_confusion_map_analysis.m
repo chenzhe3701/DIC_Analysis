@@ -128,7 +128,17 @@ script_make_double_axis;
 title(c,'\eta','fontsize',24);
 print('shape score iE=4.tif','-dtiff');
 
-
+%% (0.7) plot ShapeScoreMap_New, adjust color so that high vs low scores are distinct
+shapeScoreMapNew = (cVolGrowthRatioMap+1)/2.*tProbMaxMap;
+[f,a,c] = myplot(X,Y,shapeScoreMapNew,boundaryTFB,3);
+% set(gca,'fontsize',24,'XTick',[],'YTick',[])
+title('ShapeScore','fontweight','normal');
+caxis([0 1]);
+% colormap(parula(8));
+%% maximize plot and run this:
+script_make_double_axis;
+title(c,'\eta','fontsize',24);
+print('shape score Normalized iE=4.tif','-dtiff');
 
 
 
@@ -499,7 +509,7 @@ confMap(trueTwinMap>0)=1;   % true twin
 
 % add by 2. So if it's TP, it will be 1+2=3. If it's FP, it will be 0+2=2.
 % (3) shapeScore (New) as criterion
-shapeScoreMapNew = (cVolGrowthRatioMap+1/2).*tProbMaxMap;
+shapeScoreMapNew = (cVolGrowthRatioMap+1)/2.*tProbMaxMap;
 confMap(shapeScoreMapNew>shapeScoreCF) = confMap(shapeScoreMapNew>shapeScoreCF)+2;
 
 % make only boundary as 0, others nan
@@ -577,7 +587,7 @@ confMap(trueTwinMap>0)=1;   % true twin
 
 % add by 2. So if it's TP, it will be 1+2=3. If it's FP, it will be 0+2=2.
 % (4) combine both as criterion, strainScore_c=7 OR shapeScore_new
-shapeScoreMapNew = (cVolGrowthRatioMap+1/2).*tProbMaxMap;
+shapeScoreMapNew = (cVolGrowthRatioMap+1)/2.*tProbMaxMap;
 confMap((strainScoreMap<strainScoreCF)|(shapeScoreMapNew>shapeScoreCF)) = confMap((strainScoreMap<strainScoreCF)|(shapeScoreMapNew>shapeScoreCF))+2;
 
 % make only boundary as 0, others nan
