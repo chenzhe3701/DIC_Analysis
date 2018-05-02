@@ -111,11 +111,26 @@ title(c,'u, pixels','fontsize',24);
 print('u iE=4.tif','-dtiff');
 
 
-%% (0.5) plot ShapeScoreMapNormalized, adjust color so that high vs low scores are distinct
+%% (0.5) plot strainScoreMapNormalized, adjust color so that high vs low scores are distinct
+C = 7; H = 1;
+strainScoreMapNew = sfMap/(1+C*H) -C/(1+C*H)*min(H,mDistMap) + (1+2*C*H)/2/(1+C*H);
+[f,a,c] = myplot(X,Y,strainScoreMapNew,boundaryTFB,3);
+% set(gca,'fontsize',24,'XTick',[],'YTick',[])
+title('StrainScoreNormalized','fontweight','normal');
+caxis([0.9 1]);
+% colormap(parula(8));
+%% maximize plot and run this:
+script_make_double_axis;
+title(c,'\phi','fontsize',24);
+print('strain score Normalized iE=4.tif','-dtiff');
+
+
+
+%% (0.6) plot ShapeScoreMapNormalized, adjust color so that high vs low scores are distinct
 shapeScoreMapNew = (cVolGrowthRatioMap+1)/2.*tProbMaxMap;
 [f,a,c] = myplot(X,Y,shapeScoreMapNew,boundaryTFB,3);
 % set(gca,'fontsize',24,'XTick',[],'YTick',[])
-title('ShapeScore','fontweight','normal');
+title('ShapeScoreNormalized','fontweight','normal');
 caxis([0 1]);
 % colormap(parula(8));
 %% maximize plot and run this:
@@ -123,19 +138,6 @@ script_make_double_axis;
 title(c,'\eta','fontsize',24);
 print('shape score Normalized iE=4.tif','-dtiff');
 
-
-%% (0.6) plot strainScoreMapNormalized, adjust color so that high vs low scores are distinct
-C = 7; H = 1;
-strainScoreMapNew = sfMap/(1+C*H) -C/(1+C*H)*min(H,mDistMap) + (1+2*C*H)/2/(1+C*H);
-[f,a,c] = myplot(X,Y,strainScoreMapNew,boundaryTFB,3);
-% set(gca,'fontsize',24,'XTick',[],'YTick',[])
-title('ShapeScore','fontweight','normal');
-caxis([0.9 1]);
-% colormap(parula(8));
-%% maximize plot and run this:
-script_make_double_axis;
-title(c,'\eta','fontsize',24);
-print('strain score Normalized iE=4.tif','-dtiff');
 
 
 %% (1) Generate a confusion map for selected iE. Label TP, FP, TN with different color.
