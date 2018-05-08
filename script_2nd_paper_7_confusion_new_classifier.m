@@ -34,8 +34,12 @@ iE_stop = 5;
 %% (1.0) Select an iE for analysis
 iE = 4;
 
+colors = lines(7);
+colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
+
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','trueTwinMap');
+load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
+
 
 switch iE
     case 2
@@ -60,7 +64,9 @@ for iS = 1:length(stru)
             stru(iS).dis(iCluster),...
             stru(iS).sf(iCluster),...            
             stru(iS).cVolGrowthRatio(iCluster,iE),...
-            stru(iS).tProbMax(iCluster)
+            stru(iS).tProbMax(iCluster),...
+            stru(iS).dis(iCluster) * stru(iS).sf(iCluster),...
+            stru(iS).dis(iCluster) * stru(iS).sf(iCluster) * stru(iS).cVolGrowthRatio(iCluster,iE) * stru(iS).tProbMax(iCluster)
             ];
     end
 end
@@ -73,8 +79,8 @@ mDist = info(:,4);
 mSF = info(:,5);
 mPsize = info(:,6);
 mPcnn = info(:,7);
-T = table(response,mPhi,mEta,mDist,mSF,mPsize,mPcnn,...
-    'VariableNames',{'response','mPhi','mEta','mDist','SF','Psize','Pcnn'});
+T = table(response,mPhi,mEta,mDist,mSF,mPsize,mPcnn,mDist.*mSF, mDist.*mSF.*mPsize.*mPcnn,...
+    'VariableNames',{'response','mPhi','mEta','mDist','SF','Psize','Pcnn','var1','var2'});
 % save(['TwinS',num2str(iE),'.mat'],'response','predictors','T');
 
 %% (1.1) Fit some model
@@ -147,82 +153,73 @@ TN_max = TN(sub2ind([nRC,nRC],ir,ic))
 
 
 
+%% naive algorithm
 
 
 
 
 
 
-%% (1.2) sort rows, based on a selected colume, and a threshold can be used for this colomn
-info = sortrows(info,2,'descend');
-scoreSorted{iE} = info(:,2);
 
-% true positive, ..., etc
-TP = cumsum(info(:,1)>0);   % col-2 as threshold. Cumsum of entries to this point are the identified positives. Among which values in col-1 and >0 are the true positives.
-P = TP(end);                % The end of the cumsum is the total positive cases
-FN = P-TP;                  % Cumsum of entries below this point are the identified negatives. Among which the remaining (P-TP) are identified negative but actually positive, i.e., false negative.
 
-FP = cumsum(info(:,1)==0);  % Similar to 'TP', To this point, in col-1, values <= 0 are the false positives.
-N = FP(end);                % When threshould at the end, all are identified positive. The false part is the true negatives.
-TN = N-FP;                  % Above the threshold, the false positives are actually negatives.  The remaining (N-FP) below the threshold are the true negatives.
-
-% rate
-TPR = TP./(TP+FN);  % true positive rate, sensitivity, recall. (How many of the positives are identified)
-FNR = FN./P;
-PPV = TP./(TP+FP);  % precision, positive predictive value. (How many identified are the real positives).
-
-% accuracy
-ACC{iE} = (TP+TN)./(TP+FP+FN+TN);
-% F1 score. F1 is the harmonic average of the precision=TP/(TP+FP), and
-% sensitivity=recall=TPR=TP/(TP+FN), and F1 = 2/(1/precision+1/recall)
-F1{iE} = 2*TP./(2*TP+FP+FN);
-
-[ACC_max(iE),ind] = max(ACC{iE});
-bestScore(iE) = scoreSorted{iE}(ind);
-TP_best(iE) = TP(ind);
-FP_best(iE) = FP(ind);
-FN_best(iE) = FN(ind);
-TN_best(iE) = TN(ind);
-PPV_best(iE) = PPV(ind);
-TPR_best(iE) = TPR(ind);
-
+%%  (1.4) use both score [StrainScoreNormalized (c=7 H=1)] OR [ShapeScore_New], set (phi_th=0.9496)AND(eta_th=0.0395), (0.9696)OR(0.5238)
 colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
-%% (1.3) plot ACC vs a threshould at [all iEs]
-plot(scoreSorted{2}, ACC{2},'-', 'linewidth',2,'color',colors(2,:));
-plot(scoreSorted{3}, ACC{3},'--','linewidth',2,'color',colors(3,:));
-plot(scoreSorted{4}, ACC{4},'-.','linewidth',2,'color',colors(4,:));
-plot(scoreSorted{5}, ACC{5},':', 'linewidth',2,'color',colors(5,:));
+strainScoreCF = 0.9696;    % 0.22, 0.17
+shapeScoreCF = 0.5238;
+% previous criterion, 7Dis+(0.5-SF)< scoreCF
+% i.e., new criterion, 7Dis-SF<socre-0.5
 
-ylabel('ACC');
-xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
-set(gca,'fontsize',18,'xlim',[0,1]);
-legend({'strain level 2: -0.6%','strain level 3: -1.2%','strain level 4: -2.1%','strain level 5: -3.7%'},'location','best');
-legend({'\fontsize{24}\epsilon\fontsize{16}^G = -0.004','\fontsize{24}\epsilon\fontsize{16}^G = -0.012','\fontsize{24}\epsilon\fontsize{16}^G = -0.023','\fontsize{24}\epsilon\fontsize{16}^G = -0.039'},'location','best');
+TP = 0;    % hit
+FP = 0;    % false alarm
+FN = 0;    % missing
+TN = 0;    % correct rejection
 
-t1 = table(bestScore(iE_start:iE_stop)',...
-    ACC_max(iE_start:iE_stop)',...
-    TP_best(iE_start:iE_stop)',...
-    FP_best(iE_start:iE_stop)',...
-    FN_best(iE_start:iE_stop)',...
-    TN_best(iE_start:iE_stop)',...
-    PPV_best(iE_start:iE_stop)',...
-    TPR_best(iE_start:iE_stop)',...
-    'VariableNames',{'StrainScore_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
-% plot(scoreSorted, F1,'linewidth',1.5,'color',colors(iE-1,:));
+switch iE
+    case 2
+        C = 5.03;
+    case 3
+        C = 6.36;
+    case 4
+        C = 6.24;
+    case 5
+        C = 3.59;
+end
+C = 7;      % default = 7, but we can look at other score: 5.03; 6.36; 6.24; 3.59; for iE = 2,3,4,5
+H = 1;
 
+for iS=1:length(stru)
+    for iCluster=1:length(stru(iS).cLabel)
+        strainScore = stru(iS).sf(iCluster)/(1+C*H) - C/(1+C*H)*min(H,stru(iS).dis(iCluster)) + (1+2*C*H)/2/(1+C*H);
+        shapeScore = (stru(iS).cVolGrowthRatio(iCluster,iE)+1)/2*stru(iS).tProbMax(iCluster);
+        if stru(iS).trueTwin(iCluster)>0    % if ground true
+            if (strainScore > strainScoreCF)||(shapeScore > shapeScoreCF)
+                TP = TP + 1;
+            else
+                FN = FN + 1;
+            end
+        else        % ground false
+            if (strainScore > strainScoreCF)||(shapeScore > shapeScoreCF)
+                FP = FP + 1;
+            else
+                TN = TN + 1;
+            end
+        end
+    end
+end
 
-%%  (1.4) plot 'confusion map'
+% plot 'confusion map'
 confMap = zeros(size(exx));
 
 % so that 3=TP(hit), 2=FP(false alarm), 1=FN(miss), 0=gb
 confMap(trueTwinMap>0)=1;   % true twin
 
 % add by 2. So if it's TP, it will be 1+2=3. If it's FP, it will be 0+2=2.
-% (3) shapeScoreNormalized (New) as criterion
+% (4) combine both as criterion, strainScore_c=7 OR shapeScore_new
+strainScoreMapNew = sfMap/(1+C*H) -C/(1+C*H)*min(H,mDistMap) + (1+2*C*H)/2/(1+C*H);
 shapeScoreMapNew = (cVolGrowthRatioMap+1)/2.*tProbMaxMap;
-confMap(shapeScoreMapNew>shapeScoreCF) = confMap(shapeScoreMapNew>shapeScoreCF)+2;
+confMap((strainScoreMapNew>strainScoreCF)|(shapeScoreMapNew>shapeScoreCF)) = confMap((strainScoreMapNew>strainScoreCF)|(shapeScoreMapNew>shapeScoreCF))+2;
 
 % make only boundary as 0, others nan
 confMap(confMap==0) = 0;
@@ -236,12 +233,10 @@ c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['
 
 % set(a,'fontsize',18,'xticklabel',{''},'yticklabel',{''});
 set(a,'fontsize',18);
-ttl = ['ShapeScoreNormalized-th=',num2str(shapeScoreCF)];
-ttl_text = ['\eta_{th}= ',num2str(shapeScoreCF)];
+ttl = ['(StrainScoreNormalized-th=',num2str(strainScoreCF),') OR (ShapeScoreNormalized-th=',num2str(shapeScoreCF),')'];
+ttl_text = ['(\phi_{th}= ',num2str(strainScoreCF),') OR (\eta_{th}= ',num2str(shapeScoreCF),')'];
 title(a,ttl,'fontweight','normal');
 annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttl_text, 'LineStyle','none', 'FontSize',24);
-
-
 %%
 
 
