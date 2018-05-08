@@ -842,9 +842,9 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 F1 = 2*TP./(2*TP+FP+FN);
 
 plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',2,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
 xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
@@ -859,9 +859,9 @@ print(['iE=',num2str(iE),' Event Count vs StrainScoreNormalized_th.tif'],'-dtiff
 %% (4.1 b) zoom in
 figure; hold on;
 plot(scoreSorted, TP,'linewidth',4,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',4,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',4,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',4,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',4,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 set(gca,'xlim',[0.9, 1],'ylim',[0 600],'fontsize',18)
 %%
 print(['iE=',num2str(iE),' Event Count vs StrainScoreNormalized_th zoom.tif'],'-dtiff');
@@ -874,7 +874,7 @@ plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
 plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
 xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
-ylabel('Rate');
+ylabel(' ');
 set(gca,'fontsize',18,'xlim',[0 1],'ylim',[0,1.1]);
 
 legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
@@ -940,9 +940,9 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 F1 = 2*TP./(2*TP+FP+FN);
 
 plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',2,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
 xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
@@ -957,9 +957,9 @@ print(['iE=',num2str(iE),' Event Count vs StrainScoreNormalized_th C_fitted.tif'
 %% (4.2 b) zoom in
 figure; hold on;
 plot(scoreSorted, TP,'linewidth',4,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',4,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',4,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',4,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',4,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 set(gca,'xlim',[0.9 1],'ylim',[0 600],'fontsize',18)
 %%
 print(['iE=',num2str(iE),' Event Count vs StrainScoreNormalized_th C_fitted zoom.tif'],'-dtiff');
@@ -972,7 +972,7 @@ plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
 plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
 xlabel('\phi_{th}'); % xlabel('StrainScore Threshold');
-ylabel('Rate');
+ylabel(' ');
 set(gca,'fontsize',18,'xlim',[0 1],'ylim',[0,1.1]);
 
 legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
@@ -1037,9 +1037,9 @@ ACC = (TP+TN)./(TP+FP+FN+TN);
 F1 = 2*TP./(2*TP+FP+FN);
 
 plot(scoreSorted, TP,'linewidth',2,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',2,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',2,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',2,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',2,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 legend({'TP','FP','FN','TN'},'location','best');
 
 
@@ -1055,9 +1055,9 @@ print(['iE=',num2str(iE),' Event Count vs ShapeScoreNormalized_th.tif'],'-dtiff'
 %% (4.3 b) zoom in
 figure; hold on;
 plot(scoreSorted, TP,'linewidth',4,'color',[1 0 0]);
-plot(scoreSorted, FP,'linewidth',4,'color',colors(5,:));
-plot(scoreSorted, FN,'linewidth',4,'color',[0 0 1]);
-plot(scoreSorted, TN,'--k','linewidth',1.5);
+plot(scoreSorted, FP,'--','linewidth',4,'color',colors(5,:));
+plot(scoreSorted, FN,'--','linewidth',4,'color',[0 0 1]);
+plot(scoreSorted, TN,'k','linewidth',1.5);
 set(gca,'fontsize',18,'xlim',[0.45, 0.75],'ylim',[0 600])
 %%
 print(['iE=',num2str(iE),' Event Count vs ShapeScoreNormalized_th zoom.tif'],'-dtiff');
@@ -1070,7 +1070,7 @@ plot(scoreSorted, PPV,'linewidth',1.5,'color',[1 0 0]);
 plot(scoreSorted, TPR,'linewidth',1.5,'color',[0 0 1]);
 
 xlabel('\eta_{th}'); % xlabel('StrainScore Threshold');
-ylabel('Rate');
+ylabel(' ');
 set(gca,'fontsize',18,'xlim',[0 1],'ylim',[0,1.1]);
 legend({'Accuracy (ACC)','Precision (PPV)','Sensitivity (TPR)'},'location','best');
 %%
