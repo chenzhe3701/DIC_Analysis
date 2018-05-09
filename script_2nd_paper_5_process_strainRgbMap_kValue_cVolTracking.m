@@ -724,7 +724,25 @@ box on;
 imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_notCleaned_a.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
-% (5) cVol (cleaned) evolution
+%% (4A) cVol (not cleaned) evolution, with an additional cluster
+volEvo_2 = stru(iS).volEvo(2,iE_list);  % manually assigned, just for this grain 
+f = figure;
+ax = axes; hold on;
+plot(strainPauses(iE_list),volEvo,'-md','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvo_2,'-bo','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution','fontweight','normal');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,140000]);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+legend({'Twinned','Non-twinned'},'Location','Southeast');
+%% adjust legend box position
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_notCleaned_2clusters.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+%% (5) cVol (cleaned) evolution
 f = figure;
 ax = axes;
 plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
@@ -738,7 +756,26 @@ box on;
 imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_cleaned_a.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
-% (6) cVol (both not cleaned and cleaned) evolution
+%% (5A) cVol (cleaned) evolution, with an additional cluster
+volEvoCleaned_2 = stru(iS).volEvoCleaned(2,iE_list);  % manually assigned, just for this grain 
+f = figure;
+ax = axes; hold on;
+plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned_2,'-bo','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution','fontweight','normal');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,140000]);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+legend({'Twinned','Non-twinned'},'Location','Southeast');
+%% adjust legend box position
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_cleaned_2clusters.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+
+%% (6) cVol (both not cleaned and cleaned) evolution
 f = figure;
 ax = axes;
 hold on;
