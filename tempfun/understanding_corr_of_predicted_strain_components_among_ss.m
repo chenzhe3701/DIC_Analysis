@@ -3,8 +3,17 @@
 % chenzhe, 2018-01-17
 % look at for all the grains, how predicted twin systems strain conponents are distributed.
 % based on trace_analysis_2, need to preload some strain and grain data.
+%
+% chenzhe, 2018-05-10, add code to load data to run this code.
 
-close all;
+useRandom = 1;   % can use randomly generated euler angle, or true experimental data  
+
+close all; clc;
+
+load('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\WE43_T6_C1_EbsdToSemForTraceAnalysis.mat','gID','gExx','gPhi1','gPhi','gPhi2','eulerAligned');
+gIDwithTrace = gID(~isnan(gExx));
+ss = define_SS_cart('Mg','twin');
+
 % initialize
 exxPred = zeros(size(gIDwithTrace,1),10);    % [gID, predicted_strain_of_twin_systems]
 exxPred(:,1) = gIDwithTrace;
@@ -19,7 +28,12 @@ for iS =1:length(gIDwithTrace)
     
     % ================ method-1, from theoretical twin shear --> to predict strain components as cluster center ===================
     ind_euler = find(gID==ID_current);
-    euler = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
+    if useRandom == 0
+        euler = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
+    else
+        euler = rand(1,3)*360;  % or, can simulate
+    end
+    
     if (1==eulerAligned)
         g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
     else

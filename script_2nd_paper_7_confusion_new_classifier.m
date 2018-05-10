@@ -321,6 +321,132 @@ print([ttl,'.tif'],'-dtiff');
 
 
 
+%% (2) summarize at all strain levels, how the best ACC can be achieved with [And] and [Or] relationship, i.e., at what [phi_th, eta_th] combination
+for iE = 2:5    
+    
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
+    
+    
+    switch iE
+        case 2
+            C = 5.03;
+        case 3
+            C = 6.36;
+        case 4
+            C = 6.24;
+        case 5
+            C = 3.59;
+    end
+    C = 7;
+    H = 1;
+    % create vectors containing necessary info
+    info = [];
+    for iS = 1:length(stru)
+        for iCluster = 1:length(stru(iS).cLabel)
+            % [trueTwin, phi_normalized(C,H), eta_normalized, mDist, SF, P_size, P_cnn]
+            info = [info; logical(stru(iS).trueTwin(iCluster)),...
+                stru(iS).sf(iCluster)/(1+C*H) - C/(1+C*H)*min(H,stru(iS).dis(iCluster)) + (1+2*C*H)/2/(1+C*H),...
+                (stru(iS).cVolGrowthRatio(iCluster,iE)+1)/2*stru(iS).tProbMax(iCluster),...
+                stru(iS).dis(iCluster),...
+                stru(iS).sf(iCluster),...
+                stru(iS).cVolGrowthRatio(iCluster,iE),...
+                stru(iS).tProbMax(iCluster),...
+                stru(iS).dis(iCluster) * stru(iS).sf(iCluster),...
+                stru(iS).dis(iCluster) * stru(iS).sf(iCluster) * stru(iS).cVolGrowthRatio(iCluster,iE) * stru(iS).tProbMax(iCluster)
+                ];
+        end
+    end
+    
+    response = info(:,1);
+    predictors = info(:,2:end);
+    
+    
+    %% Prepare Summarize how metrics change in the 2D-space of [x1-phi, x2-eta]
+    nRC = length(response);
+    % ind1 is the row_number in info, which is unique between 1 and nR.
+    % if we sort ind1 again, then rNum is the row_numbers in x1.
+    [x1,ind1] = sort(info(:,2),'descend');  % phi-classifier intervals
+    [~,rNum] = sort(ind1);
+    [x2,ind2] = sort(info(:,3),'descend');  % eta-classifier
+    [~,cNum] = sort(ind2);
+    X1 = repmat(x1,1,nRC);
+    X2 = repmat(x2',nRC,1);
+    M = zeros(nRC);
+    twins = [];
+    for ii = 1:nRC
+        if(1 == info(ii,1))
+            M(rNum(ii),cNum(ii)) = 1;
+        else
+            M(rNum(ii),cNum(ii)) = -1;
+        end
+    end
+    cumP = cumsum(cumsum(1==M,1),2);
+    P = cumP(end);
+    cumN = cumsum(cumsum(-1==M,1),2);
+    N = cumN(end);
+    
+    %%  AND
+    TP = cumP;
+    FN = P-TP;
+    FP = cumN;
+    TN = N-FP;
+    TPR = TP./(TP+FN);  % true positive rate, sensitivity, recall. (How many of the positives are identified)
+    PPV = TP./(TP+FP);  % precision, positive predictive value. (How many identified are the real positives).
+    ACC = (TP+TN)./(TP+FP+FN+TN);
+    
+    ACC_max_and(iE) = max(ACC(:));
+    [ir,ic] = find(ACC == ACC_max_and(iE), 1, 'first');
+    th_and(iE,:) = unique([x1(ir),x2(ic)],'rows');
+    TP_max_and(iE) = TP(sub2ind([nRC,nRC],ir,ic));
+    FP_max_and(iE) = FP(sub2ind([nRC,nRC],ir,ic));
+    FN_max_and(iE) = FN(sub2ind([nRC,nRC],ir,ic));
+    TN_max_and(iE) = TN(sub2ind([nRC,nRC],ir,ic));
+    TPR_max_and(iE) = TPR(sub2ind([nRC,nRC],ir,ic));
+    PPV_max_and(iE) = PPV(sub2ind([nRC,nRC],ir,ic));
+    
+    %% OR
+    TP = cumP(:,end)+cumP(end,:)-cumP;
+    FN = P-TP;
+    FP = cumN(:,end)+cumN(end,:)-cumN;
+    TN = N-FP;
+    TPR = TP./(TP+FN);  % true positive rate, sensitivity, recall. (How many of the positives are identified)
+    PPV = TP./(TP+FP);  % precision, positive predictive value. (How many identified are the real positives).
+    ACC = (TP+TN)./(TP+FP+FN+TN);
+    
+    ACC_max_or(iE) = max(ACC(:));
+    [ir,ic] = find(ACC == ACC_max_or(iE), 1, 'first');
+    th_or(iE,:) = unique([x1(ir),x2(ic)],'rows');
+    TP_max_or(iE) = TP(sub2ind([nRC,nRC],ir,ic));
+    FP_max_or(iE) = FP(sub2ind([nRC,nRC],ir,ic));
+    FN_max_or(iE) = FN(sub2ind([nRC,nRC],ir,ic));
+    TN_max_or(iE) = TN(sub2ind([nRC,nRC],ir,ic));
+    TPR_max_or(iE) = TPR(sub2ind([nRC,nRC],ir,ic));
+    PPV_max_or(iE) = PPV(sub2ind([nRC,nRC],ir,ic));
+    
+end
+
+t_and = table(th_and(iE_start:iE_stop,1),...
+    th_and(iE_start:iE_stop,2),...
+    ACC_max_and(iE_start:iE_stop)',...
+    TP_max_and(iE_start:iE_stop)',...
+    FP_max_and(iE_start:iE_stop)',...
+    FN_max_and(iE_start:iE_stop)',...
+    TN_max_and(iE_start:iE_stop)',...
+    PPV_max_and(iE_start:iE_stop)',...
+    TPR_max_and(iE_start:iE_stop)',...
+    'VariableNames',{'Phi_th','Eta_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
+
+t_or = table(th_or(iE_start:iE_stop,1),...
+    th_or(iE_start:iE_stop,2),...
+    ACC_max_or(iE_start:iE_stop)',...
+    TP_max_or(iE_start:iE_stop)',...
+    FP_max_or(iE_start:iE_stop)',...
+    FN_max_or(iE_start:iE_stop)',...
+    TN_max_or(iE_start:iE_stop)',...
+    PPV_max_or(iE_start:iE_stop)',...
+    TPR_max_or(iE_start:iE_stop)',...
+    'VariableNames',{'Phi_th','Eta_th','Accuracy','TP','FP','FN','TN','Precision','Sensitivity'})
 %%
 close all;
 
