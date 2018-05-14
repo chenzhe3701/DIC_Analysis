@@ -80,7 +80,7 @@ end
 
 clear exx_distribution exy_distribution eyy_distribution
 
-for iE = 3:5
+for iE = 2:5
 
 fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
 load(fullfile(grainDataPath,fname),'data');

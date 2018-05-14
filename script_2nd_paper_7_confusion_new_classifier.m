@@ -363,6 +363,7 @@ for iE = 2:5
     
     
     %% Prepare Summarize how metrics change in the 2D-space of [x1-phi, x2-eta]
+    % chenzhe, comment on 2018-05-13. Looks like the 'sort' can be replaced by 'unique' to reduce redundancy. of course, other changes are required correspondingly, e.g., flpud, rep by numele, M++, etc  
     nRC = length(response);
     % ind1 is the row_number in info, which is unique between 1 and nR.
     % if we sort ind1 again, then rNum is the row_numbers in x1.
