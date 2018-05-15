@@ -64,7 +64,7 @@ for igb = 1:length(uniquePair)
         
         % if first or last of keypoints, it could be a triple point
         if (jj==1)||(jj==size(keyPts,1))
-            ind_triple = find(pdist2(pt,tripleLookup) <= sqrt(stepSize),1,'first');
+            ind_triple = find(pdist2(pt,tripleLookup) <= 1.4143*stepSize,1,'first');
             if ~isempty(ind_triple)
                 pt = tripleLookup(ind_triple,:);
             end
