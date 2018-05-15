@@ -1,4 +1,6 @@
-% function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,nPoints_to_model_the_gb)
+% function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,resolution)
+% % resolution = number_of_SEM_pixels  per  EBSD_pixel
+%
 % gb_dir{i} = 'horizontal' or 'vertical'
 % gb_s_pt{i} = [id of points belonging to this grain boundary]
 % pt_pos(i,:) = [x,y of this point]
@@ -6,13 +8,12 @@
 %
 % chenzhe, 2018-05-14
 
-function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y)
+function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,resolution)
 
 % Note these can be easily changed as an input variable 
 nPoints_default = 5;
 reduce_nPoints_length_default = 200;    % if line segment less than 200 data points, just use 3 points. 
-
-stepSize = y(2) - y(1);
+resolution = resolution; % resolution: nPixels / micron
 
 [boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID);
 tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
@@ -34,12 +35,12 @@ pt_s_gb = [];
 pt_pos = [];
 
 
-% eliminate gb with less than 3 pts. Because it cause error
+% eliminate gb with less than 3 pts. Or shorter than 3xresolution. Because it cause error
 longUniquePair = [];
 for igb = 1:length(uniquePair)
     inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
     segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
-    if size(segPts,1) >= 3
+    if (size(segPts,1)>=3) && (sqrt(range(segPts(:,1))^2+range(segPts(:,2))^2) > 3*resolution)
         longUniquePair = [longUniquePair; uniquePair(igb,:)];
     end
 end
@@ -71,8 +72,8 @@ for igb = 1:length(uniquePair)
         pt = keyPts(jj,:);  % current point considered
         
         % if first or last of keypoints, it could be a triple point
-        if (jj==1)||(jj==size(keyPts,1))
-            ind_triple = find(pdist2(pt,tripleLookup) <= 1.4143*stepSize,1,'first');
+        if 1 %(jj==1)||(jj==size(keyPts,1))
+            ind_triple = find(pdist2(pt,tripleLookup) <= 1.4143*resolution,1,'first');
             if ~isempty(ind_triple)
                 pt = tripleLookup(ind_triple,:);
             end

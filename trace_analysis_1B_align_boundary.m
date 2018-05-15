@@ -43,26 +43,25 @@ exx = mat_to_image(exx,th,'index');
 
 indrs = 1:2000;
 indcs = 1:2000;
+% indrs = 1:size(exx,1);
+% indcs = 1:size(exx,2);
 exx_input = exx(indrs, indcs);
 
 ID_input = ID(indrs, indcs);
 x_input = X(indrs, indcs);
 y_input = Y(indrs, indcs);
-stepSize = y(2) - y(1);
+stepSize = y_input(2) - y_input(1);
 
-[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input);
+resolution = 4096/120;
+[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
 
 %% draw grain boundary, and make handles
 close all;
-h = [];
-H = [];
-hline = [];
-L = [];
-G = [];
-V = [];
+h = []; H = []; hline = [];
+L = []; G = []; V = [];
 
 figure;
-imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],exx_input);
+imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],ID_input); % here to choose the background
 a = gca;
 hold on;
 
@@ -91,6 +90,8 @@ for ii = 1:size(pt_pos,1)
     V{ii} = gb_dir(pt_s_gb{ii});
     addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
+
+%% plot the mask
 
 
 %%
