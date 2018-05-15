@@ -91,8 +91,26 @@ for ii = 1:size(pt_pos,1)
     addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
 
-%% plot the mask
+%% update [pt_pos] --> maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
 
+%% plot the mask
+figure; 
+set(gca,'ydir','reverse');
+hold on;
+for ii=1:length(gb_s_pt)
+    pos = pt_pos(gb_s_pt{ii},:);
+    switch gb_dir{ii}
+        case 'horizontal'
+            pp = csapi(pos(:,1),pos(:,2));
+            xp = min(pos(:,1)):stepSize:max(pos(:,1));
+            yp = fnval(pp,xp);
+        case 'vertical'
+            pp = csapi(pos(:,2),pos(:,1));
+            yp = min(pos(:,2)):stepSize:max(pos(:,2));
+            xp = fnval(pp,yp);
+    end
+    plot(xp,yp,'--.k');
+end
 
 %%
 % stepSize = 2;
