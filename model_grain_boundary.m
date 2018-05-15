@@ -1,4 +1,4 @@
-% function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,stepSize)
+% function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,nPoints_to_model_the_gb)
 % gb_dir{i} = 'horizontal' or 'vertical'
 % gb_s_pt{i} = [id of points belonging to this grain boundary]
 % pt_pos(i,:) = [x,y of this point]
@@ -6,7 +6,7 @@
 %
 % chenzhe, 2018-05-14
 
-function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y)
+function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,nPoints)
 
 stepSize = y(2) - y(1);
 
@@ -56,7 +56,7 @@ for igb = 1:length(uniquePair)
     end
     
     % determine up to 5 keypoints of this grain boundary segment for fitting
-    inds = round(linspace(1,size(segPts,1), min(5, size(segPts,1))));
+    inds = round(linspace(1,size(segPts,1), min(nPoints, size(segPts,1))));
     keyPts = segPts(inds,:);
     
     for jj=1:size(keyPts,1)

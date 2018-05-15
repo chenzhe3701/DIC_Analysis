@@ -36,14 +36,21 @@ f2 = '_';
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 % twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
+%%
+th = quantile(exx(:),[0.005, 0.995]);
+exx = mat_to_image(exx,th,'index');
 %% build grain boundary model
 
-ID_input = ID(1:4000,1:4000);
-x_input = X(1:4000,1:4000);
-y_input = Y(1:4000,1:4000);
+indrs = 1:2000;
+indcs = 1:2000;
+exx_input = exx(indrs, indcs);
+
+ID_input = ID(indrs, indcs);
+x_input = X(indrs, indcs);
+y_input = Y(indrs, indcs);
 stepSize = y(2) - y(1);
 
-[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input);
+[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,5);
 
 %% draw grain boundary, and make handles
 close all;
@@ -55,13 +62,14 @@ G = [];
 V = [];
 
 figure;
-imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],ID_input);
+imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],exx_input);
 a = gca;
 hold on;
 
 % (1) plot all the control points --> hangle: h{i}
 for ii = 1:size(pt_pos,1)
-   h{ii} = impoint(a, pt_pos(ii,1), pt_pos(ii,2)); 
+   h{ii} = impoint(a, pt_pos(ii,1), pt_pos(ii,2));
+   setColor(h{ii},'r');
 end
 % (2) for each boundary, group all its impoint handles --> gb_s_pt_group{j} = H{j} = {h{j1}, h{j2}, ... }
 for jj = 1:length(gb_s_pt)
