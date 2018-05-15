@@ -1,6 +1,6 @@
 % function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,stepSize)
 % gb_dir{i} = 'horizontal' or 'vertical'
-% gb_s_pt{i} = [id of points belonging to this grain boundary]  
+% gb_s_pt{i} = [id of points belonging to this grain boundary]
 % pt_pos(i,:) = [x,y of this point]
 % pt_s_gb{i} = [id of grain boundaries belongs to this point]
 %
@@ -28,6 +28,18 @@ gb_dir = [];
 gb_s_pt = [];
 pt_s_gb = [];
 pt_pos = [];
+
+
+% eliminate gb with less than 3 pts
+longUniquePair = [];
+for igb = 1:length(uniquePair)
+    inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
+    segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
+    if size(segPts,1) >= 3
+        longUniquePair = [longUniquePair; uniquePair(igb,:)];
+    end
+end
+uniquePair = longUniquePair;
 
 ptCount = 1;    % count number of control points
 for igb = 1:length(uniquePair)
@@ -58,7 +70,7 @@ for igb = 1:length(uniquePair)
             end
         end
         
-        % determine is the point was (e.g., a triple point that was) already used before
+        % determine if the point was (e.g., a triple point that was) already used before
         try
             [~,loc] = ismember(pt,pt_pos,'rows');
         catch
@@ -93,7 +105,7 @@ for igb = 1:length(uniquePair)
         ptCount = ptCount + 1;
         
     end
-    
 end
 
 end
+
