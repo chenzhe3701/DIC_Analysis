@@ -37,101 +37,142 @@ neighbor_elim = 1;          % don't consider this ID as neighbor. For example, I
 % twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
 %% build grain boundary model
-stepSize = 1;
-[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_0,x,y,stepSize);
+
+ID_input = ID(1:4000,1:4000);
+x_input = X(1:4000,1:4000);
+y_input = Y(1:4000,1:4000);
+stepSize = y(2) - y(1);
+
+[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input);
 
 %% draw grain boundary, and make handles
+close all;
+h = [];
+H = [];
+hline = [];
+L = [];
+G = [];
+V = [];
 
+figure;
+imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],ID_input);
+a = gca;
+hold on;
+
+% (1) plot all the control points --> hangle: h{i}
+for ii = 1:size(pt_pos,1)
+   h{ii} = impoint(a, pt_pos(ii,1), pt_pos(ii,2)); 
+end
+% (2) for each boundary, group all its impoint handles --> gb_s_pt_group{j} = H{j} = {h{j1}, h{j2}, ... }
+for jj = 1:length(gb_s_pt)
+    H{jj} = h(gb_s_pt{jj}); % or, looks like this is the same { h{ gb_s_pt{jj} } } 
+end
+% (3) for each boundary, plot the line and record the handle: hline{j}
+for jj = 1:length(gb_s_pt)
+    hline{jj} = plot_spline_line(H{jj}, gb_dir{jj}, stepSize);    
+end
+
+% (4) for each point, group its related grain boundaries pt_s_gb_group{i} = L{i} = {hline{i1}, hline{i2}, ...}
+% group this point's grain boundaries' points, pt_s_gb_s_pt_group{i} = G{i} = {H{i1}, H{i2}, ...}
+% gropu this point's grain boundaries' direction, pt_s_gb_sdir{i} = V{i} = {gb_dir{i1}, gb_dir{i2}, ...}  
+% addNewPositionCallback with L,G,V
+
+for ii = 1:size(pt_pos,1)
+    L{ii} = hline(pt_s_gb{ii});
+    G{ii} = H(pt_s_gb{ii});
+    V{ii} = gb_dir(pt_s_gb{ii});
+    addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+end
 
 
 %%
-stepSize = 2;
-
-[boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID_0);
-tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
-
-ind = boundaryTF>0;
-gbPoints = [ID_0(ind), neighborID(ind), x(ind), y(ind)];
-
-% sort the two grain IDs corresponding to gb points
-t = gbPoints(:,[1,2]);
-t = sort(t,2);
-gbPoints(:,[1,2]) = t;
-
-uniquePair = unique(gbPoints(:,[1,2]),'rows');    % unique grain pairs
-
-% reset variables
-gb_dir = [];
-gb_s_pt = [];
-pt_s_gb = [];
-pt_pos = [];
-
-ptCount = 1;    % count number of control points
-for igb = 1:length(uniquePair)
-    inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
-    segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
-    
-    % [1] determine end points of grain boundary. determine and record direction
-    if range(segPts(:,1))>=range(segPts(:,2))
-        segPts = sortrows(segPts,1);
-        gb_dir{igb} = 'horizontal';
-    else
-        segPts = sortrows(segPts,2);
-        gb_dir{igb} = 'vertical';
-    end
-    
-    % determine up to 5 keypoints of this grain boundary segment for fitting 
-    inds = round(linspace(1,size(segPts,1), min(5, size(segPts,1))));
-    keyPts = segPts(inds,:);
-    
-    for jj=1:size(keyPts,1)
-        pt = keyPts(jj,:);  % current point considered
-        
-        % if first or last of keypoints, it could be a triple point
-        if (jj==1)||(jj==size(keyPts,1))
-            ind_triple = find(pdist2(pt,tripleLookup) <= sqrt(stepSize),1,'first');
-            if ~isempty(ind_triple)
-                pt = tripleLookup(ind_triple,:);
-            end
-        end
-        
-        % determine is the point was (e.g., a triple point that was) already used before
-        try
-            [~,loc] = ismember(pt,pt_pos,'rows');
-        catch
-            loc = 0;
-        end
-
-        if loc > 0
-            ipt = loc;
-            ptCount = ptCount - 1;  % to conteract the ++ at the end of loop
-        else
-            ipt = ptCount;
-        end
-        
-        % [2] record this grain boundary's point id
-        try
-            gb_s_pt{igb} = [gb_s_pt{igb}, ipt];
-        catch
-            gb_s_pt{igb} = ipt;
-        end
-        
-        % [3] record this 'pt'
-        pt_pos(ipt,:) = pt;
-        
-        % [4] record this point's grain boundary id
-        try
-            pt_s_gb{ipt} = [pt_s_gb{ipt}, igb];
-        catch
-            pt_s_gb{ipt} = igb;
-        end
-        
-        % [at the end of loop] increment ipt
-        ptCount = ptCount + 1;
-
-    end
-
-end
+% stepSize = 2;
+% 
+% [boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID_0);
+% tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
+% 
+% ind = boundaryTF>0;
+% gbPoints = [ID_0(ind), neighborID(ind), x(ind), y(ind)];
+% 
+% % sort the two grain IDs corresponding to gb points
+% t = gbPoints(:,[1,2]);
+% t = sort(t,2);
+% gbPoints(:,[1,2]) = t;
+% 
+% uniquePair = unique(gbPoints(:,[1,2]),'rows');    % unique grain pairs
+% 
+% % reset variables
+% gb_dir = [];
+% gb_s_pt = [];
+% pt_s_gb = [];
+% pt_pos = [];
+% 
+% ptCount = 1;    % count number of control points
+% for igb = 1:length(uniquePair)
+%     inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
+%     segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
+%     
+%     % [1] determine end points of grain boundary. determine and record direction
+%     if range(segPts(:,1))>=range(segPts(:,2))
+%         segPts = sortrows(segPts,1);
+%         gb_dir{igb} = 'horizontal';
+%     else
+%         segPts = sortrows(segPts,2);
+%         gb_dir{igb} = 'vertical';
+%     end
+%     
+%     % determine up to 5 keypoints of this grain boundary segment for fitting 
+%     inds = round(linspace(1,size(segPts,1), min(5, size(segPts,1))));
+%     keyPts = segPts(inds,:);
+%     
+%     for jj=1:size(keyPts,1)
+%         pt = keyPts(jj,:);  % current point considered
+%         
+%         % if first or last of keypoints, it could be a triple point
+%         if (jj==1)||(jj==size(keyPts,1))
+%             ind_triple = find(pdist2(pt,tripleLookup) <= sqrt(stepSize),1,'first');
+%             if ~isempty(ind_triple)
+%                 pt = tripleLookup(ind_triple,:);
+%             end
+%         end
+%         
+%         % determine is the point was (e.g., a triple point that was) already used before
+%         try
+%             [~,loc] = ismember(pt,pt_pos,'rows');
+%         catch
+%             loc = 0;
+%         end
+% 
+%         if loc > 0
+%             ipt = loc;
+%             ptCount = ptCount - 1;  % to conteract the ++ at the end of loop
+%         else
+%             ipt = ptCount;
+%         end
+%         
+%         % [2] record this grain boundary's point id
+%         try
+%             gb_s_pt{igb} = [gb_s_pt{igb}, ipt];
+%         catch
+%             gb_s_pt{igb} = ipt;
+%         end
+%         
+%         % [3] record this 'pt'
+%         pt_pos(ipt,:) = pt;
+%         
+%         % [4] record this point's grain boundary id
+%         try
+%             pt_s_gb{ipt} = [pt_s_gb{ipt}, igb];
+%         catch
+%             pt_s_gb{ipt} = igb;
+%         end
+%         
+%         % [at the end of loop] increment ipt
+%         ptCount = ptCount + 1;
+% 
+%     end
+% 
+% end
 
 
 
