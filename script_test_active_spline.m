@@ -1,4 +1,5 @@
 clear;clc;
+%%
 I = imread('c:/Users/ZheChen/Desktop/untitled.tif');
 I = I(101:500,201:600);
 close all;
@@ -36,7 +37,9 @@ end
 
 for ii = 1:length(H)
     for jj = 1:length(H{ii})
-        addNewPositionCallback(H{ii}{jj},@(p) cellfun(@(x,y) update_spline_line(p, x,y, stepSize) ,hline, H ));
+        cell_of_line_handles = {hline{1},hline{2}};
+        cell_of_cp_groups = {H{1}, H{2}};
+        addNewPositionCallback(H{ii}{jj},@(p) cellfun(@(x,y) update_spline_line(p, x,y, stepSize) , cell_of_line_handles, cell_of_cp_groups ));
     end
 end
 
