@@ -6,7 +6,11 @@
 %
 % chenzhe, 2018-05-14
 
-function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,nPoints)
+function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y)
+
+% Note these can be easily changed as an input variable 
+nPoints_default = 5;
+reduce_nPoints_length_default = 200;    % if line segment less than 200 data points, just use 3 points. 
 
 stepSize = y(2) - y(1);
 
@@ -30,7 +34,7 @@ pt_s_gb = [];
 pt_pos = [];
 
 
-% eliminate gb with less than 3 pts
+% eliminate gb with less than 3 pts. Because it cause error
 longUniquePair = [];
 for igb = 1:length(uniquePair)
     inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
@@ -56,7 +60,11 @@ for igb = 1:length(uniquePair)
     end
     
     % determine up to 5 keypoints of this grain boundary segment for fitting
-    inds = round(linspace(1,size(segPts,1), min(nPoints, size(segPts,1))));
+    nPoints = nPoints_default;
+    if size(segPts,1) < reduce_nPoints_length_default
+        nPoints = 3;
+    end
+    inds = round(linspace(1,size(segPts,1), nPoints));
     keyPts = segPts(inds,:);
     
     for jj=1:size(keyPts,1)

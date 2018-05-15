@@ -50,7 +50,7 @@ x_input = X(indrs, indcs);
 y_input = Y(indrs, indcs);
 stepSize = y(2) - y(1);
 
-[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,5);
+[gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input);
 
 %% draw grain boundary, and make handles
 close all;
