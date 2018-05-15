@@ -36,13 +36,14 @@ f2 = '_';
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 % twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
-%%
+%% modify exx, so that it is easier to be plotted by imagesc
 th = quantile(exx(:),[0.005, 0.995]);
 exx = mat_to_image(exx,th,'index');
+
 %% build grain boundary model
 
-indrs = 1:2000;
-indcs = 1:2000;
+indrs = 2001:3600;
+indcs = 3201:4800;
 % indrs = 1:size(exx,1);
 % indcs = 1:size(exx,2);
 exx_input = exx(indrs, indcs);
@@ -83,7 +84,6 @@ end
 % group this point's grain boundaries' points, pt_s_gb_s_pt_group{i} = G{i} = {H{i1}, H{i2}, ...}
 % gropu this point's grain boundaries' direction, pt_s_gb_sdir{i} = V{i} = {gb_dir{i1}, gb_dir{i2}, ...}  
 % addNewPositionCallback with L,G,V
-
 for ii = 1:size(pt_pos,1)
     L{ii} = hline(pt_s_gb{ii});
     G{ii} = H(pt_s_gb{ii});
@@ -92,114 +92,19 @@ for ii = 1:size(pt_pos,1)
 end
 
 %% update [pt_pos] --> maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
-
-%% plot the mask
-figure; 
-set(gca,'ydir','reverse');
-hold on;
-for ii=1:length(gb_s_pt)
-    pos = pt_pos(gb_s_pt{ii},:);
-    switch gb_dir{ii}
-        case 'horizontal'
-            pp = csapi(pos(:,1),pos(:,2));
-            xp = min(pos(:,1)):stepSize:max(pos(:,1));
-            yp = fnval(pp,xp);
-        case 'vertical'
-            pp = csapi(pos(:,2),pos(:,1));
-            yp = min(pos(:,2)):stepSize:max(pos(:,2));
-            xp = fnval(pp,yp);
+for ii = 1:size(pt_pos,1)
+    try
+        pt_pos(ii,:) = h{ii}.getPosition;
     end
-    plot(xp,yp,'--.k');
 end
 
-%%
-% stepSize = 2;
-% 
-% [boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID_0);
-% tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
-% 
-% ind = boundaryTF>0;
-% gbPoints = [ID_0(ind), neighborID(ind), x(ind), y(ind)];
-% 
-% % sort the two grain IDs corresponding to gb points
-% t = gbPoints(:,[1,2]);
-% t = sort(t,2);
-% gbPoints(:,[1,2]) = t;
-% 
-% uniquePair = unique(gbPoints(:,[1,2]),'rows');    % unique grain pairs
-% 
-% % reset variables
-% gb_dir = [];
-% gb_s_pt = [];
-% pt_s_gb = [];
-% pt_pos = [];
-% 
-% ptCount = 1;    % count number of control points
-% for igb = 1:length(uniquePair)
-%     inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
-%     segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
-%     
-%     % [1] determine end points of grain boundary. determine and record direction
-%     if range(segPts(:,1))>=range(segPts(:,2))
-%         segPts = sortrows(segPts,1);
-%         gb_dir{igb} = 'horizontal';
-%     else
-%         segPts = sortrows(segPts,2);
-%         gb_dir{igb} = 'vertical';
-%     end
-%     
-%     % determine up to 5 keypoints of this grain boundary segment for fitting 
-%     inds = round(linspace(1,size(segPts,1), min(5, size(segPts,1))));
-%     keyPts = segPts(inds,:);
-%     
-%     for jj=1:size(keyPts,1)
-%         pt = keyPts(jj,:);  % current point considered
-%         
-%         % if first or last of keypoints, it could be a triple point
-%         if (jj==1)||(jj==size(keyPts,1))
-%             ind_triple = find(pdist2(pt,tripleLookup) <= sqrt(stepSize),1,'first');
-%             if ~isempty(ind_triple)
-%                 pt = tripleLookup(ind_triple,:);
-%             end
-%         end
-%         
-%         % determine is the point was (e.g., a triple point that was) already used before
-%         try
-%             [~,loc] = ismember(pt,pt_pos,'rows');
-%         catch
-%             loc = 0;
-%         end
-% 
-%         if loc > 0
-%             ipt = loc;
-%             ptCount = ptCount - 1;  % to conteract the ++ at the end of loop
-%         else
-%             ipt = ptCount;
-%         end
-%         
-%         % [2] record this grain boundary's point id
-%         try
-%             gb_s_pt{igb} = [gb_s_pt{igb}, ipt];
-%         catch
-%             gb_s_pt{igb} = ipt;
-%         end
-%         
-%         % [3] record this 'pt'
-%         pt_pos(ipt,:) = pt;
-%         
-%         % [4] record this point's grain boundary id
-%         try
-%             pt_s_gb{ipt} = [pt_s_gb{ipt}, igb];
-%         catch
-%             pt_s_gb{ipt} = igb;
-%         end
-%         
-%         % [at the end of loop] increment ipt
-%         ptCount = ptCount + 1;
-% 
-%     end
-% 
-% end
+%% plot the mask
+[mask,~] = plot_spline_mask(gb_dir, gb_s_pt, pt_pos, x_input, y_input);
+
+
+%% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
+save('try_align_gb_data.mat','mask','ID_input')
+
 
 
 
