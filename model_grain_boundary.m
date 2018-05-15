@@ -6,8 +6,10 @@
 %
 % chenzhe, 2018-05-14
 
-function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,stepSize)
-% stepSize = 2
+function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y)
+
+stepSize = y(2) - y(1);
+
 [boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID);
 tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
 
