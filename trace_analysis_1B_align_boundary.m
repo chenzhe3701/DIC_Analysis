@@ -110,7 +110,7 @@ end
 
 
 %% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
-save('try_align_gb_data_rename.mat','mask','ID_input')
+save('try_align_gb_data_rename.mat', 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup', 'mask','ID_input')
 
 
 
@@ -138,9 +138,10 @@ myplot(ID_temp, gb);
 
 % change the id# in ID_temp to that in ID_input
 ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input);
+gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 
 % show the new, aligned ID map
-myplot(ID_aligned, gb_target);
+myplot(ID_aligned, grow_boundary(gb_aligned));
 
 
 
