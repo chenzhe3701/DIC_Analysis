@@ -1,6 +1,6 @@
 % The input 'p' is the output from 
 
-function [] = update_spline_line(p, hline, himpoint, stepSize)
+function [] = update_spline_line(hline, himpoint, stepSize)
 
 pos = himpoint{1}.getPosition;
 xp = pos(1);
