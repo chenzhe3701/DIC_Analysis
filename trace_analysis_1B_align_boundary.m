@@ -2,7 +2,7 @@
 % In branch 'Ti7Al_B6'
 % Organize this to look at grain boundary alignment
 
-clear;
+clear; clc;
 addChenFunction;
 dicPath = uigetdir('E:\Ti7Al_B6_insitu_tension\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
@@ -40,8 +40,8 @@ neighbor_elim = 1;          % don't consider this ID as neighbor. For example, I
 th = quantile(exx(:),[0.005, 0.995]);
 exx = mat_to_image(exx,th,'index');
 
-%% build grain boundary model
 
+%% crop an area of data
 indrs = 2001:3600;
 indcs = 3201:4800;
 % indrs = 1:size(exx,1);
@@ -53,6 +53,13 @@ x_input = X(indrs, indcs);
 y_input = Y(indrs, indcs);
 stepSize = y_input(2) - y_input(1);
 
+% show initial condition
+gb = find_one_boundary_from_ID_matrix(ID_input);
+myplot(exx_input);
+myplot(ID_input);
+myplot(exx_input, grow_boundary(gb));
+
+%% build grain boundary model
 resolution = 4096/120;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
 
@@ -62,7 +69,7 @@ h = []; H = []; hline = [];
 L = []; G = []; V = [];
 
 figure;
-imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],ID_input); % here to choose the background
+imagesc([x_input(1),x_input(end)],[y_input(1),y_input(end)],exx_input); % here to choose the background
 a = gca;
 hold on;
 
@@ -108,26 +115,32 @@ save('try_align_gb_data_rename.mat','mask','ID_input')
 
 
 %% Load data
-clear; 
-clc;
 load('D:\p\m\DIC_Analysis\try_align_gb_data.mat','mask','ID_input');
 
 gb_target = mask;
-d_target = city_block(gb_target);
+% d_target = city_block(gb_target);
 % [FX,FY] = gradient(d_target);
-
-gb = find_one_boundary_from_ID_matrix(ID_input);
 
 % grow gb_target to guarantee grains are disconnected.  May need grow multiple times.   
 gb_target = grow_boundary(gb_target);
 
+% just show how ID_temp compares with old ID (but use grain boundary to show) 
+myplot(ID_input, gb_target);
+
+
 % find ID with boundary map. Temporarily make it negative, so it can be recognized if not matched.  
 ID_temp = -find_ID_map_from_boundary_map(gb_target);
+
+% just show how ID_temp compares with old ID (but use grain boundary to show)  
+gb = find_one_boundary_from_ID_matrix(ID_input);
 myplot(ID_temp, gb);
 
-% change the id# in ID_temp to that in ID_input
-ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input)
 
+% change the id# in ID_temp to that in ID_input
+ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input);
+
+% show the new, aligned ID map
+myplot(ID_aligned, gb_target);
 
 
 
