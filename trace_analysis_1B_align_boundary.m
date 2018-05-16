@@ -103,7 +103,36 @@ end
 
 
 %% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
-save('try_align_gb_data.mat','mask','ID_input')
+save('try_align_gb_data_rename.mat','mask','ID_input')
+
+
+
+%% Load data
+clear; 
+clc;
+load('D:\p\m\DIC_Analysis\try_align_gb_data.mat','mask','ID_input');
+
+gb_target = mask;
+d_target = city_block(gb_target);
+% [FX,FY] = gradient(d_target);
+
+gb = find_one_boundary_from_ID_matrix(ID_input);
+
+% grow gb_target to guarantee grains are disconnected.  May need grow multiple times.   
+gb_target = grow_boundary(gb_target);
+
+% find ID with boundary map. Temporarily make it negative, so it can be recognized if not matched.  
+ID_temp = -find_ID_map_from_boundary_map(gb_target);
+myplot(ID_temp, gb);
+
+% change the id# in ID_temp to that in ID_input
+ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input)
+
+
+
+
+
+
 
 
 
