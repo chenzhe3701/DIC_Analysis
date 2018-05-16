@@ -43,9 +43,7 @@
 % find_boundary_from_ID_matrix()
 % interp_data()
 % generate_grain_avg_data()
-%
-% Note: this modification is in branch 'Ti7Al_B6'
-% chenzhe, 2017-05-14, branched in order to look at grain boundary alignment
+
 
 
 clear;
@@ -60,9 +58,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('E:\Ti7Al_B6_EBSD\Ti7Al#B6_Left_GrainFile_Type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile('E:\Ti7Al_B6_EBSD\Ti7Al#B6_Left_GrainFile_Type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile('E:\Ti7Al_B6_insitu_tension\stitched_DIC\_10.mat','choose one of the strain file (mat format) for aligning purpose');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -70,7 +68,7 @@ tform = make_average_transform('projective',cpEBSD,cpSEM);
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-saveDataPath = [uigetdir('E:\Ti7Al_B6_insitu_tension\Analysis_by_Matlab\','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir(pathSetting,'choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 try
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
 catch
@@ -164,7 +162,7 @@ end
 clear EBSDdata1 EBSDdata2 strainData;
 
 %% align euler angle coordinates to SEM, so later on, phiSys can be set to [0 0 0]. Do this before interp so there are few points to rotate
-phiSys = [90, 180, 0];
+phiSys = [-90, 180, 0];
 [phi1,phi,phi2] = align_euler_to_sample(phi1,phi,phi2,'none', phiSys(1),phiSys(2),phiSys(3)); % align euler angle to sample reference frame ------------ align.  UMich data is actually setting-1 !!!
 [q0,q1,q2,q3,phi1,phi,phi2] = regulate_euler_quat(phi1,phi,phi2);   % regulate the angles
 [gPhi1,gPhi,gPhi2] = align_euler_to_sample(gPhi1,gPhi,gPhi2,'none', phiSys(1),phiSys(2),phiSys(3));
@@ -199,7 +197,7 @@ end
 %% Save the data
 disp('saving ...');
 save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
-save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','ID_0','iThick','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
+save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
     'phi1','phi','phi2','q0','q1','q2','q3',...
     'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',...
     'neighborStruct','misorientationStruct',...    
