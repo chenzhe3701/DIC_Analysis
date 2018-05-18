@@ -50,4 +50,15 @@ end
 hline.XData = xp;
 hline.YData = yp;
 
+% update if necessary. But may be slow. Can comment this.
+pt_pos = evalin('base','pt_pos;');
+h = evalin('base','h;');
+for ii = 1:size(pt_pos,1)
+    try
+        pt_pos(ii,:) = h{ii}.getPosition;
+    end
+end
+assignin('base','pt_pos',pt_pos);
+assignin('base','h',h);
+
 end

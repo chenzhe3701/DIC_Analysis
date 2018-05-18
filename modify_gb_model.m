@@ -77,8 +77,42 @@ switch method
         
     case {'add_boundary',2}
         disp('add_boundary');
-
+        % make addition to [gb_dir, gb_s_pt, pt_pos, pt_s_gb]
+        ngb = length(gb_dir);
+        npt = size(pt_pos,1);
+        gb_dir{ngb+1} = 'horizontal';
+        gb_s_pt{ngb+1} = npt + [1:5];
+        pt_pos(npt+[1:5],:) = pos + [stepSize,stepSize].*[0:100:400]';
+        for ii=1:5
+            pt_s_gb{npt+ii} = ngb+1;
+        end
         
+        % make addition to these 
+        % (1) plot all the control points --> hangle: h{i}
+        for ii = npt+1 : npt+5
+            h{ii} = impoint(gca, pt_pos(ii,1), pt_pos(ii,2));
+            setColor(h{ii},'r');
+        end
+        % (2) for each boundary, group all its impoint handles --> gb_s_pt_group{j} = H{j} = {h{j1}, h{j2}, ... }
+        for jj = ngb+1
+            H{jj} = h(gb_s_pt{jj}); % or, looks like this is the same { h{ gb_s_pt{jj} } }
+        end
+        % (3) for each boundary, plot the line and record the handle: hline{j}
+        for jj = ngb+1
+            hline{jj} = plot_spline_line(H{jj}, gb_dir{jj}, stepSize);
+        end
+        
+        % (4) for each point, group its related grain boundaries pt_s_gb_group{i} = L{i} = {hline{i1}, hline{i2}, ...}
+        % group this point's grain boundaries' points, pt_s_gb_s_pt_group{i} = G{i} = {H{i1}, H{i2}, ...}
+        % gropu this point's grain boundaries' direction, pt_s_gb_sdir{i} = V{i} = {gb_dir{i1}, gb_dir{i2}, ...}
+        % addNewPositionCallback with L,G,V
+        for ii = npt+1 : npt+5
+            L{ii} = hline(pt_s_gb{ii});
+            G{ii} = H(pt_s_gb{ii});
+            V{ii} = gb_dir(pt_s_gb{ii});
+            S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+        end
+
         
     case {'vertical','horizontal'}
         disp('change_gb_dir');

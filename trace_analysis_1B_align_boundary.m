@@ -98,7 +98,7 @@ for ii = 1:size(pt_pos,1)
     S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
 
-%% update [pt_pos] --> maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
+%% Can force to update [pt_pos] --> Later, maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
 for ii = 1:size(pt_pos,1)
     try
         pt_pos(ii,:) = h{ii}.getPosition;
