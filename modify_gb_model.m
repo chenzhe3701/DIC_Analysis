@@ -126,9 +126,9 @@ switch method
         % Need to modify [L,G,V,callback,S], where [L{ind},G{ind}] required to update callback.
         % [h,H,hline] are OK.
         for ii=1:length(pt_s_gb{ind})
-            igb = pt_s_gb{ind}(ii)
+            igb = pt_s_gb{ind}(ii);
             for jj = 1:length(gb_s_pt{igb})
-                ipt = gb_s_pt{igb}(jj)
+                ipt = gb_s_pt{igb}(jj);
                 L{ipt} = hline(pt_s_gb{ipt});
                 G{ipt} = H(pt_s_gb{ipt});
                 V{ipt} = gb_dir(pt_s_gb{ipt});
