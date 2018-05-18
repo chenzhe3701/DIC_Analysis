@@ -95,7 +95,7 @@ for ii = 1:size(pt_pos,1)
     L{ii} = hline(pt_s_gb{ii});
     G{ii} = H(pt_s_gb{ii});
     V{ii} = gb_dir(pt_s_gb{ii});
-    addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+    S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
 
 %% update [pt_pos] --> maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]

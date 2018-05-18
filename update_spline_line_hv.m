@@ -14,17 +14,33 @@ pos = himpoint{1}.getPosition;
 switch hv
     case 'horizontal'
         xp = pos(1);
+        
+        % In case the control points move from larger to smaller value ...
+        p2 = himpoint{end}.getPosition;
+        x_p2 = p2(1);
+        if x_p2 < xp
+            stepSize = -stepSize;
+        end
+        
         for ii = 2:length(himpoint)
             pos = [pos; himpoint{ii}.getPosition];
-            xp = [xp, xp(end)+stepSize : pos(ii,1)];
+            xp = [xp, xp(end)+stepSize:sign(stepSize):pos(ii,1)];
         end
         pp = csapi(pos(:,1),pos(:,2));
         yp = fnval(pp,xp);
     case 'vertical'
         yp = pos(2);
+        
+        % In case the control points move from larger to smaller value ...
+        p2 = himpoint{end}.getPosition;
+        y_p2 = p2(2);
+        if y_p2 < yp
+            stepSize = -stepSize;
+        end
+        
         for ii = 2:length(himpoint)
            pos = [pos; himpoint{ii}.getPosition];
-           yp = [yp, yp(end)+stepSize : pos(ii,2)];
+           yp = [yp, yp(end)+stepSize:sign(stepSize):pos(ii,2)];
         end
         pp = csapi(pos(:,2),pos(:,1));
         xp = fnval(pp,yp);
