@@ -110,9 +110,9 @@ end
 
 
 %% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
-save('try_align_gb_data_rename.mat', 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup', 'mask','ID_input')
-
-
+save('boundary_mask.mat', 'mask', 'ID_input');
+%% Can also save the boundary model
+save('boundary_model.mat', 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
 
 %% Load data
 load('D:\p\m\DIC_Analysis\try_align_gb_data.mat','mask','ID_input');
