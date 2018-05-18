@@ -665,7 +665,7 @@ stru = struCell{iE_target};
 volEvo = stru(iS).volEvo(iC_target,iE_list);
 volEvoCleaned = stru(iS).volEvoCleaned(iC_target,iE_list);
 
-% In strain level
+%% In strain level
 % (1) cVol (not cleaned) evolution
 f = figure;
 ax = axes;
@@ -790,6 +790,29 @@ legend({'uncleand','cleaned'},'Location','best');
 % annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
 box on;
 imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_both_a.tif']);
+print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
+
+%% (6A) cVol (both not cleaned and cleaned) evolution, with an additional cluster
+volEvo_2 = stru(iS).volEvo(2,iE_list);  % manually assigned, just for this grain 
+volEvoCleaned_2 = stru(iS).volEvoCleaned(2,iE_list);  % manually assigned, just for this grain 
+
+f = figure;
+ax = axes;
+hold on;
+plot(strainPauses(iE_list),volEvo,'--mo','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvo_2,'--bo','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned_2,'-bd','linewidth',1.5,'markersize',8);
+xlabel('Global Uniaxial Strain, mm/mm');
+xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
+ylabel('Cluster Size, pixels');
+title('Cluster Size Evolution','fontweight','normal');
+set(ax,'xdir','reverse','fontsize',18,'ylim',[0,135000]);
+legend({'Twinned, uncleaned','Twined, cleaned','Non-twinned, uncleaned','Non-twinned, cleaned'},'Location','best','fontsize',14);
+% annotation(f,'textbox', [0.15 0.25 0.5 0.075], 'String',{'Cluster # 1 at Strain Level 2'}, 'FontSize',16,'LineStyle','none');
+box on;
+imgName = (['g',num2str(ID_current),'_s',num2str(iE_target),'_c',num2str(iC_target),'_sizeEvolution_both_and_both.tif']);
+%% adjust legend position, then plot
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
 
