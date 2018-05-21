@@ -1,22 +1,32 @@
-% function [] = onion_thin(A, ind_start_input)
-%
+% [pxl_M, ind_M, skl_M] = onion_thin(A, ind_start_input)
+% A = input image
+% ind_start_point is the index to start traversal.
 % chenzhe, 2018-05-19
 
-clear; clc; %close all;
-load('A.mat'); 
-% for debug
-% A = padarray(ones(5),[1,1],'pre');A=padarray(A,[1,1],'post');
 
-% The Global starting point (input of the function)
-ind_start_input = 79;
+
+function [pxl_M, ind_M, skl_M] = onion_thin(A, ind_start_input)
+
+% For debug.
+% clear; clc; close all;
 
 % Use grain ID for debugging:
-ID = load('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt\WE43_T6_C1_s_all_grain_1144_local_map.mat');
-ID = ID.data;
-ID = ID(5).ID_local;
-ID = ID==1144;
-A = ID;
-ind_start_input = find(A(:)==1,1,'first');
+realGrain = 0;
+if realGrain
+    ID = load('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt\WE43_T6_C1_s_all_grain_1144_local_map.mat');
+    ID = ID.data;
+    ID = ID(5).ID_local;
+    ID = ID==1144;
+    A = ID;
+    ind_start_input = find(A(:)==1,1,'first');
+else    
+    if ~exist('ind_start_input','var')
+        load('A.mat','A');
+    end
+    if ~exist('ind_start_input','var')
+        ind_start_input = 79;
+    end
+end
 
 [nR,nC] = size(A);
 ind_mat = reshape(1:nR*nC, nR, nC);
@@ -97,16 +107,6 @@ while (~all_skeleton)&&(iLoop<=inf)
         % if (realigned==False)&&(find(skl_list)), realign, then realigned=true
     end
     
-    % [**] Make sure skeleton index only appear once. --> Looks like this does work  
-%     ind_skl_unique= unique(ind_list(skl_list==1));
-%     [~,loc_first_appear] = ismember(ind_skl_unique, ind_list);
-%     loc_all = ismember(ind_list, ind_skl_unique);
-%     loc_to_remove = loc_all;
-%     loc_to_remove(loc_first_appear) = 0;
-%     pxl_val_list(loc_to_remove) = [];
-%     ind_list(loc_to_remove) = [];
-%     skl_list(loc_to_remove) = [];
-    
     % Update 'A' after this layer was traversed
     % Break if only skeleton is left
     if sum(A(:)-A_thin_once(:))
@@ -163,6 +163,11 @@ while (~all_skeleton)&&(iLoop<=inf)
     else
         % align by considering anchor points
         % Use last loops aligned ind_list as template, find all the anchor positions in index in this list, make sure the last one is considered as anchor  
+        % Only interp between different GROUPs of anchor points.
+        % --> If two anchor points are in the same group in step-i, they will remain in the same group in step i+1.
+        % It is possible that some anchor points in a group in step i can show twice in step i+1.
+        % But if we interp using the largest range, because anchors deccendants will be eliminated, so it is still OK to just interp.  
+        % I think by finding the 'last' of p2, it can be achieved that two anchors are from different 'groups'  
         anchor_ind = ind_cell{iLoop-1};
         anchor_pos = find(skl_cell{iLoop-1});
         if anchor_pos(end)~=list_length
@@ -180,33 +185,7 @@ while (~all_skeleton)&&(iLoop<=inf)
            xp(end) = [];
            xp = [xp, linspace(p1,p2,anchor_pos(ii+1)-anchor_pos(ii)+1)];
         end
-        
-        % Only interp between different GROUPs of anchor points.  
-        % --> If two anchor points are in the same group in step-i, they will remain in the same group in step i+1.   
-        % It is possible that some anchor points in a group in step i can show twice in step i+1.   
-        % But if we interp using the largest range, because anchors deccendants will be eliminated, so it is still OK to just interp.     
-%         anchor_ind = ind_cell{iLoop-1};
-%         anchor_pos = skl_cell{iLoop-1};
-%         if anchor_pos(end)~=list_length
-%             anchor_pos = [anchor_pos,list_length];
-%         end
-%         p1 = 1;
-%         p2 = 1;
-%         pEnd = length(anchor_ind);
-%         while(p2<pEnd)
-%             % find the last one for a block of anchors
-%            while(anchor_pos(p1+1)==1)
-%                p1 = p1+1;
-%            end
-%            p2 = p1+1;
-%            while(an
-%             p2 = p2+1;
-%         end
-        
-        
-        
-        
-        
+  
         % interp
         pxl_val_list = interp1(1:length(pxl_val_list), pxl_val_list, xp,'nearest');
         ind_list = interp1(1:length(ind_list), ind_list, xp,'nearest');
