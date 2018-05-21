@@ -59,6 +59,34 @@ myplot(exx_input);
 myplot(ID_input);
 myplot(exx_input, grow_boundary(gb));
 
+%%
+% loaded = load(fullfile(dicPath,'_10.mat'));
+% exy_input = loaded.exy;
+% th = quantile(exy_input(:),[0.005, 0.995]);
+% exy_input = mat_to_image(exy_input,th,'index');
+% exy_input=exy_input(indrs,indcs);
+% 
+% eyy_input = loaded.eyy;
+% th = quantile(eyy_input(:),[0.005, 0.995]);
+% eyy_input = mat_to_image(eyy_input,th,'index');
+% eyy_input=eyy_input(indrs,indcs);
+% 
+% 
+% u_input = loaded.u; 
+% u_input=u_input(indrs,indcs);
+% 
+% v_input = loaded.v; 
+% v_input=v_input(indrs,indcs);
+% 
+% sigma_input = loaded.sigma; 
+% sigma_input=sigma_input(indrs,indcs);
+% 
+% clear loaded;
+% myplot(exy_input, (gb));
+% myplot(eyy_input, (gb));
+% myplot(u_input, (gb));
+% myplot(v_input, (gb));
+% myplot(sigma_input, (gb));
 %% build grain boundary model
 resolution = 4096/120;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
