@@ -19,13 +19,14 @@ if realGrain
     ID = ID==1144;
     A = ID;
     ind_start_input = find(A(:)==1,1,'first');
-else    
-    if ~exist('ind_start_input','var')
-        load('A.mat','A');
-    end
-    if ~exist('ind_start_input','var')
-        ind_start_input = 79;
-    end
+end
+
+if ~exist('A','var')
+    load('A.mat','A');
+    ind_start_input = 79;
+end
+if ~exist('ind_start_input','var')
+    ind_start_input = find(A(:)>0,1,'first');
 end
 
 [nR,nC] = size(A);
@@ -34,7 +35,12 @@ ind_mat = reshape(1:nR*nC, nR, nC);
 nb_ind_cell = arrayfun(@(x) {neighbor_index(nR,nC,x)}, ind_mat);
 % The final skeleton
 skeleton = thin(A,inf);
-A_raw = A.*ind_mat;  % [debug] make a copy of the original A, make pixel value with index number 
+
+% [debug] make a copy of the original A, make pixel value with index number
+% A_raw = double(A).*ind_mat;  
+
+A_raw = double(A);  
+A = logical(A);
 
 pxl_val_cell = [];
 ind_cell = [];
@@ -168,6 +174,12 @@ while (~all_skeleton)&&(iLoop<=inf)
         % It is possible that some anchor points in a group in step i can show twice in step i+1.
         % But if we interp using the largest range, because anchors deccendants will be eliminated, so it is still OK to just interp.  
         % I think by finding the 'last' of p2, it can be achieved that two anchors are from different 'groups'  
+        % example-1: 
+        % layer-1: [14, 15, 16, ... ...]
+        % layer-2: [14, 16, 14, ...]
+        % example-2:
+        % layer-1: [226, 225, ..., ..., ..., ..., ..., 715]
+        % layer-2: [226, 225, 715, ..., 265, 715, 225]
         anchor_ind = ind_cell{iLoop-1};
         anchor_pos = find(skl_cell{iLoop-1});
         if anchor_pos(end)~=list_length
