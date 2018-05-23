@@ -34,6 +34,12 @@ close;figure;imagesc(J); title('J');
 [pxl_M_1, ind_M_1, skl_M_1] = onion_thin(I);
 [pxl_M_2, ind_M_2, skl_M_2] = onion_thin(J);
 
+figure; imagesc(pxl_M_1)
+figure; imagesc(pxl_M_2)
+figure; imagesc(skl_M_1)
+figure; imagesc(skl_M_2)
+
+%%
 [x,y] = meshgrid(1:size(pxl_M_1,2), 1:size(pxl_M_1,1));
 
 xq = linspace(1,x(1,end),size(pxl_M_2,2));

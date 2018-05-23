@@ -8,7 +8,8 @@ function [pxl_list_new, ind_list_new, skl_list_new, anchor_label_new]=interp_bet
 % pxl_list = rand(size(ind_list));
 % skl_list = rand(size(ind_list));
 save('for_debug_interp_between_layers.mat','pxl_list_pre', 'ind_list_pre', 'skl_list_pre', 'anchor_label_pre', 'pxl_list', 'ind_list', 'skl_list');
-
+% figure; plot(skl_list_pre);
+% figure; plot(skl_list);
 %%
 % position_list
 pos_list = 1:length(ind_list);
@@ -59,12 +60,9 @@ while ig < nGroups_pre
         q_back = [];
         for iq = q1+1 : q_eog
             if ismember(ind_list(iq), ind_list_pre(p1:end))
-                q_back = iq
+                q_back = iq;
                 p_back = find((ind_list_pre==ind_list(q_back))&(pos_list_pre>p1));  
-                p_back = p_back(end)
-                
-                ind_list(q_back)
-                ind_list_pre(p_back)
+                p_back = p_back(end);
             end
         end
         has_descendant = 1;
@@ -86,7 +84,7 @@ while ig < nGroups_pre
             % perform interp, form [q1 ... q2] to [p1 ... p2]
             if (q2-q1 > p2-p1)
                 disp('warning! Interp should not shrink! - 1');
-                [p1,p2,q1,q2]
+                [10000+p1,20000+p2,30000+q1,40000+q2]
             end
             if (p1==p2)||(q1>=q2)
                 pos_to_use = q2;
