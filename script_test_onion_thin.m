@@ -13,8 +13,8 @@ J = ones(size(I));
 %% option setting - 2.1, draw first image
 I = zeros(256,256);
 figure;imagesc(I);
-h = imellipse();
-% h = impoly();
+% h = imellipse();
+h = impoly();
 h.wait();
 I = h.createMask;
 I = double(I).*reshape(1:length(I(:)),size(I,1),[]);

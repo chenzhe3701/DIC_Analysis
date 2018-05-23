@@ -10,6 +10,10 @@ function [pxl_list_new, ind_list_new, skl_list_new, anchor_label_new]=interp_bet
 save('for_debug_interp_between_layers.mat','pxl_list_pre', 'ind_list_pre', 'skl_list_pre', 'anchor_label_pre', 'pxl_list', 'ind_list', 'skl_list');
 
 %%
+% position_list
+pos_list = 1:length(ind_list);
+pos_list_pre = 1:length(ind_list_pre);
+
 nIntervalsIn = max(group_skeleton(~skl_list));
 % anchors_label is the existed skl_label from previous layers
 % skl_label is the skl_label for the current layer
@@ -36,7 +40,9 @@ pxl_list_new = pxl_list_pre;
 ind_list_new = ind_list_pre;
 
 q1_group_num = 1;    % keep track of group number in ind_list, only increase allowed 
-for ig = 1:nGroups_pre-1
+q2=0;
+ig = 1;
+while ig < nGroups_pre
     p1 = find((skl_list_pre==1)&(anchor_group_pre==ig), 1, 'last');
     p1 = p1 + 1;
     p2 = find((skl_list_pre==1)&(anchor_group_pre==ig+1), 1, 'first');
@@ -45,52 +51,62 @@ for ig = 1:nGroups_pre-1
     % if it is not the final skeleton layer
     if sum(skl_list)~=length(skl_list)     
         % --> possible solution: if q1 and q2 in the same group, then no descendant !!!!! 
-        q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= q1_group_num), 1, 'first');
+        q1 = find((ind_list==ind_list_pre(p1-1))&(pos_list >= q2), 1, 'first');
         q1_group_num = anchor_group(q1);
-        q1 = find(anchor_group == q1_group_num, 1, 'last');
-        q1 = q1 + 1;
         
-        q2 = find((ind_list==ind_list_pre(p2+1))&(anchor_group >= q1_group_num), 1, 'last');
-        q2_group_num = anchor_group(q2);
-        if (q1_group_num==q2_group_num)
-            % no descendant
-            q1_possible = find((ind_list==ind_list_pre(p1-1))&(anchor_group == q1_group_num)); %, 1, 'first');
-            q2_possible = find((ind_list==ind_list_pre(p2+1))&(anchor_group == q1_group_num));
-
-            % find the most similar position
-            preMin = inf;
-            for ii = 1:length(q1_possible)
-                q1_temp = q1_possible(ii);
-                for jj = 1:length(q2_possible)
-                    q2_temp = q2_possible(jj);
-                    if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=(p2+1)-(p1-1))
-                        if min(abs(q1_temp/length(ind_list)-p1/length(ind_list_pre)), abs(q2_temp/length(ind_list)-p2/length(ind_list_pre))) < preMin
-                            q1 = q1_temp;
-                            q2 = q2_temp;
-                        end
-                    end
-                end
+        % check if it can come back to the same group/old_skeleton
+        q_eog = find(anchor_group == q1_group_num, 1, 'last');  % end of group 
+        q_back = [];
+        for iq = q1+1 : q_eog
+            if ismember(ind_list(iq), ind_list_pre(p1:end))
+                q_back = iq
+                p_back = find((ind_list_pre==ind_list(q_back))&(pos_list_pre>p1));  
+                p_back = p_back(end)
+                
+                ind_list(q_back)
+                ind_list_pre(p_back)
             end
+        end
+        has_descendant = 1;
+        if ~isempty(q_back)
+            if ismember(ind_list(q1),ind_list(q1+1 : q_eog))
+                % traveled, came back at the same group, and leave again. 
+                % This means p1:p2 has no descendant  
+                has_descendant = 0;
+            end
+        end
+        
+        if has_descendant
+            % q1 = find(anchor_group == q1_group_num, 1, 'last');
             q1 = q1 + 1;
+            
+            q2 = find((ind_list==ind_list_pre(p2+1))&(pos_list >= q1), 1, 'first');
             q2 = q2 - 1;
             
+            % perform interp, form [q1 ... q2] to [p1 ... p2]
+            if (q2-q1 > p2-p1)
+                disp('warning! Interp should not shrink! - 1');
+                [p1,p2,q1,q2]
+            end
+            if (p1==p2)||(q1>=q2)
+                pos_to_use = q2;
+            else
+                pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
+            end
+            %         [p1,p2,q1,q2,pos_to_use]
+            ind_list_new(p1:p2) = ind_list(pos_to_use);
+            pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+            
+            ig = anchor_group_pre(p2+1);
         else
-            q2 = find(anchor_group == q2_group_num, 1, 'first');
-            q2 = q2 - 1;
-            q1_group_num = q1_group_num + 1;
+            % no descendant, move p1, q1, 
+            q1 = q_back - 1;
+            q2 = q_back;
+            
+            p1 = p_back;
+            ig = anchor_group_pre(p1);
         end
         
-        % perform interp, form [q1 ... q2] to [p1 ... p2]
-        if (q2-q1 > p2-p1)
-            disp('warning! Interp should not shrink! - 1');
-        end
-        if (p1==p2)||(q1==q2)
-            pos_to_use = q1;
-        else
-            pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
-        end
-        ind_list_new(p1:p2) = ind_list(pos_to_use);
-        pxl_list_new(p1:p2) = pxl_list(pos_to_use);
     else
         % The Final skeleton layer:
         q1_possible = find(ind_list==ind_list_pre(p1-1));    % an old skeleton point   
@@ -116,13 +132,15 @@ for ig = 1:nGroups_pre-1
         if (q2-q1 > p2-p1)
             disp('warning! Interp should not shrink! - 2');
         end
-        if (p1==p2)||(q1==q2)
-            pos_to_use = q1;
+        if (p1==p2)||(q1>=q2)
+            pos_to_use = q2;
         else
             pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
         end
         ind_list_new(p1:p2) = ind_list(pos_to_use);
         pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+        
+        ig = ig + 1;
     end
     
 end
@@ -157,14 +175,10 @@ if p1<=length(anchor_group_pre)
         disp('warning! Interp should not shrink!');
         disp([p1,p2,q1,q2]);
     end
-    if (p1==p2)||(q1==q2)
-        pos_to_use = q1;
+    if (p1==p2)||(q1>=q2)
+        pos_to_use = q2;
     else
-        try
         pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
-        catch
-            [p1,p2,q1,q2]
-        end
     end
     ind_list_new(p1:p2) = ind_list(pos_to_use);
     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
