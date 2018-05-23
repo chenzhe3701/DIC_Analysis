@@ -23,8 +23,8 @@ close;figure;imagesc(I); title('I');
 J = ones(size(I));
 %% option setting - 2.2, draw second image, instead of square
 figure;imagesc(J);
-h = imellipse();
-% h = impoly();
+% h = imellipse();
+h = impoly();
 h.wait();
 J = h.createMask;
 J = double(J).*reshape(1:length(J(:)),size(J,1),[]);

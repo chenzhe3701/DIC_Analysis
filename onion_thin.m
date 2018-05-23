@@ -7,6 +7,7 @@
 
 function [pxl_M, ind_M, skl_M] = onion_thin(A, ind_start_input)
 
+save('for_debug_onion_thin.mat','A');
 % For debug.
 % clear; clc; close all;
 
@@ -184,15 +185,14 @@ while (~all_skeleton)&&(iLoop<=inf)
         % layer-2: [226, 225, 715, ..., 265, 715, 225]
         % example - 3:
         % layer-1: [131,118,106,93, ..., ..., ..., ..., ..., 142, 155, ..., (x10), ..., 106,118]  
-        % layer-2: [131,118,109,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
+        % layer-2: [131,118,106,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
         [pxl_list_new, ind_list_new, skl_list_new, anchor_label_cell{iLoop}] ...
             = interp_between_layers(pxl_cell{iLoop-1}, ind_cell{iLoop-1}, skl_cell{iLoop-1}, anchor_label_cell{iLoop-1}, pxl_list, ind_list, skl_list);
         
         % debug, check when some points are missing
         if length(unique(ind_list_new))<length(unique(ind_list))
             disp('found point missing: ----------')
-            save('debugdata','iLoop','ind_cell','skl_cell','ind_list','ind_list_new');
-            error();
+            save('debugdata_point_missing','iLoop','ind_cell','skl_cell','ind_list','ind_list_new');
         end
             
         % copy the list into cell

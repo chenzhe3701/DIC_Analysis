@@ -35,7 +35,7 @@ nGroups = max(anchor_group);
 pxl_list_new = pxl_list_pre;
 ind_list_new = ind_list_pre;
 
-currentGroupNum_q = 1;    % keep track of group number in ind_list, only increase allowed 
+q1_group_num = 1;    % keep track of group number in ind_list, only increase allowed 
 for ig = 1:nGroups_pre-1
     p1 = find((skl_list_pre==1)&(anchor_group_pre==ig), 1, 'last');
     p1 = p1 + 1;
@@ -45,25 +45,46 @@ for ig = 1:nGroups_pre-1
     % if it is not the final skeleton layer
     if sum(skl_list)~=length(skl_list)     
         % --> possible solution: if q1 and q2 in the same group, then no descendant !!!!! 
-        q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= currentGroupNum_q), 1, 'first');
-        currentGroupNum_q = anchor_group(q1);
-        q1 = find(anchor_group == currentGroupNum_q, 1, 'last');
+        q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= q1_group_num), 1, 'first');
+        q1_group_num = anchor_group(q1);
+        q1 = find(anchor_group == q1_group_num, 1, 'last');
         q1 = q1 + 1;
-        q2 = find(anchor_group == currentGroupNum_q+1, 1, 'first');
-        if ~isempty(q2)
+        
+        q2 = find((ind_list==ind_list_pre(p2+1))&(anchor_group >= q1_group_num), 1, 'last');
+        q2_group_num = anchor_group(q2);
+        if (q1_group_num==q2_group_num)
+            % no descendant
+            q1_possible = find((ind_list==ind_list_pre(p1-1))&(anchor_group == q1_group_num)); %, 1, 'first');
+            q2_possible = find((ind_list==ind_list_pre(p2+1))&(anchor_group == q1_group_num));
+
+            % find the most similar position
+            preMin = inf;
+            for ii = 1:length(q1_possible)
+                q1_temp = q1_possible(ii);
+                for jj = 1:length(q2_possible)
+                    q2_temp = q2_possible(jj);
+                    if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=(p2+1)-(p1-1))
+                        if min(abs(q1_temp/length(ind_list)-p1/length(ind_list_pre)), abs(q2_temp/length(ind_list)-p2/length(ind_list_pre))) < preMin
+                            q1 = q1_temp;
+                            q2 = q2_temp;
+                        end
+                    end
+                end
+            end
+            q1 = q1 + 1;
             q2 = q2 - 1;
-            currentGroupNum_q = currentGroupNum_q + 1;
+            
         else
-            % otherwise, this node has no descendant
-            q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group == currentGroupNum_q), 1, 'first');
-            q2 = q1;
+            q2 = find(anchor_group == q2_group_num, 1, 'first');
+            q2 = q2 - 1;
+            q1_group_num = q1_group_num + 1;
         end
         
         % perform interp, form [q1 ... q2] to [p1 ... p2]
         if (q2-q1 > p2-p1)
             disp('warning! Interp should not shrink! - 1');
         end
-        if (p1==p2)
+        if (p1==p2)||(q1==q2)
             pos_to_use = q1;
         else
             pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
@@ -71,6 +92,7 @@ for ig = 1:nGroups_pre-1
         ind_list_new(p1:p2) = ind_list(pos_to_use);
         pxl_list_new(p1:p2) = pxl_list(pos_to_use);
     else
+        % The Final skeleton layer:
         q1_possible = find(ind_list==ind_list_pre(p1-1));    % an old skeleton point   
         q2_possible = find(ind_list==ind_list_pre(p2+1));    % an old skeleton point        
         % find the most similar position
@@ -79,7 +101,7 @@ for ig = 1:nGroups_pre-1
             q1_temp = q1_possible(ii);
             for jj = 1:length(q2_possible)
                 q2_temp = q2_possible(jj);
-                if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=p2-p1)
+                if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=(p2+1)-(p1-1))
                    if min(abs(q1_temp/length(ind_list)-p1/length(ind_list_pre)), abs(q2_temp/length(ind_list)-p2/length(ind_list_pre))) < preMin
                       q1 = q1_temp;
                       q2 = q2_temp;
@@ -94,7 +116,7 @@ for ig = 1:nGroups_pre-1
         if (q2-q1 > p2-p1)
             disp('warning! Interp should not shrink! - 2');
         end
-        if (p1==p2)
+        if (p1==p2)||(q1==q2)
             pos_to_use = q1;
         else
             pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
@@ -111,19 +133,19 @@ p1 = find(anchor_group_pre==ig,1,'last')+1;
 if p1<=length(anchor_group_pre)
     p2 = length(anchor_group_pre);
         
-    q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= currentGroupNum_q), 1, 'first');
+    q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= q1_group_num), 1, 'first');
     currentGroup = anchor_group(q1);
-    q1 = find(anchor_group == currentGroupNum_q, 1, 'last');
+    q1 = find(anchor_group == q1_group_num, 1, 'last');
     q1 = q1 + 1;
     if (q1>length(ind_list))
         disp('Warning! q1 out of range.');
     end
-    q2 = find(anchor_group == currentGroupNum_q+1, 1, 'first');
+    q2 = find(anchor_group == q1_group_num+1, 1, 'first');
     if ~isempty(q2)
         disp('Warning!, q2 found in another anchor group');
         disp(['p1 group =  ',num2str(anchor_group_pre(p1-1))]);
         disp(['p1, p2, length_list_pre = [',num2str(p1), ',', num2str(p2), ',', num2str(length(anchor_group_pre)),']']);
-        disp(['q2 group =  ',num2str(currentGroupNum_q+1)]);
+        disp(['q2 group =  ',num2str(q1_group_num+1)]);
         disp(['q1, q2, length_list = [',num2str(q1), ',', num2str(q2), ',', num2str(length(ind_list)),']']);
         q2 = q2 - 1;
     else
@@ -135,10 +157,14 @@ if p1<=length(anchor_group_pre)
         disp('warning! Interp should not shrink!');
         disp([p1,p2,q1,q2]);
     end
-    if (p1==p2)
+    if (p1==p2)||(q1==q2)
         pos_to_use = q1;
     else
+        try
         pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
+        catch
+            [p1,p2,q1,q2]
+        end
     end
     ind_list_new(p1:p2) = ind_list(pos_to_use);
     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
