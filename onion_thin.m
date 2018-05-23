@@ -42,7 +42,7 @@ skeleton = thin(A,inf);
 A_raw = double(A);  
 A = logical(A);
 
-pxl_val_cell = [];
+pxl_cell = [];
 ind_cell = [];
 skl_cell = [];
 
@@ -55,7 +55,7 @@ all_skeleton = 0;
 iLoop = 1;
 while (~all_skeleton)&&(iLoop<=inf)
     
-    pxl_val_list = [];
+    pxl_list = [];
     ind_list = [];
     skl_list = [];
     
@@ -102,7 +102,7 @@ while (~all_skeleton)&&(iLoop<=inf)
         end
         
         % record necessary value
-        pxl_val_list = [pxl_val_list, A_raw(ind)];
+        pxl_list = [pxl_list, A_raw(ind)];
         ind_list = [ind_list, ind]; 
         skl_list = [skl_list, skeleton(ind)];
         
@@ -118,7 +118,7 @@ while (~all_skeleton)&&(iLoop<=inf)
     if sum(A(:)-A_thin_once(:))
         A = A_thin_once;
     else
-        disp(['Finished traversing at Loop: ', num2str(iLoop)]);
+        disp(['Finished traversing after Loop: ', num2str(iLoop)]);
         all_skeleton = 1;
     end
     
@@ -137,11 +137,11 @@ while (~all_skeleton)&&(iLoop<=inf)
         else
             % if only have one point in this layer, make it 2 points to interp 
             if length(ind_list)==1
-                pxl_val_list = [pxl_val_list,pxl_val_list];
+                pxl_list = [pxl_list,pxl_list];
                 ind_list = [ind_list,ind_list];
                 skl_list = [skl_list,skl_list];
             end
-            pxl_val_list = interp1(1:length(pxl_val_list), pxl_val_list, linspace(1,length(pxl_val_list),list_length),'nearest');
+            pxl_list = interp1(1:length(pxl_list), pxl_list, linspace(1,length(pxl_list),list_length),'nearest');
             ind_list = interp1(1:length(ind_list), ind_list, linspace(1,length(ind_list),list_length),'nearest');
             skl_list = interp1(1:length(skl_list), skl_list, linspace(1,length(skl_list),list_length),'nearest');
         end
@@ -155,15 +155,17 @@ while (~all_skeleton)&&(iLoop<=inf)
         % It can be re-aligned
         if ~isempty(align_shift)
             reAligned = true;
-            pxl_val_list = circshift(pxl_val_list, -align_shift, 2);
+            pxl_list = circshift(pxl_list, -align_shift, 2);
             ind_list = circshift(ind_list, -align_shift, 2);
             skl_list = circshift(skl_list, -align_shift, 2);
             layer_at_realign = iLoop;
             ind = ind_list(1);
             ind_previous = ind_list(end);
+            anchor_label_cell = [];
+            anchor_label_cell{iLoop} = unique(ind_list(skl_list==1));
         end
         % copy the list into cell. If realigned, then copy the realigned version, and record info: [align_shift, layer_at_realign]     
-        pxl_val_cell{iLoop} = pxl_val_list;
+        pxl_cell{iLoop} = pxl_list;
         ind_cell{iLoop} = ind_list;
         skl_cell{iLoop} = skl_list;     
     else
@@ -174,39 +176,29 @@ while (~all_skeleton)&&(iLoop<=inf)
         % It is possible that some anchor points in a group in step i can show twice in step i+1.
         % But if we interp using the largest range, because anchors deccendants will be eliminated, so it is still OK to just interp.  
         % I think by finding the 'last' of p2, it can be achieved that two anchors are from different 'groups'  
-        % example-1: 
+        % example-1: nIntervals decrease, some doesn't have descendants any more   
         % layer-1: [14, 15, 16, ... ...]
         % layer-2: [14, 16, 14, ...]
         % example-2:
         % layer-1: [226, 225, ..., ..., ..., ..., ..., 715]
         % layer-2: [226, 225, 715, ..., 265, 715, 225]
-        anchor_ind = ind_cell{iLoop-1};
-        anchor_pos = find(skl_cell{iLoop-1});
-        if anchor_pos(end)~=list_length
-            anchor_pos = [anchor_pos,list_length];
-        end
-        % interp at different stepSize at each anchor interval
-        xp = [3.141592653589793];   % request point, intialize in order to have an 'xp(end)', -- the value does not matter.
-        for ii=1:length(anchor_pos)-1
-           p1 = find(ind_list==anchor_ind(anchor_pos(ii)), 1, 'first');
-           p2 = find(ind_list==anchor_ind(anchor_pos(ii+1)), 1, 'last');
-           % if the last point in ind_anchor is not a skeleton point, assign the position as anchor  
-           if isempty(p2) && (ii==length(anchor_pos)-1)
-              p2 = length(ind_list);
-           end
-           xp(end) = [];
-           xp = [xp, linspace(p1,p2,anchor_pos(ii+1)-anchor_pos(ii)+1)];
-        end
-  
-        % interp
-        pxl_val_list = interp1(1:length(pxl_val_list), pxl_val_list, xp,'nearest');
-        ind_list = interp1(1:length(ind_list), ind_list, xp,'nearest');
-        skl_list = interp1(1:length(skl_list), skl_list, xp,'nearest');
+        % example - 3:
+        % layer-1: [131,118,106,93, ..., ..., ..., ..., ..., 142, 155, ..., (x10), ..., 106,118]  
+        % layer-2: [131,118,109,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
+        [pxl_list_new, ind_list_new, skl_list_new, anchor_label_cell{iLoop}] ...
+            = interp_between_layers(pxl_cell{iLoop-1}, ind_cell{iLoop-1}, skl_cell{iLoop-1}, anchor_label_cell{iLoop-1}, pxl_list, ind_list, skl_list);
         
+        % debug, check when some points are missing
+        if length(unique(ind_list_new))<length(unique(ind_list))
+            disp('found point missing: ----------')
+            save('debugdata','iLoop','ind_cell','skl_cell','ind_list','ind_list_new');
+            error();
+        end
+            
         % copy the list into cell
-        pxl_val_cell{iLoop} = pxl_val_list;
-        ind_cell{iLoop} = ind_list;
-        skl_cell{iLoop} = skl_list;    
+        pxl_cell{iLoop} = pxl_list_new;
+        ind_cell{iLoop} = ind_list_new;
+        skl_cell{iLoop} = skl_list_new;    
     end
     
     % increment loop
@@ -214,7 +206,7 @@ while (~all_skeleton)&&(iLoop<=inf)
 end
 
 %% make into matrix
-pxl_M = cell2mat(reshape(pxl_val_cell,[],1));
+pxl_M = cell2mat(reshape(pxl_cell,[],1));
 ind_M = cell2mat(reshape(ind_cell,[],1));
 skl_M = cell2mat(reshape(skl_cell,[],1));
 
@@ -239,18 +231,32 @@ for ic = 1:nc
     ind_M_truncated(1:ind_r,ic) = ind_M(1:ind_r,ic);
     skl_M_truncated(1:ind_r,ic) = skl_M(1:ind_r,ic);
     
-    % in case skeleton is met at first row
-    if ind_r==1
-        ind_r=2;
+    % I am going to try two methods to interp, but I don't know which one is better.  This needs double check later.  
+    interpMethod = 1;
+    if interpMethod == 1
+        % in case skeleton is met at first row
+        if ind_r==1
+            ind_r=2;
+        end
+        pxl_M(:,ic) = interp1(1:ind_r, pxl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+        ind_M(:,ic) = interp1(1:ind_r, ind_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+        skl_M(:,ic) = interp1(1:ind_r, skl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+    elseif interpMethod == 2    % try to make only the last row as skeleton, not too much effective. 
+        if ind_r<=2
+            pxl_M(1:end-1,ic) = interp1(1:2, pxl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+            ind_M(1:end-1,ic) = interp1(1:2, ind_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+            skl_M(1:end-1,ic) = interp1(1:2, skl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+        else
+            pxl_M(1:end-1,ic) = interp1(1:ind_r-1, pxl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+            ind_M(1:end-1,ic) = interp1(1:ind_r-1, ind_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+            skl_M(1:end-1,ic) = interp1(1:ind_r-1, skl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+        end
+        pxl_M(end,ic) = pxl_M(ind_r,ic);
+        ind_M(end,ic) = ind_M(ind_r,ic);
+        skl_M(end,ic) = ind_M(ind_r,ic);
     end
-    
-    pxl_M(:,ic) = interp1(1:ind_r, pxl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
-    ind_M(:,ic) = interp1(1:ind_r, ind_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
-    skl_M(:,ic) = interp1(1:ind_r, skl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
 end
 
-
-
-
+end
 
 

@@ -3,29 +3,32 @@
 % chenzhe, 2018-05-21
 
 
-
+clear;
 close all;
 %% option setting -1, load face image
 I = load('D:\p\m\DIC_Analysis\face.mat');
 I = I.I;
 I = double(I);
-
+J = ones(size(I));
 %% option setting - 2.1, draw first image
-I = zeros(255,255);
+I = zeros(256,256);
 figure;imagesc(I);
 h = imellipse();
-h = impoly();
+% h = impoly();
+h.wait();
 I = h.createMask;
 I = double(I).*reshape(1:length(I(:)),size(I,1),[]);
-figure;imagesc(I); title('I');
+close;figure;imagesc(I); title('I');
 
 J = ones(size(I));
 %% option setting - 2.2, draw second image, instead of square
 figure;imagesc(J);
 h = imellipse();
+% h = impoly();
+h.wait();
 J = h.createMask;
 J = double(J).*reshape(1:length(J(:)),size(J,1),[]);
-figure;imagesc(J); title('J');
+close;figure;imagesc(J); title('J');
 
 %%
 [pxl_M_1, ind_M_1, skl_M_1] = onion_thin(I);
@@ -43,8 +46,8 @@ pxl_M_1_interp = interp2(x,y,pxl_M_1,xq,yq,'nearest');
 ind_M_1_interp = interp2(x,y,ind_M_1,xq,yq,'nearest');
 
 img_interp = zeros(size(J));
-for iR = size(ind_M_2,1):-1:1
-    for iC = size(ind_M_2,2):-1:1
+for iR = 1:size(ind_M_2,1)
+    for iC = 1:size(ind_M_2,2)
         try
             img_interp(ind_M_2(iR,iC)) = pxl_M_1_interp(iR,iC);
         catch
