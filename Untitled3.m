@@ -20,7 +20,7 @@ imagesc(img);
 
 img = zeros(256);
 img(ind_list_pre)=1;
-img(ind_list_pre([646,648,649,651:658]))=5;
+% img(ind_list_pre([646,648,649,651:658]))=5;
 img(ind_list_pre([1,10]))=5;
 img(ind_list)=img(ind_list)+2;
 figure;

@@ -25,7 +25,9 @@ anchor_label_new = union(skl_label, anchor_label_pre);
 pos_list = 1:length(ind_list);
 pos_list_pre = 1:length(ind_list_pre);
 
-
+% find mid-point in skl_list and skl_list_pre
+mid_ind_list = find_mid_point_in_ind_list(ind_list);
+mid_ind_list_pre = find_mid_point_in_ind_list(ind_list_pre);
 
 % first [modify skl_list_pre], so that points with no descendant is also labeled as skeleton.  This is mainly for grouping purpose 
 % Make Old_Skeleton list, indicating if current skeleton point already exist in previous layer, which means it is an Old_Skeleton   
@@ -38,24 +40,67 @@ end
 % Assign group number to skl_list Old
 anchor_group = group_skeleton(skl_list_old);
 nGroups = max(anchor_group);
-% modify [skl_list_pre]
-% If skl_list has a pattern [ABCA 000 ...], then in the skl_list_pre, anything between A,B, and A,C should be assigned as skeleton  
-for ia = 1:length(skl_list_old)
+% Modify [skl_list_pre] to group segments with no descendants into skeleton  
+% if skl_list has [ABC .. mid_point .. CB], then in skl_list_pre: 
+% Before mid_piont_pre, anyting A**B, A**C, B**C should be labeled as no descendant.
+% After mid_point_pre, anything C****B should be labeled as no descendant.
+% To make them no descendant, just change its skl_list_pre to '1'
+for ia = 1:mid_ind_list
     if anchor_group(ia)>0
-        [~,ib] = find((anchor_group==anchor_group(ia))&(ind_list==ind_list(ia))&(pos_list>pos_list(ia)), 1, 'last');
+        [~,ib] = find((anchor_group==anchor_group(ia))&(pos_list>ia)&(pos_list<=mid_ind_list),1,'first');
         if ~isempty(ib)
-            ic = find(ind_list_pre==ind_list(ia),1,'first');
-            if isempty(ic)
-                disp('warning: ic not found');
+            ic = find((ind_list_pre==ind_list(ia))&(pos_list_pre<=mid_ind_list_pre),1,'first');
+            if ~isempty(ic)
+                id = find((ind_list_pre==ind_list(ib))&(pos_list_pre>ic)&(pos_list_pre<=mid_ind_list_pre));
+                if length(id)>1
+                    disp('Warning: should not visit the same point more than twice in half of a traverse');
+                    [ia,ib,ic,id]
+                end
+                if ~isempty(id)
+                    skl_list_pre(ic:id) = 1;
+                end
             end
-            id = find((ind_list_pre==ind_list(ib))&(pos_list_pre>pos_list_pre(ic)), 1, 'last');
-            if ~isempty(id)
-                skl_list_pre(ic:id) = 1;                
+        end
+    end
+end
+for ia = mid_ind_list:length(ind_list)
+    if anchor_group(ia)>0
+        [~,ib] = find((anchor_group==anchor_group(ia))&(pos_list>ia)&(pos_list >= mid_ind_list),1,'first');
+        if ~isempty(ib)
+            ic = find((ind_list_pre==ind_list(ia))&(pos_list_pre>=mid_ind_list_pre),1,'first');
+            if ~isempty(ic)
+                id = find((ind_list_pre==ind_list(ib))&(pos_list_pre>ic)&(pos_list_pre>=mid_ind_list_pre));
+                if length(id)>1
+                    disp('Warning 2: should not visit the same point more than twice in half of a traverse');
+                    [ia,ib,ic,id]
+                    error('e');
+                end
+                if ~isempty(id)
+                    skl_list_pre(ic:id) = 1;
+                end
             end
         end
     end
 end
 
+
+% % modify [skl_list_pre]
+% % If skl_list has a pattern [ABCA 000 ...], then in the skl_list_pre, anything between A,B, and A,C should be assigned as skeleton  
+% for ia = 1:length(skl_list_old)
+%     if anchor_group(ia)>0
+%         [~,ib] = find((anchor_group==anchor_group(ia))&(ind_list==ind_list(ia))&(pos_list>pos_list(ia)), 1, 'last');
+%         if ~isempty(ib)
+%             ic = find(ind_list_pre==ind_list(ia),1,'first');
+%             if isempty(ic)
+%                 disp('warning: ic not found');
+%             end
+%             id = find((ind_list_pre==ind_list(ib))&(pos_list_pre>pos_list_pre(ic)), 1, 'last');
+%             if ~isempty(id)
+%                 skl_list_pre(ic:id) = 1;                
+%             end
+%         end
+%     end
+% end
 % Also need to do this again reversely, (maybe ...)
 % for ia = length(skl_list_old): -1 : 1
 %     if anchor_group(ia)>0
@@ -72,8 +117,6 @@ end
 %         end
 %     end
 % end
-
-% The solution is to track from both side, find mid point !!! then do ...
 
 
 % assign group number
