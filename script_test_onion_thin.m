@@ -13,8 +13,8 @@ close all;
 %% option setting - 2.1, draw first image
 I = zeros(256,256);
 figure;imagesc(I);
-% h = imellipse();
-h = impoly();
+h = imellipse();
+% h = impoly();
 h.wait();
 I = h.createMask;
 I = double(I).*reshape(1:length(I(:)),size(I,1),[]);
@@ -25,8 +25,8 @@ close;figure;imagesc(I3); title('I');
 J = ones(size(I));
 %% option setting - 2.2, draw second image, instead of square
 figure;imagesc(J);
-h = imellipse();
-% h = impoly();
+% h = imellipse();
+h = impoly();
 h.wait();
 J = h.createMask;
 J = double(J).*reshape(1:length(J(:)),size(J,1),[]);
@@ -37,6 +37,9 @@ close;figure;imagesc(J); title('J');
 %%
 [pxl_M_1, ind_M_1, skl_M_1] = onion_thin(I);
 [pxl_M_2, ind_M_2, skl_M_2] = onion_thin(J);
+
+
+%%
 
 figure; imagesc(pxl_M_1)
 figure; imagesc(pxl_M_2)

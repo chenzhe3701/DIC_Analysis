@@ -12,10 +12,10 @@ for p1 = 1:length(ind_list)
 end
 if length(p)>1
     p1 = p(1);
-    p2 = p(2);
+    p2 = p(end);
     while(p1<p2)
        p1 = p1 + 1;
-       p2_trial = find((ind_list==ind_list(p1))&(pos_list>p1),1,'last');
+       p2_trial = find((ind_list==ind_list(p1))&(pos_list>p1)&(pos_list<p2),1,'last');
        if ~isempty(p2_trial)
            p2 = p2_trial;
            mid_point = p2;

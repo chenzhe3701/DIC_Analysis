@@ -59,6 +59,7 @@ while (~all_skeleton)&&(iLoop<=inf)
     pxl_list = [];
     ind_list = [];
     skl_list = [];
+    coord_list = [];
     
     % Thin by one layer
     A_thin_once = thin(A);
@@ -106,6 +107,7 @@ while (~all_skeleton)&&(iLoop<=inf)
         pxl_list = [pxl_list, A_raw(ind)];
         ind_list = [ind_list, ind]; 
         skl_list = [skl_list, skeleton(ind)];
+        coord_list = [coord_list, length(pxl_list)-1];
         
         % update ind to next position
         ind_previous = ind;
@@ -166,7 +168,10 @@ while (~all_skeleton)&&(iLoop<=inf)
             pxl_list = circshift(pxl_list, -align_shift, 2);
             ind_list = circshift(ind_list, -align_shift, 2);
             skl_list = circshift(skl_list, -align_shift, 2);
+            % coord_list stay the same 
+            
             layer_at_realign = iLoop;
+            layer_range_at_realign = length(ind_list)-1;
             ind = ind_list(1);
             ind_previous = ind_list(end);
             anchor_label_cell = [];
@@ -188,15 +193,15 @@ while (~all_skeleton)&&(iLoop<=inf)
         % example-1: nIntervals decrease, some doesn't have descendants any more   
         % layer-1: [14, 15, 16, ... ...]
         % layer-2: [14, 16, 14, ...]
-        % example-2:
-        % layer-1: [226, 225, ..., ..., ..., ..., ..., 715]
+        % example-2: ?
+        % layer-1: [226, 225, ..., ..., ..., ..., ..., 715,225]
         % layer-2: [226, 225, 715, ..., 265, 715, 225]
         % example - 3:
         % layer-1: [131,118,106,93, ..., ..., ..., ..., ..., 142, 155, ..., (x10), ..., 106,118]  
         % layer-2: [131,118,106,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
         ind_list_old = ind_list;
-        [coord_list_new, anchor_label_cell{iLoop}] ...
-            = interp_between_layers(ind_cell{iLoop-1}, skl_cell{iLoop-1}, coord_cell{iLoop-1}, anchor_label_cell{iLoop-1},ind_list, skl_list);
+        [coord_list] ...
+            = interp_between_layers(ind_cell{iLoop-1}, skl_cell{iLoop-1}, coord_cell{iLoop-1},ind_list,skl_list);
 
         % debug, check when some points are missing
         if length(unique(ind_list))<length(unique(ind_list_old))
@@ -210,21 +215,45 @@ while (~all_skeleton)&&(iLoop<=inf)
         pxl_cell{iLoop} = pxl_list;
         ind_cell{iLoop} = ind_list;
         skl_cell{iLoop} = skl_list;
-        coord_cell{iLoop} = coord_list_new;
+        coord_cell{iLoop} = coord_list;
     end
     
     % increment loop
     iLoop = iLoop + 1;
 end
 
+%% check range
+pos = [];
+for ii = 1:length(coord_cell)
+    pos = [pos; coord_cell{ii}(1), coord_cell{ii}(end)];     
+end
+if (pos(1,1)~=max(pos(:,1)))||(pos(1,2)~=max(pos(:,2)))
+    disp('warning! finished thinning but inner layer seems larger !');
+end
+
+%% align
+for ii = 1:length(coord_cell)
+    u_target = 0:coord_range;
+    
+    F = griddedInterpolant(coord_cell{ii},pxl_cell{ii},'nearest');
+    pxl_cell{ii} = F(u_target);
+    F = griddedInterpolant(coord_cell{ii},ind_cell{ii},'nearest');
+    ind_cell{ii} = F(u_target);
+    F = griddedInterpolant(coord_cell{ii},skl_cell{ii},'nearest');
+    skl_cell{ii} = F(u_target);
+end
+
+
+
 %% make into matrix
-make_matrix = 0;    % for debug purpose. Otherwise just return the cell.
+make_matrix = 1;    % for debug purpose. Otherwise just return the cell.
 if make_matrix
     pxl_M = cell2mat(reshape(pxl_cell,[],1));
     ind_M = cell2mat(reshape(ind_cell,[],1));
     skl_M = cell2mat(reshape(skl_cell,[],1));
     
     % shift back
+    align_shift = round(align_shift/layer_range_at_realign*coord_range);
     pxl_M(layer_at_realign:end,:) = circshift(pxl_M(layer_at_realign:end,:), align_shift, 2);
     ind_M(layer_at_realign:end,:) = circshift(ind_M(layer_at_realign:end,:), align_shift, 2);
     skl_M(layer_at_realign:end,:) = circshift(skl_M(layer_at_realign:end,:), align_shift, 2);
@@ -239,6 +268,9 @@ if make_matrix
     [nr,nc] = size(ind_M);
     for ic = 1:nc
         ind_r = find(skl_M(:,ic), 1, 'first');
+        if isempty(ind_r)
+            ind_r = size(skl_M,1);
+        end
         
         % [debug] keep a record of truncated but not v-direction-stretched
         pxl_M_truncated(1:ind_r,ic) = pxl_M(1:ind_r,ic);
