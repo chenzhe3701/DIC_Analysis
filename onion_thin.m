@@ -135,16 +135,23 @@ while (~all_skeleton)&&(iLoop<=inf)
         % interpolate pxl_val_list, ind_list, skl_list
         if iLoop==1
            list_length = length(ind_list);  % 1st layer does not need to interp, but it can define the width of the new map (list_length) 
+           coord_range = list_length - 1;
+           coord_list = 0:coord_range;
         else
             % if only have one point in this layer, make it 2 points to interp 
             if length(ind_list)==1
                 pxl_list = [pxl_list,pxl_list];
                 ind_list = [ind_list,ind_list];
                 skl_list = [skl_list,skl_list];
+                coord_list = [0,1];
             end
-            pxl_list = interp1(1:length(pxl_list), pxl_list, linspace(1,length(pxl_list),list_length),'nearest');
-            ind_list = interp1(1:length(ind_list), ind_list, linspace(1,length(ind_list),list_length),'nearest');
-            skl_list = interp1(1:length(skl_list), skl_list, linspace(1,length(skl_list),list_length),'nearest');
+            
+            % scale the coordinate position to the range [0, coord_range]
+            coord_list = coord_list/range(coord_list)*coord_range;
+            
+            % pxl_list = interp1(1:length(pxl_list), pxl_list, linspace(1,length(pxl_list),list_length),'nearest');
+            % ind_list = interp1(1:length(ind_list), ind_list, linspace(1,length(ind_list),list_length),'nearest');
+            % skl_list = interp1(1:length(skl_list), skl_list, linspace(1,length(skl_list),list_length),'nearest');
         end
         
         % find starting point of next layer
@@ -168,7 +175,8 @@ while (~all_skeleton)&&(iLoop<=inf)
         % copy the list into cell. If realigned, then copy the realigned version, and record info: [align_shift, layer_at_realign]     
         pxl_cell{iLoop} = pxl_list;
         ind_cell{iLoop} = ind_list;
-        skl_cell{iLoop} = skl_list;     
+        skl_cell{iLoop} = skl_list;
+        coord_cell{iLoop} = coord_list;
     else
         % align by considering anchor points
         % Use last loops aligned ind_list as template, find all the anchor positions in index in this list, make sure the last one is considered as anchor  
@@ -187,9 +195,9 @@ while (~all_skeleton)&&(iLoop<=inf)
         % layer-1: [131,118,106,93, ..., ..., ..., ..., ..., 142, 155, ..., (x10), ..., 106,118]  
         % layer-2: [131,118,106,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
         ind_list_old = ind_list;
-        [pxl_list_new, ind_list_new, skl_list_new, anchor_label_cell{iLoop}] ...
-            = interp_between_layers(pxl_cell{iLoop-1}, ind_cell{iLoop-1}, skl_cell{iLoop-1}, anchor_label_cell{iLoop-1}, pxl_list, ind_list, skl_list);
-        
+        [coord_list_new, anchor_label_cell{iLoop}] ...
+            = interp_between_layers(ind_cell{iLoop-1}, skl_cell{iLoop-1}, coord_cell{iLoop-1}, anchor_label_cell{iLoop-1},ind_list, skl_list);
+
         % debug, check when some points are missing
         if length(unique(ind_list))<length(unique(ind_list_old))
             close;
@@ -201,7 +209,8 @@ while (~all_skeleton)&&(iLoop<=inf)
         % copy the list into cell
         pxl_cell{iLoop} = pxl_list;
         ind_cell{iLoop} = ind_list;
-        skl_cell{iLoop} = skl_list;    
+        skl_cell{iLoop} = skl_list;
+        coord_cell{iLoop} = coord_list_new;
     end
     
     % increment loop

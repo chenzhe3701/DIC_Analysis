@@ -1,4 +1,5 @@
-function [pxl_list_new, ind_list_new, skl_list_new, anchor_label_new]=interp_between_layers(pxl_list_pre, ind_list_pre, skl_list_pre, anchor_label_pre, pxl_list, ind_list, skl_list)
+% function [pxl_list_new, ind_list_new, skl_list_new, coord_list_new, anchor_label_new]=interp_between_layers(pxl_list_pre, ind_list_pre, skl_list_pre, coord_list_pre, anchor_label_pre, pxl_list, ind_list, skl_list)
+function [coord_list_new, anchor_label_new]=interp_between_layers(ind_list_pre, skl_list_pre, coord_list_pre, anchor_label_pre, ind_list, skl_list)
 
 %% for debug
 % ind_list_pre = [131, 118, 106, 93, 80, 68, 55, 55, 43, 30, 18, 19, 33, 47, 61, 75, 88, 102, 102, 115, 129, 142, 155, 141, 127, 113, 112, 111, 110, 110, 96, 95, 94, 106, 118];
@@ -7,19 +8,20 @@ function [pxl_list_new, ind_list_new, skl_list_new, anchor_label_new]=interp_bet
 % pxl_list_pre = rand(size(ind_list_pre));
 % pxl_list = rand(size(ind_list));
 % skl_list = rand(size(ind_list));
-save('for_debug_interp_between_layers.mat','pxl_list_pre', 'ind_list_pre', 'skl_list_pre', 'anchor_label_pre', 'pxl_list', 'ind_list', 'skl_list');
+save('for_debug_interp_between_layers.mat', 'ind_list_pre', 'skl_list_pre', 'coord_list_pre', 'anchor_label_pre', 'ind_list', 'skl_list');
 % figure; plot(skl_list_pre);
 % figure; plot(skl_list);
 %%
 % [for debugging]
 nIntervalsIn = max(group_skeleton(~skl_list));
 
-% skl_label is the skl_label for the current layer, to add to anchor_label 
+% skl_label is [a set of (global) index positions] which are skeleton for the current layer, to add to anchor_label 
 skl_label = unique(ind_list(skl_list==1));
-% anchors_label is the existed skl_label from previous layers
+% anchors_label is the existed skl_label from previous layers, 
+% anchor_label_new is updated with info from this layer, output for use for next layer   
 anchor_label_new = union(skl_label, anchor_label_pre);
 
-% position_list
+% position_list, for conveniently find/refer/track elements
 pos_list = 1:length(ind_list);
 pos_list_pre = 1:length(ind_list_pre);
 
@@ -65,11 +67,12 @@ if (nGroups < nGroups_pre)
     disp('After re-grouping, nGroups of anchor still reduced!');
 end
 
-% Firstly copy, because only need to interp in intervals
-pxl_list_new = pxl_list_pre;
-ind_list_new = ind_list_pre;
-skl_list_new = skl_list_pre; % this is already the modified skl_list_pre
+% % Firstly copy, because only need to interp in intervals
+% pxl_list_new = pxl_list_pre;
+% ind_list_new = ind_list_pre;
+% skl_list_new = skl_list_pre; % this is already the modified skl_list_pre
 
+coord_list_new = zeros(size(ind_list));
 
 % To interp:
 % First, find anchor group correspondence
@@ -104,11 +107,11 @@ for ig = 1:nGroups_pre-1
         q2_group_num = anchor_group(q2);
         q2 = find((skl_list==1)&(anchor_group==q2_group_num), 1, 'first');
         % error checking, and get interval for interp
-        if (p2-p1) < (q2-q1)
-            disp(['warning, interp should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
-            msg = 'Error due to interp invertal shrink';
-            error(msg);
-        end
+%         if (p2-p1) < (q2-q1)
+%             disp(['warning, interp should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
+%             msg = 'Error due to interp interval shrink';
+%             error(msg);
+%         end
     else
         % Else, this is the Final skeleton layer
         
@@ -129,31 +132,42 @@ for ig = 1:nGroups_pre-1
             end
         end
         % error checking, and get interval for interp
-        if (p2-p1) < (q2-q1)
-            disp(['warning, interp in Last skeleton layer should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
-        end
+%         if (p2-p1) < (q2-q1)
+%             disp(['warning, interp in Last skeleton layer should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
+%         end
     end
     
     % perform the interp
-    p1 = p1 + 1;
-    p2 = p2 - 1;
-    q1 = q1 + 1;
-    q2 = q2 - 1;
+%     p1 = p1 + 1;
+%     p2 = p2 - 1;
+%     q1 = q1 + 1;
+%     q2 = q2 - 1;
     if (p1>p2)
         disp('Error, p1>p2');
     end
-    if (q1 >= q2)
-        disp(['q1=',num2str(q1),' q2=',num2str(q2),' ,interp_pos use q2']);
-        pos_to_use = q2;
-    else
-        pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
-    end
+%     if (q1 >= q2)
+%         disp(['q1=',num2str(q1),' q2=',num2str(q2),' ,interp_pos use q2']);
+%         pos_to_use = q2;
+%     else
+%         pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
+%     end
     
     % perform interp, form [q1 ... q2] to [p1 ... p2]
-    ind_list_new(p1:p2) = ind_list(pos_to_use);
-    pxl_list_new(p1:p2) = pxl_list(pos_to_use);
-    skl_list_new(p1:p2) = skl_list(pos_to_use);
+%     ind_list_new(p1:p2) = ind_list(pos_to_use);
+%     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+%     skl_list_new(p1:p2) = skl_list(pos_to_use);
+    if (q1>q2)
+        msg = 'Error, q1 >= q2 when interp position';
+        error(msg);
+    elseif (q1==q2)
+        disp('when interpolating, q1=q2, so average coord(p1) and coord(p2)');  
+        coord_list_new(q1:q2) = (coord_list_pre(p1)+coord_list_pre(p2))/2;
+    else
+        coord_list_new(q1:q2) = linspace(coord_list_pre(p1), coord_list_pre(p2), q2-q1+1); 
+    end
     
+
+
     % update q1_group
     q1_group_num = q2_group_num;
 
@@ -164,7 +178,7 @@ ig = nGroups_pre;
 p1 = find((skl_list_pre==1)&(anchor_group_pre==ig),1,'last');
 
 if p1 < length(anchor_group_pre)
-    disp('Extra data after last anchor_group');
+%     disp('Extra data after last anchor_group');
     p2 = length(anchor_group_pre);
     
     % based on previous q2, find q1 position (should change to last one in the same group) 
@@ -178,15 +192,15 @@ if p1 < length(anchor_group_pre)
     q2 = length(anchor_group);
 
     % perform interp, form [q1 ... q2] to [p1 ... p2]
-    p1 = p1 + 1;
-    q1 = q1 + 1;
+%     p1 = p1 + 1;
+%     q1 = q1 + 1;
     if (p1>p2)
         disp('Error, p1>p2');
     end
-    if (q2-q1 > p2-p1)
-        disp('warning! Interp after skeleton should not shrink!');
-        disp([p1,p2,q1,q2]);
-    end
+%     if (q2-q1 > p2-p1)
+%         disp('warning! Interp after skeleton should not shrink!');
+%         disp([p1,p2,q1,q2]);
+%     end
     if (q1 >= q2)
         disp(['q1=',num2str(q1),' q2=',num2str(q2),' ,interp_pos use q2']);
         pos_to_use = q2;
@@ -194,29 +208,67 @@ if p1 < length(anchor_group_pre)
         pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
     end
     
+    
+    if (q1>q2)
+        msg = 'Check error, here q1 should not larger than q2';
+        error(msg);
+    elseif (q1==q2)
+        disp('when interpolating data after all skeleton, q1=q2, so average coord(p1) and coord(p2)');
+        disp(['In this condition, it should be p1=p2, here [p1,p2]=[',num2str([p1,p2]),']']);
+        coord_list_new(q1:q2) = (coord_list_pre(p1)+coord_list_pre(p2))/2;
+    else
+        coord_list_new(q1:q2) = linspace(coord_list_pre(p1), coord_list_pre(p2), q2-q1+1);
+    end
+    
+        
+        
     % perform interp, form [q1 ... q2] to [p1 ... p2]
-    ind_list_new(p1:p2) = ind_list(pos_to_use);
-    pxl_list_new(p1:p2) = pxl_list(pos_to_use);
-    skl_list_new(p1:p2) = skl_list(pos_to_use);
+%     ind_list_new(p1:p2) = ind_list(pos_to_use);
+%     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+%     skl_list_new(p1:p2) = skl_list(pos_to_use);
 
 end
 
+% Now need to treat the unassigned 0's in coord_list_new
+group = group_skeleton(~logical(coord_list_new));
+if coord_list_new(1)==0
+    coord_list_new(1) = coord_list_pre(1);
+end
+if (coord_list_new(end)~=0)&&(coord_list_new(end)~=coord_list_pre(end))
+    disp(['warning, coord_list_new(end) = ',num2str(coord_list_new(end))]);
+    disp(['which != coord_list_pre(end) = ',num2str(coord_list_pre(end))]);
+end
+if coord_list_new(end)==0
+    coord_list_new(end) = coord_list_pre(end);
+end
+for ig = 1:max(group(:))
+   p1 = find(group==ig,1,'first');
+   p2 = find(group==ig,1,'last');
+   if(p1>1)
+       p1 = p1-1;
+   end
+   if(p2<length(group))
+       p2 = p2 + 1;
+   end
+   
+   coord_list_new(p1:p2) = linspace(coord_list_new(p1), coord_list_new(p2), p2-p1+1);
+end
 
-skl_list_new2 = zeros(size(ind_list_new));
-% Update interpolated skeleton list
-skl_list_new2(ismember(ind_list_new, anchor_label_new)) = 1;
-% double chek
-if sum(skl_list_new2-skl_list_new)
-    disp('Warning: skl_list_new by two methods do not match');
-end
-% [debug] check for potential error
-nIntervalsOut = max(group_skeleton(~skl_list_new));
-if (nIntervalsOut~=nIntervalsIn)
-   disp('warning if chosen to replace skl_list with skl_list_new, because intervals in and out not consistent : in, out:'); 
-   disp([nIntervalsIn,nIntervalsOut]);
-   msg = 'Error due to in-consistent in and out intervals';
-   error(msg);
-end
+% skl_list_new2 = zeros(size(ind_list_new));
+% % Update interpolated skeleton list
+% skl_list_new2(ismember(ind_list_new, anchor_label_new)) = 1;
+% % double chek
+% if sum(skl_list_new2-skl_list_new)
+%     disp('Warning: skl_list_new by two methods do not match');
+% end
+% % [debug] check for potential error
+% nIntervalsOut = max(group_skeleton(~skl_list_new));
+% if (nIntervalsOut~=nIntervalsIn)
+%    disp('warning if chosen to replace skl_list with skl_list_new, because intervals in and out not consistent : in, out:'); 
+%    disp([nIntervalsIn,nIntervalsOut]);
+%    msg = 'Error due to in-consistent in and out intervals';
+%    error(msg);
+% end
 
 end
 
