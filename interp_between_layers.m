@@ -55,6 +55,27 @@ for ia = 1:length(skl_list_old)
         end
     end
 end
+
+% Also need to do this again reversely, (maybe ...)
+% for ia = length(skl_list_old): -1 : 1
+%     if anchor_group(ia)>0
+%         [~,ib] = find((anchor_group==anchor_group(ia))&(ind_list==ind_list(ia))&(pos_list < pos_list(ia)), 1, 'first');
+%         if ~isempty(ib)
+%             ic = find(ind_list_pre==ind_list(ia),1,'last');
+%             if isempty(ic)
+%                 disp('warning: ic not found in reverse search');
+%             end
+%             id = find((ind_list_pre==ind_list(ib))&(pos_list_pre < pos_list_pre(ic)), 1, 'first');
+%             if ~isempty(id)
+%                 skl_list_pre(id:ic) = 1;                
+%             end
+%         end
+%     end
+% end
+
+% The solution is to track from both side, find mid point !!! then do ...
+
+
 % assign group number
 anchor_group_pre = group_skeleton(skl_list_pre);
 nGroups_pre = max(anchor_group_pre);
@@ -101,6 +122,7 @@ for ig = 1:nGroups_pre-1
         q1_group_num = anchor_group(q1);
         % find q2:
         q2 = find((ind_list==ind_list_pre(p2))&(anchor_group > q1_group_num), 1, 'first');
+        q2 = find((ind_list==ind_list_pre(p2))&(anchor_group >= q1_group_num)&(pos_list>q1), 1, 'first');
         if isempty(q2)
             disp(['Warning: q2 not found in group > than: ', num2str(q1_group_num)]);
         end
@@ -157,7 +179,7 @@ for ig = 1:nGroups_pre-1
 %     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
 %     skl_list_new(p1:p2) = skl_list(pos_to_use);
     if (q1>q2)
-        msg = 'Error, q1 >= q2 when interp position';
+        msg = 'Error, q1 >= q2 when interp position';[q1,q2]
         error(msg);
     elseif (q1==q2)
         disp('when interpolating, q1=q2, so average coord(p1) and coord(p2)');  
