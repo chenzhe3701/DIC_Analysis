@@ -3,13 +3,13 @@
 % chenzhe, 2018-05-21
 
 
-clear;
+clear; 
 close all;
 %% option setting -1, load face image
-I = load('D:\p\m\DIC_Analysis\face.mat');
-I = I.I;
-I = double(I);
-J = ones(size(I));
+% I = load('D:\p\m\DIC_Analysis\face.mat');
+% I = I.I;
+% I = double(I);
+% J = ones(size(I));
 %% option setting - 2.1, draw first image
 I = zeros(256,256);
 figure;imagesc(I);
@@ -18,16 +18,20 @@ h = impoly();
 h.wait();
 I = h.createMask;
 I = double(I).*reshape(1:length(I(:)),size(I,1),[]);
-close;figure;imagesc(I); title('I');
+I2 = thin(I,inf);
+I3 = I; I3(I2)=0;
+close;figure;imagesc(I3); title('I');
 
 J = ones(size(I));
 %% option setting - 2.2, draw second image, instead of square
 figure;imagesc(J);
-% h = imellipse();
-h = impoly();
+h = imellipse();
+% h = impoly();
 h.wait();
 J = h.createMask;
 J = double(J).*reshape(1:length(J(:)),size(J,1),[]);
+J2 = thin(J,inf);
+J3 = J; J3(J2)=0;
 close;figure;imagesc(J); title('J');
 
 %%

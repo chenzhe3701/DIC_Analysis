@@ -11,189 +11,213 @@ save('for_debug_interp_between_layers.mat','pxl_list_pre', 'ind_list_pre', 'skl_
 % figure; plot(skl_list_pre);
 % figure; plot(skl_list);
 %%
+% [for debugging]
+nIntervalsIn = max(group_skeleton(~skl_list));
+
+% skl_label is the skl_label for the current layer, to add to anchor_label 
+skl_label = unique(ind_list(skl_list==1));
+% anchors_label is the existed skl_label from previous layers
+anchor_label_new = union(skl_label, anchor_label_pre);
+
 % position_list
 pos_list = 1:length(ind_list);
 pos_list_pre = 1:length(ind_list_pre);
 
-nIntervalsIn = max(group_skeleton(~skl_list));
-% anchors_label is the existed skl_label from previous layers
-% skl_label is the skl_label for the current layer
-skl_label = unique(ind_list(skl_list==1));
-% assign group number
-anchor_group_pre = group_skeleton(skl_list_pre);
-nGroups_pre = max(anchor_group_pre);
 
-% find if it is an Old_Skeleton
+
+% first [modify skl_list_pre], so that points with no descendant is also labeled as skeleton.  This is mainly for grouping purpose 
+% Make Old_Skeleton list, indicating if current skeleton point already exist in previous layer, which means it is an Old_Skeleton   
 skl_list_old = zeros(size(ind_list));
 for ii=1:length(skl_list_old)
     if ismember(ind_list(ii), anchor_label_pre)
         skl_list_old(ii) = 1;
     end
 end
-% assign group number to skl_list Old
+% Assign group number to skl_list Old
 anchor_group = group_skeleton(skl_list_old);
-nGroups = max(anchor_group);    
-% Note that nGroups could < nGroups_pre, which complicates the problem   
+nGroups = max(anchor_group);
+% modify [skl_list_pre]
+% If skl_list has a pattern [ABCA 000 ...], then in the skl_list_pre, anything between A,B, and A,C should be assigned as skeleton  
+for ia = 1:length(skl_list_old)
+    if anchor_group(ia)>0
+        [~,ib] = find((anchor_group==anchor_group(ia))&(ind_list==ind_list(ia))&(pos_list>pos_list(ia)), 1, 'last');
+        if ~isempty(ib)
+            ic = find(ind_list_pre==ind_list(ia),1,'first');
+            if isempty(ic)
+                disp('warning: ic not found');
+            end
+            id = find((ind_list_pre==ind_list(ib))&(pos_list_pre>pos_list_pre(ic)), 1, 'last');
+            if ~isempty(id)
+                skl_list_pre(ic:id) = 1;                
+            end
+        end
+    end
+end
+% assign group number
+anchor_group_pre = group_skeleton(skl_list_pre);
+nGroups_pre = max(anchor_group_pre);
+% Note that nGroups_pre could be > nGroups, because of no descendant points, 
+% which complicates the problem .
+% But if skeletons join, nGropus could decrease.
+% The above should reduce nGroups_pre (temp_modify) to reduce this problem.
 % Can nGroups > nGroups_pre? I don't know yet
+if (nGroups < nGroups_pre)
+    disp('After re-grouping, nGroups of anchor still reduced!');
+end
 
 % Firstly copy, because only need to interp in intervals
 pxl_list_new = pxl_list_pre;
 ind_list_new = ind_list_pre;
+skl_list_new = skl_list_pre; % this is already the modified skl_list_pre
 
+
+% To interp:
+% First, find anchor group correspondence
+% Then, move to the edge of anchor, and interp the data between anchor groups 
 q1_group_num = 1;    % keep track of group number in ind_list, only increase allowed 
-q2=0;
-ig = 1;
-while ig < nGroups_pre
+q2 = 0;
+for ig = 1:nGroups_pre-1
+    % [p1 ... p2] is the anchor position in (modified) skl_list_pre
     p1 = find((skl_list_pre==1)&(anchor_group_pre==ig), 1, 'last');
-    p1 = p1 + 1;
     p2 = find((skl_list_pre==1)&(anchor_group_pre==ig+1), 1, 'first');
-    p2 = p2 - 1;
     
-    % if it is not the final skeleton layer
-    if sum(skl_list)~=length(skl_list)     
-        % --> possible solution: if q1 and q2 in the same group, then no descendant !!!!! 
-        q1 = find((ind_list==ind_list_pre(p1-1))&(pos_list >= q2), 1, 'first');
+    if sum(skl_list)~=length(skl_list)
+        % If it is not the final skeleton layer
+        
+        % [q1 ... q2] is the anchor position in skl_list. 
+        % find q1:
+        % In the same group, but use the last one, (If in different anchor group, use the first one?)  
+        q1 = find((ind_list==ind_list_pre(p1))&(anchor_group == q1_group_num), 1, 'last');
+        if isempty(q1)
+            disp(['Warning: q1 not found in group: ', num2str(ig)]);
+        end
+        if anchor_group(q1) > q1_group_num
+           disp(['Warning: q1 should be found in anchor group: ',num2str(ig),...
+               ', but was found in group: ',num2str(anchor_group(q1))]); 
+        end
         q1_group_num = anchor_group(q1);
-        
-        % check if it can come back to the same group/old_skeleton
-        q_eog = find(anchor_group == q1_group_num, 1, 'last');  % end of group 
-        q_back = [];
-        for iq = q1+1 : q_eog
-            if ismember(ind_list(iq), ind_list_pre(p1:end))
-                q_back = iq;
-                p_back = find((ind_list_pre==ind_list(q_back))&(pos_list_pre>p1));  
-                p_back = p_back(end);
-            end
+        % find q2:
+        q2 = find((ind_list==ind_list_pre(p2))&(anchor_group > q1_group_num), 1, 'first');
+        if isempty(q2)
+            disp(['Warning: q2 not found in group > than: ', num2str(q1_group_num)]);
         end
-        has_descendant = 1;
-        if ~isempty(q_back)
-            if ismember(ind_list(q1),ind_list(q1+1 : q_eog))
-                % traveled, came back at the same group, and leave again. 
-                % This means p1:p2 has no descendant  
-                has_descendant = 0;
-            end
+        q2_group_num = anchor_group(q2);
+        q2 = find((skl_list==1)&(anchor_group==q2_group_num), 1, 'first');
+        % error checking, and get interval for interp
+        if (p2-p1) < (q2-q1)
+            disp(['warning, interp should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
+            msg = 'Error due to interp invertal shrink';
+            error(msg);
         end
-        
-        if has_descendant
-            % q1 = find(anchor_group == q1_group_num, 1, 'last');
-            q1 = q1 + 1;
-            
-            q2 = find((ind_list==ind_list_pre(p2+1))&(pos_list >= q1), 1, 'first');
-            q2 = q2 - 1;
-            
-            % perform interp, form [q1 ... q2] to [p1 ... p2]
-            if (q2-q1 > p2-p1)
-                disp('warning! Interp should not shrink! - 1');
-                [10000+p1,20000+p2,30000+q1,40000+q2]
-            end
-            if (p1==p2)||(q1>=q2)
-                pos_to_use = q2;
-            else
-                pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
-            end
-            %         [p1,p2,q1,q2,pos_to_use]
-            ind_list_new(p1:p2) = ind_list(pos_to_use);
-            pxl_list_new(p1:p2) = pxl_list(pos_to_use);
-            
-            ig = anchor_group_pre(p2+1);
-        else
-            % no descendant, move p1, q1, 
-            q1 = q_back - 1;
-            q2 = q_back;
-            
-            p1 = p_back;
-            ig = anchor_group_pre(p1);
-        end
-        
     else
-        % The Final skeleton layer:
-        q1_possible = find(ind_list==ind_list_pre(p1-1));    % an old skeleton point   
-        q2_possible = find(ind_list==ind_list_pre(p2+1));    % an old skeleton point        
+        % Else, this is the Final skeleton layer
+        
+        q1_possible = find(ind_list==ind_list_pre(p1));    % an old skeleton point
+        q2_possible = find(ind_list==ind_list_pre(p2));    % an old skeleton point
         % find the most similar position
         preMin = inf;
         for ii = 1:length(q1_possible)
             q1_temp = q1_possible(ii);
             for jj = 1:length(q2_possible)
                 q2_temp = q2_possible(jj);
-                if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=(p2+1)-(p1-1))
-                   if min(abs(q1_temp/length(ind_list)-p1/length(ind_list_pre)), abs(q2_temp/length(ind_list)-p2/length(ind_list_pre))) < preMin
-                      q1 = q1_temp;
-                      q2 = q2_temp;
-                   end
-                end                
+                if ((q2_temp-q1_temp)>0)&&(q2_temp-q1_temp<=p2-p1)
+                    if min(abs(q1_temp/length(ind_list)-p1/length(ind_list_pre)), abs(q2_temp/length(ind_list)-p2/length(ind_list_pre))) < preMin
+                        q1 = q1_temp;
+                        q2 = q2_temp;
+                    end
+                end
             end
         end
-        q1 = q1 + 1;
-        q2 = q2 - 1;
-        
-        % perform interp, form [q1 ... q2] to [p1 ... p2]
-        if (q2-q1 > p2-p1)
-            disp('warning! Interp should not shrink! - 2');
+        % error checking, and get interval for interp
+        if (p2-p1) < (q2-q1)
+            disp(['warning, interp in Last skeleton layer should not shrink. [p1,p2]=[',num2str([p1,p2]),'], [q1,q2]=[',num2str([q1,q2]),']']);
         end
-        if (p1==p2)||(q1>=q2)
-            pos_to_use = q2;
-        else
-            pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
-        end
-        ind_list_new(p1:p2) = ind_list(pos_to_use);
-        pxl_list_new(p1:p2) = pxl_list(pos_to_use);
-        
-        ig = ig + 1;
     end
     
-end
-
-% if has extra data after skeleton
-ig = nGroups_pre;
-p1 = find(anchor_group_pre==ig,1,'last')+1;
-if p1<=length(anchor_group_pre)
-    p2 = length(anchor_group_pre);
-        
-    q1 = find((ind_list==ind_list_pre(p1-1))&(anchor_group >= q1_group_num), 1, 'first');
-    currentGroup = anchor_group(q1);
-    q1 = find(anchor_group == q1_group_num, 1, 'last');
+    % perform the interp
+    p1 = p1 + 1;
+    p2 = p2 - 1;
     q1 = q1 + 1;
-    if (q1>length(ind_list))
-        disp('Warning! q1 out of range.');
+    q2 = q2 - 1;
+    if (p1>p2)
+        disp('Error, p1>p2');
     end
-    q2 = find(anchor_group == q1_group_num+1, 1, 'first');
-    if ~isempty(q2)
-        disp('Warning!, q2 found in another anchor group');
-        disp(['p1 group =  ',num2str(anchor_group_pre(p1-1))]);
-        disp(['p1, p2, length_list_pre = [',num2str(p1), ',', num2str(p2), ',', num2str(length(anchor_group_pre)),']']);
-        disp(['q2 group =  ',num2str(q1_group_num+1)]);
-        disp(['q1, q2, length_list = [',num2str(q1), ',', num2str(q2), ',', num2str(length(ind_list)),']']);
-        q2 = q2 - 1;
-    else
-        q2 = length(anchor_group);
-    end
-    
-    % perform interp, form [q1 ... q2] to [p1 ... p2]
-    if (q2-q1 > p2-p1)
-        disp('warning! Interp should not shrink!');
-        disp([p1,p2,q1,q2]);
-    end
-    if (p1==p2)||(q1>=q2)
+    if (q1 >= q2)
+        disp(['q1=',num2str(q1),' q2=',num2str(q2),' ,interp_pos use q2']);
         pos_to_use = q2;
     else
         pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
     end
+    
+    % perform interp, form [q1 ... q2] to [p1 ... p2]
     ind_list_new(p1:p2) = ind_list(pos_to_use);
     pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+    skl_list_new(p1:p2) = skl_list(pos_to_use);
+    
+    % update q1_group
+    q1_group_num = q2_group_num;
 
 end
 
-skl_list_new = zeros(size(ind_list_new));
-anchor_label_new = union(skl_label, anchor_label_pre);
-% update interpolated skeleton list
-skl_list_new(ismember(ind_list_new, anchor_label_new)) = 1;
+% if has extra data after skeleton
+ig = nGroups_pre;
+p1 = find((skl_list_pre==1)&(anchor_group_pre==ig),1,'last');
 
+if p1 < length(anchor_group_pre)
+    disp('Extra data after last anchor_group');
+    p2 = length(anchor_group_pre);
+    
+    % based on previous q2, find q1 position (should change to last one in the same group) 
+    q1 = find((ind_list==ind_list_pre(p1))&(pos_list>q2), 1, 'first');
+    if isempty(q1)
+        disp('Warning! q1 not found .');
+    end
+    q1_group_num = anchor_group(q1);
+    q1 = find((ind_list==ind_list_pre(p1))&(anchor_group == q1_group_num), 1, 'last');
+    
+    q2 = length(anchor_group);
+
+    % perform interp, form [q1 ... q2] to [p1 ... p2]
+    p1 = p1 + 1;
+    q1 = q1 + 1;
+    if (p1>p2)
+        disp('Error, p1>p2');
+    end
+    if (q2-q1 > p2-p1)
+        disp('warning! Interp after skeleton should not shrink!');
+        disp([p1,p2,q1,q2]);
+    end
+    if (q1 >= q2)
+        disp(['q1=',num2str(q1),' q2=',num2str(q2),' ,interp_pos use q2']);
+        pos_to_use = q2;
+    else
+        pos_to_use = interp1(0:q2-q1, q1:q2, linspace(0, q2-q1, p2-p1+1),'nearest');
+    end
+    
+    % perform interp, form [q1 ... q2] to [p1 ... p2]
+    ind_list_new(p1:p2) = ind_list(pos_to_use);
+    pxl_list_new(p1:p2) = pxl_list(pos_to_use);
+    skl_list_new(p1:p2) = skl_list(pos_to_use);
+
+end
+
+
+skl_list_new2 = zeros(size(ind_list_new));
+% Update interpolated skeleton list
+skl_list_new2(ismember(ind_list_new, anchor_label_new)) = 1;
+% double chek
+if sum(skl_list_new2-skl_list_new)
+    disp('Warning: skl_list_new by two methods do not match');
+end
 % [debug] check for potential error
 nIntervalsOut = max(group_skeleton(~skl_list_new));
 if (nIntervalsOut~=nIntervalsIn)
-   disp('warning: intervals in and out not consistent : in, out:'); 
+   disp('warning if chosen to replace skl_list with skl_list_new, because intervals in and out not consistent : in, out:'); 
    disp([nIntervalsIn,nIntervalsOut]);
+   msg = 'Error due to in-consistent in and out intervals';
+   error(msg);
 end
+
 end
 
 

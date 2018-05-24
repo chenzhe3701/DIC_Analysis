@@ -186,19 +186,22 @@ while (~all_skeleton)&&(iLoop<=inf)
         % example - 3:
         % layer-1: [131,118,106,93, ..., ..., ..., ..., ..., 142, 155, ..., (x10), ..., 106,118]  
         % layer-2: [131,118,106,93, ..., 142, 155, 142, ..., (x10), ..., 106, 118]
+        ind_list_old = ind_list;
         [pxl_list_new, ind_list_new, skl_list_new, anchor_label_cell{iLoop}] ...
             = interp_between_layers(pxl_cell{iLoop-1}, ind_cell{iLoop-1}, skl_cell{iLoop-1}, anchor_label_cell{iLoop-1}, pxl_list, ind_list, skl_list);
         
         % debug, check when some points are missing
-        if length(unique(ind_list_new))<length(unique(ind_list))
-            disp('found point missing: ----------')
-            save('debugdata_point_missing','iLoop','ind_cell','skl_cell','ind_list','ind_list_new');
+        if length(unique(ind_list))<length(unique(ind_list_old))
+            close;
+            disp(['found point missing at loop: ',num2str(iLoop),' ----------']);
+            save('debugdata_point_missing','iLoop','ind_cell','skl_cell','ind_list','ind_list_old');
+            myplot(A);
         end
             
         % copy the list into cell
-        pxl_cell{iLoop} = pxl_list_new;
-        ind_cell{iLoop} = ind_list_new;
-        skl_cell{iLoop} = skl_list_new;    
+        pxl_cell{iLoop} = pxl_list;
+        ind_cell{iLoop} = ind_list;
+        skl_cell{iLoop} = skl_list;    
     end
     
     % increment loop
@@ -206,57 +209,63 @@ while (~all_skeleton)&&(iLoop<=inf)
 end
 
 %% make into matrix
-pxl_M = cell2mat(reshape(pxl_cell,[],1));
-ind_M = cell2mat(reshape(ind_cell,[],1));
-skl_M = cell2mat(reshape(skl_cell,[],1));
-
-% shift back
-pxl_M(layer_at_realign:end,:) = circshift(pxl_M(layer_at_realign:end,:), align_shift, 2);
-ind_M(layer_at_realign:end,:) = circshift(ind_M(layer_at_realign:end,:), align_shift, 2);
-skl_M(layer_at_realign:end,:) = circshift(skl_M(layer_at_realign:end,:), align_shift, 2);
-
-
-% [debug] keep a record of trucated but not v-direction-stretched
-pxl_M_truncated = zeros(size(pxl_M));
-ind_M_truncated = zeros(size(ind_M));
-skl_M_truncated = zeros(size(skl_M));
-
-% This is to make each colomn stop at the first skeleton point it encounters, and then scale    
-[nr,nc] = size(ind_M);
-for ic = 1:nc
-    ind_r = find(skl_M(:,ic), 1, 'first');
+make_matrix = 0;    % for debug purpose. Otherwise just return the cell.
+if make_matrix
+    pxl_M = cell2mat(reshape(pxl_cell,[],1));
+    ind_M = cell2mat(reshape(ind_cell,[],1));
+    skl_M = cell2mat(reshape(skl_cell,[],1));
     
-    % [debug] keep a record of truncated but not v-direction-stretched
-    pxl_M_truncated(1:ind_r,ic) = pxl_M(1:ind_r,ic);
-    ind_M_truncated(1:ind_r,ic) = ind_M(1:ind_r,ic);
-    skl_M_truncated(1:ind_r,ic) = skl_M(1:ind_r,ic);
+    % shift back
+    pxl_M(layer_at_realign:end,:) = circshift(pxl_M(layer_at_realign:end,:), align_shift, 2);
+    ind_M(layer_at_realign:end,:) = circshift(ind_M(layer_at_realign:end,:), align_shift, 2);
+    skl_M(layer_at_realign:end,:) = circshift(skl_M(layer_at_realign:end,:), align_shift, 2);
     
-    % I am going to try two methods to interp, but I don't know which one is better.  This needs double check later.  
-    interpMethod = 1;
-    if interpMethod == 1
-        % in case skeleton is met at first row
-        if ind_r==1
-            ind_r=2;
+    
+    % [debug] keep a record of trucated but not v-direction-stretched
+    pxl_M_truncated = zeros(size(pxl_M));
+    ind_M_truncated = zeros(size(ind_M));
+    skl_M_truncated = zeros(size(skl_M));
+    
+    % This is to make each colomn stop at the first skeleton point it encounters, and then scale
+    [nr,nc] = size(ind_M);
+    for ic = 1:nc
+        ind_r = find(skl_M(:,ic), 1, 'first');
+        
+        % [debug] keep a record of truncated but not v-direction-stretched
+        pxl_M_truncated(1:ind_r,ic) = pxl_M(1:ind_r,ic);
+        ind_M_truncated(1:ind_r,ic) = ind_M(1:ind_r,ic);
+        skl_M_truncated(1:ind_r,ic) = skl_M(1:ind_r,ic);
+        
+        % I am going to try two methods to interp, but I don't know which one is better.  This needs double check later.
+        interpMethod = 1;
+        if interpMethod == 1
+            % in case skeleton is met at first row
+            if ind_r==1
+                ind_r=2;
+            end
+            pxl_M(:,ic) = interp1(1:ind_r, pxl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+            ind_M(:,ic) = interp1(1:ind_r, ind_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+            skl_M(:,ic) = interp1(1:ind_r, skl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
+        elseif interpMethod == 2    % try to make only the last row as skeleton, not too much effective.
+            if ind_r<=2
+                pxl_M(1:end-1,ic) = interp1(1:2, pxl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+                ind_M(1:end-1,ic) = interp1(1:2, ind_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+                skl_M(1:end-1,ic) = interp1(1:2, skl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
+            else
+                pxl_M(1:end-1,ic) = interp1(1:ind_r-1, pxl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+                ind_M(1:end-1,ic) = interp1(1:ind_r-1, ind_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+                skl_M(1:end-1,ic) = interp1(1:ind_r-1, skl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
+            end
+            pxl_M(end,ic) = pxl_M(ind_r,ic);
+            ind_M(end,ic) = ind_M(ind_r,ic);
+            skl_M(end,ic) = ind_M(ind_r,ic);
         end
-        pxl_M(:,ic) = interp1(1:ind_r, pxl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
-        ind_M(:,ic) = interp1(1:ind_r, ind_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
-        skl_M(:,ic) = interp1(1:ind_r, skl_M(1:ind_r,ic), linspace(1,ind_r,nr), 'nearest');
-    elseif interpMethod == 2    % try to make only the last row as skeleton, not too much effective. 
-        if ind_r<=2
-            pxl_M(1:end-1,ic) = interp1(1:2, pxl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
-            ind_M(1:end-1,ic) = interp1(1:2, ind_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
-            skl_M(1:end-1,ic) = interp1(1:2, skl_M([1;1],ic), linspace(1,2,nr-1), 'nearest');
-        else
-            pxl_M(1:end-1,ic) = interp1(1:ind_r-1, pxl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
-            ind_M(1:end-1,ic) = interp1(1:ind_r-1, ind_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
-            skl_M(1:end-1,ic) = interp1(1:ind_r-1, skl_M(1:ind_r-1,ic), linspace(1,ind_r-1,nr-1), 'nearest');
-        end
-        pxl_M(end,ic) = pxl_M(ind_r,ic);
-        ind_M(end,ic) = ind_M(ind_r,ic);
-        skl_M(end,ic) = ind_M(ind_r,ic);
     end
+else
+    pxl_M = pxl_cell;
+    ind_M = ind_cell;
+    skl_M = skl_cell;
 end
 
 end
-
 
