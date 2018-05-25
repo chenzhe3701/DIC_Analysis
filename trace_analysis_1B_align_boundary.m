@@ -59,10 +59,38 @@ myplot(exx_input);
 myplot(ID_input);
 myplot(exx_input, grow_boundary(gb));
 
+%%
+% loaded = load(fullfile(dicPath,'_10.mat'));
+% exy_input = loaded.exy;
+% th = quantile(exy_input(:),[0.005, 0.995]);
+% exy_input = mat_to_image(exy_input,th,'index');
+% exy_input=exy_input(indrs,indcs);
+% 
+% eyy_input = loaded.eyy;
+% th = quantile(eyy_input(:),[0.005, 0.995]);
+% eyy_input = mat_to_image(eyy_input,th,'index');
+% eyy_input=eyy_input(indrs,indcs);
+% 
+% 
+% u_input = loaded.u; 
+% u_input=u_input(indrs,indcs);
+% 
+% v_input = loaded.v; 
+% v_input=v_input(indrs,indcs);
+% 
+% sigma_input = loaded.sigma; 
+% sigma_input=sigma_input(indrs,indcs);
+% 
+% clear loaded;
+% myplot(exy_input, (gb));
+% myplot(eyy_input, (gb));
+% myplot(u_input, (gb));
+% myplot(v_input, (gb));
+% myplot(sigma_input, (gb));
 %% build grain boundary model
 resolution = 4096/120;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
-
+save('boundary_model_initial.mat', 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
 %% draw grain boundary, and make handles
 close all;
 h = []; H = []; hline = [];
@@ -95,10 +123,10 @@ for ii = 1:size(pt_pos,1)
     L{ii} = hline(pt_s_gb{ii});
     G{ii} = H(pt_s_gb{ii});
     V{ii} = gb_dir(pt_s_gb{ii});
-    addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+    S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
-
-%% update [pt_pos] --> maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
+axis square;
+%% Can force to update [pt_pos] --> Later, maybe [gb_dir] --> even more, maybe [gb_s_pt] and [pt_s_gb]
 for ii = 1:size(pt_pos,1)
     try
         pt_pos(ii,:) = h{ii}.getPosition;
@@ -110,25 +138,30 @@ end
 
 
 %% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
-save('try_align_gb_data_rename.mat','mask','ID_input')
+save('boundary_mask.mat', 'mask', 'ID_input');
+%% Can also save the boundary model
+save('boundary_model.mat', 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
 
+%% Align change to desired boundary
+%% Load data, 2 options
 
+load('D:\p\m\DIC_Analysis\boundary_mask.mat','mask','ID_input');
 
-%% Load data
 load('D:\p\m\DIC_Analysis\try_align_gb_data.mat','mask','ID_input');
 
+%%
 gb_target = mask;
 % d_target = city_block(gb_target);
 % [FX,FY] = gradient(d_target);
 
 % grow gb_target to guarantee grains are disconnected.  May need grow multiple times.   
-gb_target = grow_boundary(gb_target);
+gb_target = (grow_boundary(gb_target));
 
 % just show how ID_temp compares with old ID (but use grain boundary to show) 
 myplot(ID_input, gb_target);
 
 
-% find ID with boundary map. Temporarily make it negative, so it can be recognized if not matched.  
+%% find ID with boundary map. Temporarily make it negative, so it can be recognized if not matched.  
 ID_temp = -find_ID_map_from_boundary_map(gb_target);
 
 % just show how ID_temp compares with old ID (but use grain boundary to show)  
@@ -136,11 +169,12 @@ gb = find_one_boundary_from_ID_matrix(ID_input);
 myplot(ID_temp, gb);
 
 
-% change the id# in ID_temp to that in ID_input
+%% change the id# in ID_temp to that in ID_input
 ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input);
+gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 
 % show the new, aligned ID map
-myplot(ID_aligned, gb_target);
+myplot(ID_aligned, grow_boundary(gb_aligned));
 
 
 
