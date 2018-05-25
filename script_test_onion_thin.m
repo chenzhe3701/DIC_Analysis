@@ -10,6 +10,7 @@ close all;
 % I = I.I;
 % I = double(I);
 % J = ones(size(I));
+
 %% option setting - 2.1, draw first image
 I = zeros(256,256);
 figure;imagesc(I);
@@ -69,3 +70,25 @@ for iR = 1:size(ind_M_2,1)
     end
 end
 figure;imagesc(img_interp);
+
+
+%% run this to replace 'I' with grain data
+realGrain = 1;
+if realGrain
+    ID = load('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt\WE43_T6_C1_s_all_grain_1144_local_map.mat');
+    ID = ID.data;
+    ID = ID(5).ID_local;
+    ID = ID==1144;
+    A = double(ID);
+    ind_start_input = find(A(:)==1,1,'first');
+end
+A(:) = A(:).*[1:length(A(:))]';
+I = A;
+myplot(I);
+J = imwarp(I,projective2d([0.9 0.1 0.001;   0.07, 0.95, 0.001;   2, 5, 1]));
+myplot(J);
+
+
+
+
+

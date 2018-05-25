@@ -34,3 +34,8 @@ ind_list_pre(p1-1),
 ind_list_pre(p2+1),
 ind_list(q1-1),
 ind_list(q2+1),
+
+figure; plot(ind_list_pre);
+figure; plot(skl_list_pre);
+figure; plot(ind_list);
+figure; plot(skl_list);
