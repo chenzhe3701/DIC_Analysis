@@ -202,7 +202,7 @@ for iE = iE_start:iE_stop
     end
     
     hWaitbar = waitbar(0,'running each grain, each cluster, ...');
-    for iS =1:0%length(stru)
+    for iS =1:length(stru)
         % iS = find(arrayfun(@(x) x.gID == 246,stru));  % for debugging
         % iS = find(gIDwithTrace == 296); % for debugging.
         ID_current = gIDwithTrace(iS);
