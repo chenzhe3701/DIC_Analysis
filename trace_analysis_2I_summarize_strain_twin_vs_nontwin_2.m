@@ -91,7 +91,6 @@ for iE = iE_start:iE_stop
 end
 %% select iE to analyze
 
-
 % step = 0.01;
 % [xMap,yMap] = meshgrid(0:step:1,0:step:1);
 % twinPixelMap = zeros(size(xMap));
@@ -118,7 +117,9 @@ for iE = iE_start:iE_stop
     s_as = zeros(n,1);  % accumulative all strain
     s_fp = zeros(n,1);  % fraction of pixels that twinned
     s_fs = zeros(n,1);  % fraction of strain accommodated by twin
-
+    
+    s_ps = zeros(n,1);  % predicted 2D plastic strain, if any, otherwise = 0 
+    
     exx = EXX{iE};
     exy = EXY{iE};
     eyy = EYY{iE};
@@ -127,6 +128,7 @@ for iE = iE_start:iE_stop
     
     hWaitbar = waitbar(0,'running each grain, each cluster, ...');
     for iS =1:length(stru)
+        
         % iS = find(arrayfun(@(x) x.gID == 246,stru));  % for debugging
         % iS = find(gIDwithTrace == 296); % for debugging.
         ID_current = gIDwithTrace(iS);
@@ -196,6 +198,18 @@ for iE = iE_start:iE_stop
         s_ap(iS) = nTwinPixels + nNonTwinPixels;
         s_as(iS) = cumStrainTwin + cumStrainNonTwin;
         
+        
+        % predicted measured 2d effective strain
+        ind = find(stru(iS).trueTwin,1,'first');
+        if ~isempty(ind)
+            tStrain = stru(iS).tStrain(ind,:);
+        else
+            tStrain = [0 0 0];
+        end
+        
+        predStrain = calculate_effective_strain(tStrain(1),tStrain(2),tStrain(3));
+        s_ps(iS) = predStrain;
+        
 %         twinPixelMap(indr,indc) = twinPixelMap(indr,indc) + nTwinPixels;
 %         nonTwinPixelMap(indr,indc) = nonTwinPixelMap(indr,indc) + nNonTwinPixels;
 %         
@@ -228,11 +242,12 @@ for iE = iE_start:iE_stop
     end
     warning('on','all');
     
-    save([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat'],'s_x','s_y','s_euler','s_tp','s_ts','s_ap','s_as','s_fp','s_fs');
+    save([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat'],'s_x','s_y','s_euler','s_tp','s_ts','s_ap','s_as','s_fp','s_fs','s_ps');
 end
 
 
-%% whatever to plot
+%% [1] pct of strain by twin as a function of grain orientation. Size of marker = pixel number.  Color = pct of strain by twinned pixel.
+
 close all; 
 for iE = iE_start:iE_stop
     load([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat']);
@@ -271,10 +286,209 @@ for iE = iE_start:iE_stop
     print([summaryPath,output_name,'.tiff'],'-dtiff');
 end
 
+
+%% [2] predicted 2D effective plastic strain
+close all; 
+for iE = iE_start:iE_stop
+    load([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat']);
+    figure('Position',[680   600   750   330]);
+    hold on;
+    axis equal;axis([0 1.2 0 0.6]);
+    axis off;
+    theta_d = [0:1:30];  % just the paremeter 'theta'
+    border_x = [0 cosd(theta_d) 0];
+    border_y = [0 sind(theta_d) 0];
+    plot(border_x, border_y, 'k-');
+    
+%     aData = [s_x, s_y, s_ap, s_fp]; % marker size = num of pixels in grian; color = fraction of pixel by twin 
+    aData = [s_x, s_y, double(s_tp>0).*s_tp, s_ps]; % marker size = 10; color = avg effective plastic strain of twin pixels 
+    
+    aData = sortrows(aData,3,'descend');
+    ind = (aData(:,3)>0);
+    aData = aData(ind,:);
+    
+    xData = aData(:,1);
+    yData = aData(:,2);
+    sData = aData(:,3);
+    sData = sData/1000;
+    cData = aData(:,4);
+    
+    
+    scatter(xData, yData, sData, cData, 'filled');
+    
+    text(-0.12,0.12,'0 0 0 1','fontsize',18)
+    text(1.02,0.02,'2 -1 -1 0','fontsize',18)
+    text(0.87,0.52,'1 0 -1 0','fontsize',18)
+    colorbar; caxis([0 0.075]);
+    set(gca,'fontsize',18);
+    hold off;
+    output_name = ['cd_ipf nPixels vs twinFraction iE=',num2str(iE)];
+    print([summaryPath,output_name,'.tiff'],'-dtiff');
+end
+
+%% [3] measured 2D effective plastic strain
+
+for iE = iE_start:iE_stop
+    load([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat']);
+    figure('Position',[680   600   750   330]);
+    hold on;
+    axis equal;axis([0 1.2 0 0.6]);
+    axis off;
+    theta_d = [0:1:30];  % just the paremeter 'theta'
+    border_x = [0 cosd(theta_d) 0];
+    border_y = [0 sind(theta_d) 0];
+    plot(border_x, border_y, 'k-');
+    
+%     aData = [s_x, s_y, s_ap, s_fp]; % marker size = num of pixels in grian; color = fraction of pixel by twin 
+    aData = [s_x, s_y, double(s_tp>0).*s_tp, s_ts./s_tp]; % marker size = 10; color = avg effective plastic strain of twin pixels 
+    
+    aData = sortrows(aData,3,'descend');
+    ind = (aData(:,3)>0);
+    aData = aData(ind,:);
+    
+    xData = aData(:,1);
+    yData = aData(:,2);
+    sData = aData(:,3);
+    sData = sData/1000;
+    cData = aData(:,4);
+    
+    
+    scatter(xData, yData, sData, cData, 'filled');
+    
+    text(-0.12,0.12,'0 0 0 1','fontsize',18)
+    text(1.02,0.02,'2 -1 -1 0','fontsize',18)
+    text(0.87,0.52,'1 0 -1 0','fontsize',18)
+    colorbar; caxis([0 0.075]);
+    set(gca,'fontsize',18);
+    hold off;
+    output_name = ['cd_ipf nPixels vs twinFraction iE=',num2str(iE)];
+    print([summaryPath,output_name,'.tiff'],'-dtiff');
+end
+
+%% [4] measured 2D / predicted 2D effective plastic strain
+
+for iE = iE_start:iE_stop
+    load([summaryPath,'summary_tnont_iE=',num2str(iE),'.mat']);
+    figure('Position',[680   600   750   330]);
+    hold on;
+    axis equal;axis([0 1.2 0 0.6]);
+    axis off;
+    theta_d = [0:1:30];  % just the paremeter 'theta'
+    border_x = [0 cosd(theta_d) 0];
+    border_y = [0 sind(theta_d) 0];
+    plot(border_x, border_y, 'k-');
+    
+%     aData = [s_x, s_y, s_ap, s_fp]; % marker size = num of pixels in grian; color = fraction of pixel by twin 
+    aData = [s_x, s_y, double(s_tp>0).*s_tp, (s_ts./s_tp)./s_ps]; % marker size = 10; color = avg effective plastic strain of twin pixels 
+    
+    aData = sortrows(aData,3,'descend');
+    ind = (aData(:,3)>0);
+    aData = aData(ind,:);
+    
+    xData = aData(:,1);
+    yData = aData(:,2);
+    sData = aData(:,3);
+    sData = sData/1000;
+    cData = aData(:,4);
+    
+    
+    scatter(xData, yData, sData, cData, 'filled');
+    
+    text(-0.12,0.12,'0 0 0 1','fontsize',18)
+    text(1.02,0.02,'2 -1 -1 0','fontsize',18)
+    text(0.87,0.52,'1 0 -1 0','fontsize',18)
+    colorbar; caxis([0 2]);
+    set(gca,'fontsize',18);
+    hold off;
+    output_name = ['cd_ipf nPixels vs twinFraction iE=',num2str(iE)];
+    print([summaryPath,output_name,'.tiff'],'-dtiff');
+end
+
 %% This can be explained by the SF of extension twins
 eu = randi(360,1000,3);
 calculate_pos_on_IPF(eu,'Mg','plotTF',1,'ss_of_interest',[19:24],'stressTensor',[-1 0 0; 0 0 0; 0 0 0]);
 axis off;
+
+%% calculate the predicted e_plastic_3d, and e_plastic_2d, vs orientation 
+
+close all;
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+ss = crystal_to_cart_ss(ssa,c_a);
+
+xData = [];
+yData = [];
+cData = [];
+cData3 = [];
+for ii = 1:3000
+    euler = randi(360,1,3);
+    [px,py] = calculate_pos_on_IPF(euler,'Mg','ss_of_interest',[19:24],'stressTensor',[-1 0 0; 0 0 0; 0 0 0]);
+
+    g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
+    
+    gamma = 0.1289; % twin shear for Mg
+    
+    schmidFactor = [];
+    for iss = 19:24
+        schmidFactor(iss) = ss(1,:,iss) * g * [-1 0 0; 0 0 0; 0 0 0] * (ss(2,:,iss) * g)';
+    end
+    
+    [~,iss] = max(schmidFactor(19:24));
+    iss = iss + 18;
+    %         disp('---');
+    N(iss,:) = ss(1,:,iss) * g;
+    M(iss,:) = ss(2,:,iss) * g;
+    MN2{iss} = M(iss,:)'*N(iss,:);
+    MN2{iss} = MN2{iss}(1:2,1:2);
+    
+    F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
+    epsilon3 = (F3'*F3-eye(3))/2;
+    ep3 = sqrt(2/3* epsilon3(:)'*epsilon3(:));
+    
+    F = eye(2) + gamma*MN2{iss};
+    epsilon = (F'*F-eye(2))/2;
+    ep = sqrt(2/3*epsilon(:)'*epsilon(:));
+    
+    xData = [xData;px];
+    yData = [yData;py];
+    cData = [cData;ep];
+    cData3 = [cData3;ep3];
+end
+        
+
+figure('Position',[680   600   750   330]);
+hold on;
+axis equal;axis([0 1.2 0 0.6]);
+axis off;
+theta_d = [0:1:30];  % just the paremeter 'theta'
+border_x = [0 cosd(theta_d) 0];
+border_y = [0 sind(theta_d) 0];
+plot(border_x, border_y, 'k-');
+scatter(xData, yData, 10, cData, 'filled');
+
+text(-0.12,0.12,'0 0 0 1','fontsize',18)
+text(1.02,0.02,'2 -1 -1 0','fontsize',18)
+text(0.87,0.52,'1 0 -1 0','fontsize',18)
+colorbar; caxis([0 0.075]);
+set(gca,'fontsize',18);
+hold off;
+
+
+figure('Position',[680   600   750   330]);
+hold on;
+axis equal;axis([0 1.2 0 0.6]);
+axis off;
+theta_d = [0:1:30];  % just the paremeter 'theta'
+border_x = [0 cosd(theta_d) 0];
+border_y = [0 sind(theta_d) 0];
+plot(border_x, border_y, 'k-');
+scatter(xData, yData, 10, cData3, 'filled');
+
+text(-0.12,0.12,'0 0 0 1','fontsize',18)
+text(1.02,0.02,'2 -1 -1 0','fontsize',18)
+text(0.87,0.52,'1 0 -1 0','fontsize',18)
+colorbar; caxis([0 0.075]);
+set(gca,'fontsize',18);
+hold off;
 %%
 % figure;
 % hold on;
