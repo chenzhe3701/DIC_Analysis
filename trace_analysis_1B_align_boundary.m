@@ -1,6 +1,9 @@
 % chenzhe, 2018-05-14
 % In branch 'Ti7Al_B6'
 % Organize this to look at grain boundary alignment
+%
+% chenzhe, 2018-06-12. Previously, it is for development purpose.
+% Next, we need to divide the map, and do the real work of clean-up.  
 
 clear; clc;
 addChenFunction;
@@ -44,8 +47,8 @@ exx = mat_to_image(exx,th,'index');
 %% crop an area of data
 indrs = 2001:3600;
 indcs = 3201:4800;
-% indrs = 1:size(exx,1);
-% indcs = 1:size(exx,2);
+indrs = 1:size(exx,1);
+indcs = 1:size(exx,2);
 exx_input = exx(indrs, indcs);
 
 ID_input = ID(indrs, indcs);
@@ -135,7 +138,7 @@ end
 
 %% plot the mask
 [mask,~] = plot_spline_mask(gb_dir, gb_s_pt, pt_pos, x_input, y_input);
-
+myplot(ID_input, grow_boundary(mask));  % check how it align with ID map. If not too different, that's fine 
 
 %% After making some data, save the data to study how to walk one grain boundary to the target grain boundary.
 save('boundary_mask.mat', 'mask', 'ID_input');
