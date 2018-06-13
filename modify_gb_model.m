@@ -31,6 +31,13 @@ delete(h_temp);
 
 delete_to_pos = [0, 0]; % set deleted point to this position
 
+% find out the grain boundaries that are actually plotted in this AOI.
+try
+    all_gb_ind = evalin('base','all_gb_ind;');
+catch
+    all_gb_ind = 1:length(gb_s_pt);
+end
+
 switch method
     case {'remove_point',1}
         disp('remove_point');
@@ -68,9 +75,12 @@ switch method
         % Need to modify [L,G,V,callback,S], where [L{ind},G{ind}] required to update callback.
         % [h,H,hline] are OK.
         for ipt = pts_for_this_boundary
-            L{ipt} = hline(pt_s_gb{ipt});
-            G{ipt} = H(pt_s_gb{ipt});
-            V{ipt} = gb_dir(pt_s_gb{ipt});
+            
+            pt_s_gb_in_aoi = intersect(pt_s_gb{ipt}, all_gb_ind);
+            
+            L{ipt} = hline(pt_s_gb_in_aoi);
+            G{ipt} = H(pt_s_gb_in_aoi);
+            V{ipt} = gb_dir(pt_s_gb_in_aoi);
             S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
         end
         
@@ -129,9 +139,12 @@ switch method
             igb = pt_s_gb{ind}(ii);
             for jj = 1:length(gb_s_pt{igb})
                 ipt = gb_s_pt{igb}(jj);
-                L{ipt} = hline(pt_s_gb{ipt});
-                G{ipt} = H(pt_s_gb{ipt});
-                V{ipt} = gb_dir(pt_s_gb{ipt});
+                
+                pt_s_gb_in_aoi = intersect(pt_s_gb{ipt}, all_gb_ind);
+                
+                L{ipt} = hline(pt_s_gb_in_aoi);
+                G{ipt} = H(pt_s_gb_in_aoi);
+                V{ipt} = gb_dir(pt_s_gb_in_aoi);
                 S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
             end
         end

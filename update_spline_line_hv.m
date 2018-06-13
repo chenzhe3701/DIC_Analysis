@@ -11,6 +11,19 @@ function [] = update_spline_line_hv(hline, himpoint, hv, stepSize)
 
 pos = himpoint{1}.getPosition;
 
+% update pt_pos in base workspace.
+pt_pos = evalin('base','pt_pos;');
+% h = evalin('base','h;');
+% find the index of the point
+[~,ind] = min(pdist2(pt_pos,pos));
+% update in base workspace
+try
+    pt_pos(ind,:) = pos;
+end
+assignin('base','pt_pos',pt_pos);
+% assignin('base','h',h);
+
+
 switch hv
     case 'horizontal'
         xp = pos(1);
@@ -50,15 +63,5 @@ end
 hline.XData = xp;
 hline.YData = yp;
 
-% update if necessary. But may be slow. Can comment this.
-pt_pos = evalin('base','pt_pos;');
-h = evalin('base','h;');
-for ii = 1:size(pt_pos,1)
-    try
-        pt_pos(ii,:) = h{ii}.getPosition;
-    end
-end
-assignin('base','pt_pos',pt_pos);
-assignin('base','h',h);
 
 end
