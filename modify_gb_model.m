@@ -29,7 +29,7 @@ pos = h_temp.getPosition;
 delete(h_temp);
 [~,ind] = min(pdist2(pt_pos,pos));
 
-delete_to_pos = [0, 0]; % set deleted point to this position
+delete_to_pos = [nan, nan]; % set deleted point to this position
 
 % find out the grain boundaries that are actually plotted in this AOI.
 try
@@ -81,25 +81,26 @@ switch method
             L{ipt} = hline(pt_s_gb_in_aoi);
             G{ipt} = H(pt_s_gb_in_aoi);
             V{ipt} = gb_dir(pt_s_gb_in_aoi);
-            S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
+            S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
         end
         
         
     case {'add_boundary',2}
+        npts_add = 3;
         disp('add_boundary');
         % make addition to [gb_dir, gb_s_pt, pt_pos, pt_s_gb]
         ngb = length(gb_dir);
         npt = size(pt_pos,1);
         gb_dir{ngb+1} = 'horizontal';
-        gb_s_pt{ngb+1} = npt + [1:5];
-        pt_pos(npt+[1:5],:) = pos + [stepSize,stepSize].*[0:100:400]';
-        for ii=1:5
+        gb_s_pt{ngb+1} = npt + [1:npts_add];
+        pt_pos(npt+[1:npts_add],:) = pos + [stepSize,stepSize].*[linspace(0,400,npts_add)]';
+        for ii=1:npts_add
             pt_s_gb{npt+ii} = ngb+1;
         end
         
         % make addition to these 
         % (1) plot all the control points --> hangle: h{i}
-        for ii = npt+1 : npt+5
+        for ii = npt+1 : npt+npts_add
             h{ii} = impoint(gca, pt_pos(ii,1), pt_pos(ii,2));
             setColor(h{ii},'r');
         end
@@ -116,11 +117,11 @@ switch method
         % group this point's grain boundaries' points, pt_s_gb_s_pt_group{i} = G{i} = {H{i1}, H{i2}, ...}
         % gropu this point's grain boundaries' direction, pt_s_gb_sdir{i} = V{i} = {gb_dir{i1}, gb_dir{i2}, ...}
         % addNewPositionCallback with L,G,V
-        for ii = npt+1 : npt+5
+        for ii = npt+1 : npt+npts_add
             L{ii} = hline(pt_s_gb{ii});
             G{ii} = H(pt_s_gb{ii});
             V{ii} = gb_dir(pt_s_gb{ii});
-            S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+            S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ii,stepSize) , L{ii}, G{ii}, V{ii}) );
         end
 
         
@@ -145,7 +146,7 @@ switch method
                 L{ipt} = hline(pt_s_gb_in_aoi);
                 G{ipt} = H(pt_s_gb_in_aoi);
                 V{ipt} = gb_dir(pt_s_gb_in_aoi);
-                S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
+                S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
             end
         end
         

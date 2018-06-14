@@ -93,7 +93,7 @@ myplot(exx_input, grow_boundary(gb));
 %% build grain boundary model
 resolution = 4096/120;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
-save([sampleName,'_boundary_model_initial.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
+save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
 %% Divide whole map into several AOIs
 nPts = size(pt_pos,1);
@@ -127,7 +127,13 @@ ic = 1;
 [~,indcs_high] = min(abs(AOI{ir,ic}(1,2)-x_input(1,:)));
 indrs_AOI = indrs_low:indrs_high;
 indcs_AOI = indcs_low:indcs_high;
-exx_AOI = exx(indrs_AOI, indcs_AOI);
+
+
+%%%% select what to use as a background
+map_AOI = exx(indrs_AOI, indcs_AOI);
+map_AOI = mod(ID(indrs_AOI, indcs_AOI),7);
+%%%%
+
 
 ID_AOI = ID(indrs_AOI, indcs_AOI);
 x_AOI = X(indrs_AOI, indcs_AOI);
@@ -156,7 +162,7 @@ h = []; H = []; hline = [];
 L = []; G = []; V = [];
 
 figure;
-imagesc([x_AOI(1),x_AOI(end)],[y_AOI(1),y_AOI(end)],exx_AOI); % here to choose the background
+imagesc([x_AOI(1),x_AOI(end)],[y_AOI(1),y_AOI(end)],map_AOI); % here to choose the background
 a = gca;
 hold on;
 
@@ -168,10 +174,11 @@ end
 % (2) for each boundary, group all its impoint handles --> gb_s_pt_group{j} = H{j} = {h{j1}, h{j2}, ... }
 for jj = all_gb_ind %1:length(gb_s_pt)
     H{jj} = h(gb_s_pt{jj}); % or, looks like this is the same { h{ gb_s_pt{jj} } } 
+    % ---------> also, maybe record the corresponding [point index].
 end
 % (3) for each boundary, plot the line and record the handle: hline{j}
 for jj = all_gb_ind %1:length(gb_s_pt)
-    hline{jj} = plot_spline_line(H{jj}, gb_dir{jj}, stepSize);    
+    hline{jj} = plot_spline_line(H{jj}, gb_dir{jj}, stepSize);  
 end
 
 % (4) for each point, group its related grain boundaries pt_s_gb_group{i} = L{i} = {hline{i1}, hline{i2}, ...}
@@ -183,20 +190,22 @@ for ii = all_pts_ind %1:size(pt_pos,1)
     L{ii} = hline(pt_s_gb_in_aoi);
     G{ii} = H(pt_s_gb_in_aoi);
     V{ii} = gb_dir(pt_s_gb_in_aoi);
-    S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,stepSize) , L{ii}, G{ii}, V{ii}) );
+    S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ii,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
 axis square;
 
-% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc     
+%% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
+% and can save temporarily
+save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
 %% plot the mask to check
 [mask,~] = plot_spline_mask(gb_dir, gb_s_pt, pt_pos, x_input, y_input);
 myplot(ID_input, grow_boundary(mask));  % check how it align with ID map. If not too different, that's fine 
 
 %% Can save the mask and boundary model
-save([sampleName,'_boundary_mask.mat'], 'mask', 'ID_input');
-save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
 
+save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
+save([sampleName,'_boundary_mask.mat'], 'mask', 'ID_input');
 
 
 

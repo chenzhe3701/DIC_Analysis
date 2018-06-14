@@ -7,22 +7,15 @@
 % v: whether 'horizontal' fit or 'vertical' fit
 % stepSize: distance between points
 
-function [] = update_spline_line_hv(hline, himpoint, hv, stepSize)
+function [] = update_spline_line_hv(hline, himpoint, hv, p, ii, stepSize)
 
-pos = himpoint{1}.getPosition;
-
-% update pt_pos in base workspace.
+% First, update this point's position
 pt_pos = evalin('base','pt_pos;');
-% h = evalin('base','h;');
-% find the index of the point
-[~,ind] = min(pdist2(pt_pos,pos));
-% update in base workspace
-try
-    pt_pos(ind,:) = pos;
-end
+pt_pos(ii,:) = p;
 assignin('base','pt_pos',pt_pos);
-% assignin('base','h',h);
-
+        
+% warning off;
+pos = himpoint{1}.getPosition;
 
 switch hv
     case 'horizontal'
@@ -63,5 +56,19 @@ end
 hline.XData = xp;
 hline.YData = yp;
 
+% % update if necessary. But may be slow. Can comment this.
+% pt_pos = evalin('base','pt_pos;');
+% % h = evalin('base','h;');
+% for ii = 1:length(himpoint)
+%     pos = himpoint{ii}.getPosition;
+%     % find the index of the point
+%     [~,ind] = min(pdist2(pt_pos,pos));
+%     try
+%         pt_pos(ind,:) = pos;
+%     end
+% end
+% assignin('base','pt_pos',pt_pos);
+% % assignin('base','h',h);
 
+% warning on;
 end
