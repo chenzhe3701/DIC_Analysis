@@ -62,19 +62,23 @@ myplot(exx_input);
 myplot(ID_input);
 myplot(exx_input, grow_boundary(gb));
 
-%%
-% loaded = load(fullfile(dicPath,'_10.mat'));
-% exy_input = loaded.exy;
-% th = quantile(exy_input(:),[0.005, 0.995]);
-% exy_input = mat_to_image(exy_input,th,'index');
-% exy_input=exy_input(indrs,indcs);
-% 
-% eyy_input = loaded.eyy;
-% th = quantile(eyy_input(:),[0.005, 0.995]);
-% eyy_input = mat_to_image(eyy_input,th,'index');
-% eyy_input=eyy_input(indrs,indcs);
-% 
-% 
+%% choose strain level
+loaded = load(fullfile(dicPath,'_10.mat'));
+exx_input = loaded.exx;
+th = quantile(exx_input(:),[0.005, 0.995]);
+exx_input = mat_to_image(exx_input,th,'index');
+exx_input=exx_input(indrs,indcs);
+
+exy_input = loaded.exy;
+th = quantile(exy_input(:),[0.005, 0.995]);
+exy_input = mat_to_image(exy_input,th,'index');
+exy_input=exy_input(indrs,indcs);
+
+eyy_input = loaded.eyy;
+th = quantile(eyy_input(:),[0.005, 0.995]);
+eyy_input = mat_to_image(eyy_input,th,'index');
+eyy_input=eyy_input(indrs,indcs);
+
 % u_input = loaded.u; 
 % u_input=u_input(indrs,indcs);
 % 
@@ -102,7 +106,7 @@ nAOI = nPts/100;  % approximately 100 points per AOI
 rAOI = ceil(sqrt(nAOI/((x_input(end)-x_input(1))/(y_input(end)-y_input(1)))));
 cAOI = ceil(rAOI * (x_input(end)-x_input(1))/(y_input(end)-y_input(1)));
 % leave some extra space for AOI overlap
-extraSize = (y(2)-y(1))*10;
+extraSize = (y(2)-y(1))*1000;
 % find AOI window size
 xWindowSize = (x_input(end)-x_input(1))/cAOI;
 yWindowSize = (y_input(end)-y_input(1))/rAOI;
@@ -129,10 +133,13 @@ indrs_AOI = indrs_low:indrs_high;
 indcs_AOI = indcs_low:indcs_high;
 
 
-%%%% select what to use as a background
-map_AOI = exx(indrs_AOI, indcs_AOI);
-map_AOI = mod(ID(indrs_AOI, indcs_AOI),7);
-%%%%
+%%%% select what to use as a background %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
+
+map_AOI = eyy_input(indrs_AOI, indcs_AOI);
+
+% map_AOI = mod(ID(indrs_AOI, indcs_AOI),8);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 
 ID_AOI = ID(indrs_AOI, indcs_AOI);
@@ -196,7 +203,17 @@ axis square;
 
 %% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
 % and can save temporarily
+timeStr = datestr(now,'yyyymmdd_HHMM');
 save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
+save([sampleName,'_boundary_model_temp_',timeStr,'.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
+
+
+
+
+
+
+
+
 
 %% plot the mask to check
 [mask,~] = plot_spline_mask(gb_dir, gb_s_pt, pt_pos, x_input, y_input);
@@ -204,7 +221,7 @@ myplot(ID_input, grow_boundary(mask));  % check how it align with ID map. If not
 
 %% Can save the mask and boundary model
 
-save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize');
+save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize','mask');
 save([sampleName,'_boundary_mask.mat'], 'mask', 'ID_input');
 
 
@@ -220,14 +237,14 @@ gb_target = mask;
 % d_target = city_block(gb_target);
 % [FX,FY] = gradient(d_target);
 
-% grow gb_target to guarantee grains are disconnected.  May need grow multiple times.   
+% grow gb_target to guarantee grains are disconnected.  May need grow multiple times.
 gb_target = (grow_boundary(gb_target));
 
 % just show how ID_temp compares with old ID (but use grain boundary to show) 
 myplot(ID_input, gb_target);
 
 
-%% find ID with boundary map. Temporarily make it negative, so it can be recognized if not matched.  
+%% find ID with boundary map. Temporarily make it [[[negative]]], so it can be recognized if not matched.  
 ID_temp = -find_ID_map_from_boundary_map(gb_target);
 
 % just show how ID_temp compares with old ID (but use grain boundary to show)  
