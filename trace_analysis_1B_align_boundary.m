@@ -259,7 +259,8 @@ gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 % show the new, aligned ID map
 myplot(ID_aligned, grow_boundary(gb_aligned));
 
-
+%% Appended the aligned_ID which is from the modeled grain boundary, to the gb model file
+save([sampleName,'_boundary_model.mat'], 'ID_aligned', '-append');
 
 
 
