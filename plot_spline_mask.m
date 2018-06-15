@@ -26,11 +26,11 @@ for ii=1:length(gb_s_pt)
     switch gb_dir{ii}
         case 'horizontal'
             pp = csapi(pos(:,1),pos(:,2));
-            xp = xmin:stepSize:xmax;
+            xp = xmin:stepSize/10:xmax;         % use smaller steps to ensure connectivity. chenzhe, 2018-06-14  
             yp = fnval(pp,xp);
         case 'vertical'
             pp = csapi(pos(:,2),pos(:,1));
-            yp = ymin:stepSize:ymax;
+            yp = ymin:stepSize/10:ymax;
             xp = fnval(pp,yp);
     end
     % make sure, round points of grain boundary to the grid

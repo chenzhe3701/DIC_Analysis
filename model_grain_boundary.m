@@ -40,7 +40,7 @@ longUniquePair = [];
 for igb = 1:length(uniquePair)
     inds = (gbPoints(:,1)==uniquePair(igb,1))&(gbPoints(:,2)==uniquePair(igb,2));
     segPts = gbPoints(inds,[3,4]);     % points of this grain boundary segment
-    if (size(segPts,1)>=3) && (sqrt(range(segPts(:,1))^2+range(segPts(:,2))^2) > 3*resolution)
+    if (size(segPts,1)>=3) && (sqrt(range(segPts(:,1))^2+range(segPts(:,2))^2) > 2*resolution)
         longUniquePair = [longUniquePair; uniquePair(igb,:)];
     end
 end
@@ -60,7 +60,7 @@ for igb = 1:length(uniquePair)
         gb_dir{igb} = 'vertical';
     end
     
-    % determine up to 5 keypoints of this grain boundary segment for fitting
+    % determine up to [nPoints_default] keypoints of this grain boundary segment for fitting
     nPoints = nPoints_default;
     if size(segPts,1) < reduce_nPoints_length_default
         nPoints = 3;

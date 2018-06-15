@@ -29,8 +29,9 @@ while sum(ID(:)==0)>0
     
     count = count + 1;
     if count > 5
-        disp('5 iterations reached, check code or data');
-        break;
+        disp(['many iterations, now @ count = ', count]);
+%         disp('5 iterations reached, check code or data');
+%         break;
     end
 end
 
