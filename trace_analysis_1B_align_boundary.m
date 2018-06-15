@@ -4,10 +4,14 @@
 %
 % chenzhe, 2018-06-12. Previously, it is for development purpose.
 % Next, we need to divide the map, and do the real work of clean-up.  
+%
+% chenzhe, 2018-06-15, try this for WE43_T6_C1
+% This sample has pre-deformation SEM ref images with relatively clear
+% grain boundary. So this can be used for grain boundary adjustment.
 
 clear; clc;
 addChenFunction;
-dicPath = uigetdir('E:\Ti7Al_B6_insitu_tension\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
@@ -17,7 +21,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('E:\Ti7Al_B6_insitu_tension\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'gID','gNeighbors','gNNeighbors','ID','ID_0','iThick','x','y','X','Y','exx','gExx');
 
@@ -25,19 +29,24 @@ gIDwithTrace = gID(~isnan(gExx));
 
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 
-STOP = {'0','1','2','3','4','5','6','7','8','9','10','11','12','13','14'};
+STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
-iE_stop = 14;
+iE_stop = 5;
 % resReduceRatio = 3;         % to save space, reduce map resolution
 % grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 
 % file name prefixes
-f1 = 'Ti7Al_B6_s';
+f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
 % twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
+
+%%
+% pre-deformation SEM image with grain boundary
+[fileBoundaryImg, pathBoundaryImg] = uigetfile('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\ref imgs for gb\IpreToDIC_1.tif','select SEM img with grain boundary');
+ImgGB = imread([pathBoundaryImg,fileBoundaryImg]);
 
 %% modify exx, so that it is easier to be plotted by imagesc
 th = quantile(exx(:),[0.005, 0.995]);
@@ -63,7 +72,7 @@ myplot(ID_input);
 myplot(exx_input, grow_boundary(gb));
 
 %% choose strain level
-loaded = load(fullfile(dicPath,'_10.mat'));
+loaded = load(fullfile(dicPath,'_4.mat'));
 exx_input = loaded.exx;
 th = quantile(exx_input(:),[0.005, 0.995]);
 exx_input = mat_to_image(exx_input,th,'index');
@@ -95,7 +104,7 @@ eyy_input=eyy_input(indrs,indcs);
 % myplot(v_input, (gb));
 % myplot(sigma_input, (gb));
 %% build grain boundary model
-resolution = 4096/120;
+resolution = 4096/360;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
 save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
@@ -135,10 +144,11 @@ indcs_AOI = indcs_low:indcs_high;
 
 %%%% select what to use as a background %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 
-map_AOI = eyy_input(indrs_AOI, indcs_AOI);
+map_AOI = exy_input(indrs_AOI, indcs_AOI);
 
 % map_AOI = mod(ID(indrs_AOI, indcs_AOI),8);
 
+% map_AOI = ImgGB(indrs_AOI, indcs_AOI);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 
