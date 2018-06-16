@@ -86,7 +86,7 @@ switch method
         
         
     case {'add_boundary',2}
-        npts_add = 3;
+        npts_add = 5;
         disp('add_boundary');
         % make addition to [gb_dir, gb_s_pt, pt_pos, pt_s_gb]
         ngb = length(gb_dir);
@@ -124,6 +124,11 @@ switch method
             S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ii,stepSize) , L{ii}, G{ii}, V{ii}) );
         end
 
+        try
+           all_pts_ind = evalin('base','all_pts_ind;');
+           all_pts_ind = [all_pts_ind, npt+1 : npt+npts_add]; 
+           assignin('base','all_pts_ind',all_pts_ind);
+        end
         
     case {'vertical','horizontal'}
         disp('change_gb_dir');
