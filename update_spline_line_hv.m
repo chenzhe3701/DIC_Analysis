@@ -14,7 +14,7 @@ pt_pos = evalin('base','pt_pos;');
 pt_pos(ii,:) = p;
 assignin('base','pt_pos',pt_pos);
         
-% warning off;
+warning off;
 pos = himpoint{1}.getPosition;
 
 switch hv
@@ -70,5 +70,5 @@ hline.YData = yp;
 % assignin('base','pt_pos',pt_pos);
 % % assignin('base','h',h);
 
-% warning on;
+warning on;
 end

@@ -7,7 +7,7 @@
 % (2) add boundary
 % (3) change gb_dir
 
-function modify_gb_model(method)
+function modify_gb_model(method,varargin)
 
 gb_dir = evalin('base','gb_dir;');
 gb_s_pt = evalin('base','gb_s_pt;');
@@ -86,7 +86,11 @@ switch method
         
         
     case {'add_boundary',2}
-        npts_add = 5;
+        try
+            npts_add = varargin{1};
+        catch
+            npts_add = 3;
+        end
         disp('add_boundary');
         % make addition to [gb_dir, gb_s_pt, pt_pos, pt_s_gb]
         ngb = length(gb_dir);
@@ -129,6 +133,11 @@ switch method
            all_pts_ind = [all_pts_ind, npt+1 : npt+npts_add]; 
            assignin('base','all_pts_ind',all_pts_ind);
         end
+        try
+            all_gb_ind = evalin('base','all_gb_ind;');
+            all_gb_ind = [ all_gb_ind, ngb+1];
+            assignin('base','all_gb_ind',all_gb_ind);
+        end
         
     case {'vertical','horizontal'}
         disp('change_gb_dir');
@@ -153,6 +162,61 @@ switch method
                 V{ipt} = gb_dir(pt_s_gb_in_aoi);
                 S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
             end
+        end
+    case{'merge',4}
+        
+        % select a second point, which is closest to the position you click
+        h_temp = impoint(gca);
+        pos = h_temp.getPosition;
+        delete(h_temp);
+        [~,ind_merge_to] = min(pdist2(pt_pos,pos));
+        
+        disp('remove_point');
+        
+        % Set its [pt_pos] to delete_to_pos 
+        pt_pos(ind,:) = delete_to_pos;
+        
+        % affected points
+        pts_for_this_boundary = [];
+        
+        % from its pt_s_gb, do ...
+        for ii=1:length(pt_s_gb{ind})
+           igb = pt_s_gb{ind}(ii);
+           
+           % add grain boundary to pt_s_gb{ind_merge_to}
+           pt_s_gb{ind_merge_to} = [pt_s_gb{ind_merge_to}, igb];
+           
+           idx = find(gb_s_pt{igb}==ind);
+           % From the [gb_s_pt], change ind to ind_2
+           gb_s_pt{igb}(idx) = ind_merge_to;
+           % Delete it from [H]
+           H{igb}(idx) = h(ind_merge_to);
+           
+           pts_for_this_boundary = [pts_for_this_boundary, gb_s_pt{igb}];
+           
+        end
+
+        % Have to remove [callback], updating only does not work.
+        removeNewPositionCallback(h{ind},S{ind});
+        
+        % Delete its [pt_s_gb], so it no longer has a gb
+        pt_s_gb{ind} = [];
+
+        % move [h]
+        h{ind}.setPosition(delete_to_pos);
+        % Also need to modify h,H,hline,L,G,V
+        
+        % Update all related points.   
+        % Need to modify [L,G,V,callback,S], where [L{ind},G{ind}] required to update callback.
+        % [h,H,hline] are OK.
+        for ipt = pts_for_this_boundary
+            
+            pt_s_gb_in_aoi = intersect(pt_s_gb{ipt}, all_gb_ind);
+            
+            L{ipt} = hline(pt_s_gb_in_aoi);
+            G{ipt} = H(pt_s_gb_in_aoi);
+            V{ipt} = gb_dir(pt_s_gb_in_aoi);
+            S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
         end
         
 end
