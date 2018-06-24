@@ -69,24 +69,24 @@ stepSize = y_input(2) - y_input(1);
 gb = find_one_boundary_from_ID_matrix(ID_input);
 myplot(exx_input);
 myplot(ID_input);
-myplot(exx_input, grow_boundary(gb));
+myplot(exx_input, grow_boundary(grow_boundary(gb)));
 
 %% choose strain level
 loaded = load(fullfile(dicPath,'_4.mat'));
 exx_input = loaded.exx;
 th = quantile(exx_input(:),[0.005, 0.995]);
 exx_input = mat_to_image(exx_input,th,'index');
-exx_input=exx_input(indrs,indcs);
+exx_input = exx_input(indrs,indcs);
 
 exy_input = loaded.exy;
 th = quantile(exy_input(:),[0.005, 0.995]);
 exy_input = mat_to_image(exy_input,th,'index');
-exy_input=exy_input(indrs,indcs);
+exy_input = exy_input(indrs,indcs);
 
 eyy_input = loaded.eyy;
 th = quantile(eyy_input(:),[0.005, 0.995]);
 eyy_input = mat_to_image(eyy_input,th,'index');
-eyy_input=eyy_input(indrs,indcs);
+eyy_input = eyy_input(indrs,indcs);
 
 % u_input = loaded.u; 
 % u_input=u_input(indrs,indcs);
@@ -103,6 +103,8 @@ eyy_input=eyy_input(indrs,indcs);
 % myplot(u_input, (gb));
 % myplot(v_input, (gb));
 % myplot(sigma_input, (gb));
+
+clear exx exy eyy;
 %% build grain boundary model
 resolution = 4096/360;
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
@@ -144,7 +146,7 @@ indcs_AOI = indcs_low:indcs_high;
 
 %%%% select what to use as a background %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 
-map_AOI = exy_input(indrs_AOI, indcs_AOI);
+map_AOI = eyy_input(indrs_AOI, indcs_AOI);
 
 % map_AOI = mod(ID(indrs_AOI, indcs_AOI),8);
 
@@ -209,8 +211,17 @@ for ii = all_pts_ind %1:size(pt_pos,1)
     V{ii} = gb_dir(pt_s_gb_in_aoi);
     S{ii} = addNewPositionCallback(h{ii}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ii,stepSize) , L{ii}, G{ii}, V{ii}) );
 end
-axis square;
+axis equal;
 
+% can use this to find out close points
+% for ii = all_pts_ind
+%     ind = find((pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))<80) & (pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))>0));
+%     if ~isempty(ind)
+%         text(pt_pos(ii,1)+10,pt_pos(ii,2),'XXX')
+%     end
+% end
+
+    
 %% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
 % and can save temporarily
 timeStr = datestr(now,'yyyymmdd_HHMM');
@@ -252,15 +263,15 @@ gb_target = (grow_boundary(gb_target));
 
 % just show how ID_temp compares with old ID (but use grain boundary to show) 
 myplot(ID_input, gb_target);
-
+% myplot(ID_input, grow_boundary(grow_boundary(gb_target)));
 
 %% find ID with boundary map. Temporarily make it [[[negative]]], so it can be recognized if not matched.  
 ID_temp = -find_ID_map_from_boundary_map(gb_target);
 
 % just show how ID_temp compares with old ID (but use grain boundary to show)  
 gb = find_one_boundary_from_ID_matrix(ID_input);
-myplot(ID_temp, gb);
-
+myplot(ID_temp, (gb));
+% myplot(ID_temp, grow_boundary(grow_boundary(gb)));
 
 %% change the id# in ID_temp to that in ID_input
 ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input);

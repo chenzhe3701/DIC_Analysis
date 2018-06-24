@@ -39,6 +39,14 @@ catch
 end
 
 switch method
+    case {'check id', 0}
+        disp(['point ind: ', num2str(ind)]);
+        
+        % from its pt_s_gb, do ...
+        for ii=1:length(pt_s_gb{ind})
+           disp(['boundary: ' num2str(pt_s_gb{ind}(ii))]);
+        end
+        
     case {'remove_point',1}
         disp('remove_point');
         
@@ -74,6 +82,7 @@ switch method
         % Update all related points.   
         % Need to modify [L,G,V,callback,S], where [L{ind},G{ind}] required to update callback.
         % [h,H,hline] are OK.
+
         for ipt = pts_for_this_boundary
             
             pt_s_gb_in_aoi = intersect(pt_s_gb{ipt}, all_gb_ind);
@@ -81,6 +90,9 @@ switch method
             L{ipt} = hline(pt_s_gb_in_aoi);
             G{ipt} = H(pt_s_gb_in_aoi);
             V{ipt} = gb_dir(pt_s_gb_in_aoi);
+            
+            removeNewPositionCallback(h{ipt},S{ipt});   % need to remove first, otherwise it keep updating
+            
             S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
         end
         
@@ -97,7 +109,7 @@ switch method
         npt = size(pt_pos,1);
         gb_dir{ngb+1} = 'horizontal';
         gb_s_pt{ngb+1} = npt + [1:npts_add];
-        pt_pos(npt+[1:npts_add],:) = pos + [stepSize,stepSize].*[linspace(0,400,npts_add)]';
+        pt_pos(npt+[1:npts_add],:) = pos + [stepSize,stepSize].*[linspace(0,50*npts_add,npts_add)]';
         for ii=1:npts_add
             pt_s_gb{npt+ii} = ngb+1;
         end
@@ -160,6 +172,9 @@ switch method
                 L{ipt} = hline(pt_s_gb_in_aoi);
                 G{ipt} = H(pt_s_gb_in_aoi);
                 V{ipt} = gb_dir(pt_s_gb_in_aoi);
+                
+                removeNewPositionCallback(h{ipt},S{ipt});   % need to remove first, otherwise it keep updating
+                
                 S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
             end
         end
@@ -187,9 +202,9 @@ switch method
            pt_s_gb{ind_merge_to} = [pt_s_gb{ind_merge_to}, igb];
            
            idx = find(gb_s_pt{igb}==ind);
-           % From the [gb_s_pt], change ind to ind_2
+           % From the [gb_s_pt], change ind to ind_merge_to
            gb_s_pt{igb}(idx) = ind_merge_to;
-           % Delete it from [H]
+           % Modify the gb's handle group of impoints
            H{igb}(idx) = h(ind_merge_to);
            
            pts_for_this_boundary = [pts_for_this_boundary, gb_s_pt{igb}];
@@ -202,8 +217,7 @@ switch method
         % Delete its [pt_s_gb], so it no longer has a gb
         pt_s_gb{ind} = [];
 
-        % move [h]
-        h{ind}.setPosition(delete_to_pos);
+
         % Also need to modify h,H,hline,L,G,V
         
         % Update all related points.   
@@ -216,9 +230,14 @@ switch method
             L{ipt} = hline(pt_s_gb_in_aoi);
             G{ipt} = H(pt_s_gb_in_aoi);
             V{ipt} = gb_dir(pt_s_gb_in_aoi);
+            
+            removeNewPositionCallback(h{ipt},S{ipt});   % need to remove first, otherwise it keep updating
+            
             S{ipt} = addNewPositionCallback(h{ipt}, @(p) cellfun(@(x,y,z) update_spline_line_hv(x,y,z,p,ipt,stepSize) , L{ipt}, G{ipt}, V{ipt}) );
         end
         
+        % move [h] to deleted position
+        h{ind}.setPosition(delete_to_pos);
 end
 
 
