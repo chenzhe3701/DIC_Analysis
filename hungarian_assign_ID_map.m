@@ -40,6 +40,9 @@ overlap = accumarray([m1,m2],1);
 
 [worker, job] = hungarian_assign(max(overlap(:))-overlap);
 
+% worker = 1:size(overlap,1);
+% job = munkres(max(overlap(:))-overlap);
+
 ID_new = ID;
 for ii = 1:length(worker)
     % if this one has a match
