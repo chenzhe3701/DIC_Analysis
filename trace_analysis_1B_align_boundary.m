@@ -274,12 +274,12 @@ myplot(ID_temp, (gb));
 % myplot(ID_temp, grow_boundary(grow_boundary(gb)));
 
 %% change the id# in ID_temp to that in ID_input
-ID_aligned = hungarian_assign_ID_map(ID_temp, ID_input);
+[ID_aligned, ID_aligned_unbalance] = hungarian_assign_ID_map(ID_temp, ID_input);
 gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 
 % show the new, aligned ID map
 myplot(ID_aligned, grow_boundary(gb_aligned));
-
+myplot(ID_aligned_unbalance, grow_boundary(gb_aligned));
 %% Appended the aligned_ID which is from the modeled grain boundary, to the gb model file
 save([sampleName,'_boundary_model.mat'], 'ID_aligned', '-append');
 
