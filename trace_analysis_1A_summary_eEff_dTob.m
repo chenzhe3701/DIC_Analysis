@@ -127,7 +127,7 @@ data_y = eEff_r(ind);
 figure; myboxplot(data_y,Labels,'Whisker',[0.023 0.977]);
 set(gca,'ylim',[0,0.15],'fontsize',12,'xticklabel',legend_text,'xticklabelrotation',30);
 xlabel('Distance to Grain Boundary, \mum');ylabel('Effective Strain');
-
+print('eEff vs dToGB.tif','-dtiff');
 
 %% (2) boxplot for eEff vs basalSF, pixel wise
 
@@ -152,6 +152,7 @@ data_y = eEff_r(ind);
 figure; myboxplot(data_y,Labels,'Whisker',[0.023 0.977]);
 set(gca,'ylim',[0,0.15],'fontsize',12,'xticklabel',legend_text,'xticklabelrotation',30);
 xlabel('Basal Schmid Factor');ylabel('Effective Strain');
+print('eEff vs sfBa.tif','-dtiff');
 
 
 %% (3) boxplot for eEff vs twinSF, pixel wise, [ not proportional to sfTT ...]
