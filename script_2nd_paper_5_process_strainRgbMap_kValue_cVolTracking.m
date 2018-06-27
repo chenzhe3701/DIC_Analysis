@@ -453,7 +453,7 @@ close(f);
 % (3.1) the cluster number map of the grain of interest at different strain levels, [2:5]
 close all;
 ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-colorMap = parula(3);   % This may need to be adjusted to 5 in some cases
+% colorMap = parula(3);   % This may need to be adjusted to 5 in some cases
 colorMap = lines(7);
 colorMap([2,4],:) = [];
 colorMap = [.98 .98 .98; colorMap];
@@ -819,6 +819,28 @@ print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 %% (4) Show the determination of nCluster(K) value
 % (4.1) First, show how the strain data are distributed, for the selected grain, at selected strain iE=5 (the strain level of interest), by 3D scatter plot
 iE = iE_strain_level_of_interest;
+
+fname = [f1,'_all_grain_',num2str(ID_current),'_local_map.mat'];
+load(fullfile(grainDataPath,fname),'data');
+s = data(iE);
+
+indR_min = s.indR_min;
+indR_max = s.indR_max;
+indC_min = s.indC_min;
+indC_max = s.indC_max;
+boundaryTF_local = s.boundaryTF_local;
+x_local = s.x_local;
+y_local = s.y_local;
+ID_current = s.ID_current;
+ID_local = s.ID_local;
+exx_local = s.exx_local;
+exy_local = s.exy_local;
+eyy_local = s.eyy_local;
+sigma_local = s.sigma_local;
+clusterNumMapLocal = s.clusterNumMapLocal;
+clusterNumMapCleanedLocal = s.clusterNumMapCleanedLocal;
+
+
 % close all;
 colors = lines(7);
 colors(2,:) = [];
@@ -859,8 +881,11 @@ print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
 
 %% (4.2) Illustrate the [process] of how to determine [nCluster] to use.  Here are some comparisons of using different nCluster to try. 
 close all;
-colors = lines(7);
-colors(2,:) = [];
+% colors = lines(7);
+% colors(2,:) = [];
+colorMap = lines(7);
+colorMap([2,4],:) = [];
+colorMap = [.98 .98 .98; colorMap];
 rng(0);     % adjust this if you don't like the cluster color
 
 maxCluster = 5;
@@ -942,7 +967,7 @@ if(~isempty(data_reduce))
             yy = data_reduce(idx==ii,2);
             zz = data_reduce(idx==ii,3);
             %     plot3(xx(1:step:end),yy(1:step:end),zz(1:step:end),'.','color',colors(ii,:));
-            scatter3(a,xx,yy,zz,10,'MarkerEdgeColor','none','MarkerFaceColor',colors(ii,:),'MarkerFaceAlpha',0.33);
+            scatter3(a,xx,yy,zz,10,'MarkerEdgeColor','none','MarkerFaceColor',colorMap(ii+1,:),'MarkerFaceAlpha',0.33);
         end
         xlabel('\epsilon_x_x');
         ylabel('\epsilon_x_y');
@@ -996,7 +1021,7 @@ if(~isempty(data_reduce))
         axis equal;
         imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap_with_K_',num2str(nc),'.tif']);
         print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
-        close(f);
+%         close(f);
     
     end
     

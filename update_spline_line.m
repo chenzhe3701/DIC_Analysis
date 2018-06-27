@@ -1,4 +1,4 @@
-% The input 'p' is the output from
+% The input 'p' is the output from 
 
 function [] = update_spline_line(hline, himpoint, stepSize)
 
