@@ -472,14 +472,27 @@ for ii = 1:length(iE_list)
     cNums(isnan(cNums)) = [];
     n = length(cNums);
     
+    switch iE
+        case 2
+            titleStr = '\epsilon\fontsize{20}^G\fontsize{28} = -0.004';
+        case 3
+            titleStr = '\epsilon\fontsize{20}^G\fontsize{28} = -0.012';
+        case 4
+            titleStr = '\epsilon\fontsize{20}^G\fontsize{28} = -0.023';
+        case 5
+            titleStr = '\epsilon\fontsize{20}^G\fontsize{28} = -0.039';
+    end
+    % titleStr = 'Cluster ID';
+    
     % cluster number map, not cleaned
     [f,a,c] = myplot(cMapA);
     colormap(colorMap(1:n,:));
     caxis(caxis+[-0.5 0.5]);
     c.Ticks = 1:n;
     set(c,'limits',[0.5,n-0.5]);
-    title(a,'Cluster ID','fontweight','normal');
-    set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+    title(a,titleStr,'fontweight','normal');
+    title(c,'Cluster ID');
+    set(a,'fontsize',28,'xTickLabel',{''},'yTickLabel',{''});
     axis equal;
     imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap.tif']);
     print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
@@ -491,8 +504,9 @@ for ii = 1:length(iE_list)
     caxis(caxis+[-0.5 0.5]);
     c.Ticks = 1:n;
     set(c,'limits',[0.5,n-0.5]);
-    title(a,'Cluster ID','fontweight','normal');
-    set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+    title(a,titleStr,'fontweight','normal'); 
+    title(c,'Cluster ID');
+    set(a,'fontsize',28,'xTickLabel',{''},'yTickLabel',{''});
     axis equal;
     imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_clusterNumMap_cleaned.tif']);
     print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
@@ -504,6 +518,9 @@ ii = 3;
 iE = iE_list(ii);
 iC = iC_list(ii);
 
+titleStr = '\epsilon\fontsize{20}^G\fontsize{28} = -0.023';
+% titleStr = 'Cluster ID';
+ 
 cMapA = cNumMaps{iE}(indR_min:indR_max, indC_min:indC_max);
 cMapA_cleaned = cNumMaps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
 
@@ -529,8 +546,9 @@ colormap(colorMap(1:n,:));
 caxis(caxis+[-0.5 0.5]);
 c.Ticks = 1:n;
 set(c,'limits',[0.5,n-0.5]);
-title(a,'Cluster ID','fontweight','normal');
-set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+title(a,titleStr,'fontweight','normal');
+title(c,'Cluster ID');
+set(a,'fontsize',28,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_cNumMap_artificial.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
@@ -542,8 +560,9 @@ colormap(colorMap(1:n,:));
 caxis(caxis+[-0.5 0.5]);
 c.Ticks = 1:n;
 set(c,'limits',[0.5,n-0.5]);
-title(a,'Cluster ID','fontweight','normal');
-set(a,'fontsize',24,'xTickLabel',{''},'yTickLabel',{''});
+title(a,titleStr,'fontweight','normal');
+title(c,'Cluster ID');
+set(a,'fontsize',28,'xTickLabel',{''},'yTickLabel',{''});
 axis equal;
 imgName = (['s',num2str(iE),'_g',num2str(ID_current),'_cNumMap_cleaned_artificial.tif']);
 print(fullfile(grainDataPath,imgName),'-dtiff');   % to parent folder
@@ -799,10 +818,10 @@ volEvoCleaned_2 = stru(iS).volEvoCleaned(2,iE_list);  % manually assigned, just 
 f = figure;
 ax = axes;
 hold on;
-plot(strainPauses(iE_list),volEvo,'--mo','linewidth',1.5,'markersize',8);
-plot(strainPauses(iE_list),volEvoCleaned,'-md','linewidth',1.5,'markersize',8);
-plot(strainPauses(iE_list),volEvo_2,'--bo','linewidth',1.5,'markersize',8);
-plot(strainPauses(iE_list),volEvoCleaned_2,'-bd','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvo,'--ro','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned,'-rd','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvo_2,'--ko','linewidth',1.5,'markersize',8);
+plot(strainPauses(iE_list),volEvoCleaned_2,'-kd','linewidth',1.5,'markersize',8);
 xlabel('Global Uniaxial Strain, mm/mm');
 xlabel('\fontsize{24}\epsilon\fontsize{12}^G');
 ylabel('Cluster Size, pixels');
