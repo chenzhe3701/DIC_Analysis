@@ -68,7 +68,7 @@ myplot(ID_input);
 myplot(exx_input, grow_boundary(grow_boundary(gb)));
 
 %% choose strain level
-loaded = load(fullfile(dicPath,'_4.mat'));
+loaded = load(fullfile(dicPath,'_11.mat'));
 exx_input = loaded.exx;
 th = quantile(exx_input(:),[0.005, 0.995]);
 exx_input = mat_to_image(exx_input,th,'index');
@@ -102,7 +102,13 @@ eyy_input = eyy_input(indrs,indcs);
 
 clear exx exy eyy;
 %% build grain boundary model
-resolution = 4096/360;
+% chenzhe, 2018-07-11, 'resolution' should be num_of_pixels/EBSD_step_size 
+% Reason: gb smaller than this length is meaningless, because it was interp/extraped by an EBSD data point
+
+img_resolution = 4096/360; % pixels/um
+ebsd_resolution = 1/1; % 1um/EBSD_data_point
+resolution = img_resolution / ebsd_resolution;
+
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
 save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
@@ -128,8 +134,8 @@ end
 
 %% Select an AOI by [ir,ic], use with modify_gb_model to update the grain boundary model
 % Draw grain boundary and make handles, but use 'global index' for the points and grain boundaries
-ir = 1;
-ic = 1;
+ir = 2;
+ic = 2;
 
 % find the x_input, y_input, exx_input (or exy_input, eyy_input) in this AOI  
 [~,indrs_low] = min(abs(AOI{ir,ic}(2,1)-y_input(:,1)));
@@ -142,7 +148,7 @@ indcs_AOI = indcs_low:indcs_high;
 
 %%%% select what to use as a background %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 
-map_AOI = eyy_input(indrs_AOI, indcs_AOI);
+map_AOI = exx_input(indrs_AOI, indcs_AOI);
 
 % map_AOI = mod(ID(indrs_AOI, indcs_AOI),8);
 
