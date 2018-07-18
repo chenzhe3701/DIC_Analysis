@@ -7,13 +7,18 @@
 % pt_s_gb{i} = [id of grain boundaries belongs to this point]
 %
 % chenzhe, 2018-05-14
+%
+% chenzhe, 2018-07-11, 'resolution' should be num_of_pixels/EBSD_step_size 
+% Reason: gb smaller than this length is meaningless, because it was
+% interp/extraped by an EBSD data point
+
 
 function [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID,x,y,resolution)
 
 % Note these can be easily changed as an input variable 
 nPoints_default = 5;
 reduce_nPoints_length_default = 200;    % if line segment less than 200 data points, just use 3 points. 
-resolution = resolution; % resolution: nPixels / micron
+resolution = resolution; % resolution: nPixels / ebsd_step_size
 
 [boundaryTF,~,neighborID,tripleTF,~] = find_one_boundary_from_ID_matrix(ID);
 tripleLookup = [x(tripleTF>0),y(tripleTF>0)];
