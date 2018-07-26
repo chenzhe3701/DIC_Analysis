@@ -265,6 +265,56 @@ for iE = iE_start:iE_stop
     end
 end
 
+%% (2.5) plot. Marker colors based on ground truth.  But dashed line to: approximate slope with C=7 and at the same approximate position.
+close all;
+% titleString = {'','Global Uniaxial Strain = -0.6%','Global Uniaxial Strain = -1.2%',...
+%     'Global Uniaxial Strain = -2.1%', 'Global Uniaxial Strain = -3.7%'};
+titleString = {'',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.004',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.012',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.023',...
+    '\epsilon\fontsize{12}^G\fontsize{18}=-0.039'};
+
+for iE = iE_start:iE_stop
+    
+    figure; hold on;
+    plot(Dis{iE}(Twinned{iE}==2),SF{iE}(Twinned{iE}==2),'.b','markersize',8,'Color',colors(1,:));
+    plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.r','markersize',8,'Color',colors(2,:));
+    legend({'Non-twinned','Twinned'},'Position',[0.3 0.25 0.3 0.14]);
+
+    title(titleString{iE},'fontweight','normal','fontsize',18);
+    xlabel('Dissimilarity');
+    xlabel('\psi^D_{min}');
+    ylabel('Schmid Factor (m)');
+    set(gca,'fontsize',18);
+    set(gca,'xlim',[0 0.8]);
+    
+    imgName = (['s',num2str(iE),'_Dis_vs_SF_MarkerTruth_ApproxBound.tif']);
+    if saveFig
+        print(fullfile(saveFigurePath,imgName),'-dtiff');   % to parent folder
+    end
+    
+    % zoom-in view
+    asp = daspect;
+
+    figure; hold on;
+    plot(Dis{iE}(Twinned{iE}==2),SF{iE}(Twinned{iE}==2),'.','markersize',10,'Color',colors(1,:));
+    plot(Dis{iE}(Twinned{iE}==1),SF{iE}(Twinned{iE}==1),'.','markersize',10,'Color',colors(2,:));
+
+    fplot(@(x) 7*x + 0.15, [0 0.05],'--k','linewidth',4);
+    
+    set(gca,'fontsize',18);
+    set(gca,'xlim',[0 0.08],'ylim',[0.2, 0.5]);
+    daspect(asp);
+    
+    
+    imgName = (['s',num2str(iE),'_Dis_vs_SF_MarkerTruth_ApproxBound_zoom.tif']);
+    if saveFig
+        print(fullfile(saveFigurePath,imgName),'-dtiff');   % to parent folder
+        close all;
+    end
+end
+
 
 
 %% (3) plot after post analysis. Solid: Both slope C and position determined by regression. Regression link with 'logit'.
@@ -352,3 +402,5 @@ for iE = iE_start:iE_stop
 end
 
 close all;
+
+

@@ -105,8 +105,8 @@ clear exx exy eyy;
 % chenzhe, 2018-07-11, 'resolution' should be num_of_pixels/EBSD_step_size 
 % Reason: gb smaller than this length is meaningless, because it was interp/extraped by an EBSD data point
 
-img_resolution = 4096/360; % pixels/um
-ebsd_resolution = 1/1; % 1um/EBSD_data_point
+img_resolution = 4096/360; % pixels / um
+ebsd_resolution = 1/1; % # of EBSD_data_point / um
 resolution = img_resolution / ebsd_resolution;
 
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
@@ -216,12 +216,16 @@ end
 axis equal;
 
 % can use this to find out close points
-% for ii = all_pts_ind
-%     ind = find((pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))<80) & (pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))>0));
-%     if ~isempty(ind)
-%         text(pt_pos(ii,1)+10,pt_pos(ii,2),'XXX')
-%     end
-% end
+for ii = all_pts_ind
+    ind = find((pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))<80) & (pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))>0));
+    if ~isempty(ind)
+        text(pt_pos(ii,1)+10,pt_pos(ii,2),'XXX')
+    end
+end
+
+% can use this to save plot of an area
+% set(gca,'xlim',[4500, 11000],'ylim',[6500,13000]);
+% print('c:\users\zhechen\desktop\gray_post.tiff','-dtiff')
 
     
 %% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
@@ -276,14 +280,23 @@ myplot(ID_temp, (gb));
 % myplot(ID_temp, grow_boundary(grow_boundary(gb)));
 
 %% change the id# in ID_temp to that in ID_input
-[ID_aligned, ID_aligned_unbalance] = hungarian_assign_ID_map(ID_temp, ID_input);
+[ID_aligned, ID_link_additional] = hungarian_assign_ID_map(ID_temp, ID_input);
 gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 
 % show the new, aligned ID map
-myplot(ID_aligned, grow_boundary(gb_aligned));
-myplot(ID_aligned_unbalance, grow_boundary(gb_aligned));
+myplot(ID_aligned, grow_boundary(grow_boundary(grow_boundary(gb_aligned))));
+
+% show the linked-ID of the newly-generated grains
+maxInputID = max(ID_input(:));
+ID_new_assign = ID_aligned;
+ID_new_assign(ID_new_assign<maxInputID) = 0;
+for ii = 1:size(ID_link_additional,1)
+    ID_new_assign(ID_new_assign==ID_link_additional(ii,1)) = ID_link_additional(ii,2);
+end
+myplot(ID_new_assign, grow_boundary(grow_boundary(gb_aligned)));
+myplot(ID_input, grow_boundary(grow_boundary(gb)));
 %% Appended the aligned_ID which is from the modeled grain boundary, to the gb model file
-save([sampleName,'_boundary_model.mat'], 'ID_aligned', '-append');
+save([sampleName,'_boundary_model.mat'], 'ID_aligned', 'ID_link_additional', '-append');
 
 
 
