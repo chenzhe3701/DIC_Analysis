@@ -27,10 +27,14 @@
 % to FCC.
 % note, required functions in chenFunctions
 %
+% chenzhe, 2017-08-31. change the input format of grain file from .csv to
+% .txt, so it is of more general use.
+%
 % prerequisite: may need EBSD_tool_convert_grain_file_txt_to_CSV()
 % ---------- level 1----------
 % load_settings()
-% find_variable_column_from_CSV_grain_file()
+% grain_file_read()
+% find_variable_column_from_grain_file_header()
 % % construct_neighbor_structure()
 % % construct_misorientation_structure()
 % % ----> calculate_misorientation_hcp()
@@ -39,7 +43,9 @@
 % find_boundary_from_ID_matrix()
 % interp_data()
 % generate_grain_avg_data()
-
+%
+% Note: this modification is in branch 'Ti7Al_B6'
+% chenzhe, 2017-05-14, branched in order to look at grain boundary alignment
 
 
 clear;
@@ -54,26 +60,32 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('.csv','choose the EBSD file (csv format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.csv'],'choose the EBSD file (csv format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('E:\Ti7Al_B6_EBSD\Ti7Al#B6_Left_GrainFile_Type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile('E:\Ti7Al_B6_EBSD\Ti7Al#B6_Left_GrainFile_Type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile('E:\Ti7Al_B6_insitu_tension\stitched_DIC\_10.mat','choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
-tform = maketform('projective',cpEBSD(1:4,:),cpSEM(1:4,:));
+tform = make_average_transform('projective',cpEBSD,cpSEM);
+
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-save([sampleName,'_traceAnalysis_WS1_rename.mat']);
-
-%%
-% Read EBSD grain file. '.csv' format for now.
-EBSDdata1 = grain_file_read([EBSDfilePath1, EBSDfileName1(1:end-4),'.txt']);
-EBSDdata2 = csvread([EBSDfilePath2, EBSDfileName2],1,0);
-columnIndex1 = find_variable_column_from_CSV_grain_file(EBSDfilePath1, EBSDfileName1,...
+saveDataPath = [uigetdir('E:\Ti7Al_B6_insitu_tension\Analysis_by_Matlab\','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+try
+    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
+catch
+    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
+end
+%% Read raw EBSD data and DIC data.  The alignment will be performed in next section.
+% Read EBSD grain file. '.txt' format for now.
+[EBSDdata1,EBSDheader1] = grain_file_read([EBSDfilePath1, EBSDfileName1]);
+[EBSDdata2,EBSDheader2] = grain_file_read([EBSDfilePath2, EBSDfileName2]);
+columnIndex1 = find_variable_column_from_grain_file_header(EBSDheader1,...
         {'grain-ID','phi1-r','phi-r','phi2-r','x-um','y-um','edge'});
-columnIndex2 = find_variable_column_from_CSV_grain_file(EBSDfilePath2, EBSDfileName2,...
+columnIndex2 = find_variable_column_from_grain_file_header(EBSDheader2,...
         {'grainId','phi1-d','phi-d','phi2-d','x-um','y-um','n-neighbor+id','grain-dia-um','area-umum','edge'});
 
+    
 % read type-2 grain file and get average info for grains
 gID = EBSDdata2(:,columnIndex2(1));
 gPhi1 = EBSDdata2(:,columnIndex2(2));
@@ -87,12 +99,13 @@ gArea = EBSDdata2(:,columnIndex2(9));
 gEdge = EBSDdata2(:,columnIndex2(10));
 gNeighbors = EBSDdata2(:,(columnIndex2(7)+1):(size(EBSDdata2,2)));
     
-% [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{i} = [2;3;...]
-% neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
+% [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{ind_in_g1} = [2;3;...]
+neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
 
-% [temp disable] misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
+% [temp disable] Note this is currently only for HCP!
+% misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
 % misorientationStruct.misorientation{i}=[5d;75d;...]
-% misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
+misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
 
 
 % EBSD data, from type-1 grain file. (column, data) pair:
@@ -117,8 +130,11 @@ end
 x = reshape(EBSDdata1(:,columnIndex1(5)),mResize,nResize)';
 y = reshape(EBSDdata1(:,columnIndex1(6)),mResize,nResize)';
 ID = reshape(EBSDdata1(:,columnIndex1(1)),mResize,nResize)';
+ID_0 = ID;  % keep a copy, maybe useful
 edge = reshape(EBSDdata1(:,columnIndex1(7)),mResize,nResize)';
 
+
+% Strain data
 strainData = load([strainFilePath, strainFileName]);
 try
     X = strainData.x;       % X, Y are position of SEM system.
@@ -137,10 +153,28 @@ catch
     exy = strainData.exy;
     eyy = strainData.eyy;
 end
+if exist('exy_corrected','var')&&(1==exy_corrected)
+    disp('================= exy already corrected ! ========================');
+    exy_corrected = 1;
+else
+    disp('================= exy being corrected here ! =======================');
+    exy = -exy;
+    exy_corrected = 1;
+end
 clear EBSDdata1 EBSDdata2 strainData;
 
-% fwded coordinates 
-[x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,[x(:),y(:)]);
+%% align euler angle coordinates to SEM, so later on, phiSys can be set to [0 0 0]. Do this before interp so there are few points to rotate
+phiSys = [90, 180, 0];
+[phi1,phi,phi2] = align_euler_to_sample(phi1,phi,phi2,'none', phiSys(1),phiSys(2),phiSys(3)); % align euler angle to sample reference frame ------------ align.  UMich data is actually setting-1 !!!
+[q0,q1,q2,q3,phi1,phi,phi2] = regulate_euler_quat(phi1,phi,phi2);   % regulate the angles
+[gPhi1,gPhi,gPhi2] = align_euler_to_sample(gPhi1,gPhi,gPhi2,'none', phiSys(1),phiSys(2),phiSys(3));
+[gQ0,gQ1,gQ2,gQ3,gPhi1,gPhi,gPhi2] = regulate_euler_quat(gPhi1,gPhi,gPhi2);   % regulate the angles
+eulerAligned = 1;
+save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'eulerAligned','-append');  % record if eulerAligned.
+
+%% Align EBSD to SEM
+% forwarded coordinates 
+% [x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,x,y);
 
 ID = interp_data(x,y,ID,X,Y,tform,'interp','nearest');
 phi1 = interp_data(x,y,phi1,X,Y,tform,'interp','nearest');
@@ -148,12 +182,13 @@ phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
 edge = interp_data(x,y,edge,X,Y,tform,'interp','nearest');
 [boundaryTF, ~, ~, ~, ~] = find_boundary_from_ID_matrix(ID);
-for iThick = 1:5
-    boundaryTF = grow_boundary(boundaryTF);       % grow boundary if necessary  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -------------------------------------------
+boundaryTFB = boundaryTF;  % make it thicker
+for iThick = 1:4
+    boundaryTFB = grow_boundary(boundaryTFB);       % grow boundary thicker
 end
 
-x = X;  % change x to X
-y = Y;
+% x = X;  % replace x with X
+% y = Y;
 
 [gCenterX, gCenterY] = tformfwd(tform,[gCenterX, gCenterY]);
 
@@ -161,11 +196,13 @@ y = Y;
 % If > 20% data points are valid in this grain, then there will be an avg value.  Otherwise, the value is NaN. ----------------- can modify. 
 [gExx,~] = generate_grain_avg_data(ID,gID,exx, 0.2, sigma);
 
-%% 
-save([sampleName,'_traceAnalysis_WS2_rename.mat']);
-save([sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','boundaryTF',...
-    'phi1','phi','phi2',...
-    ...'neighborStruct','misorientationStruct',...    
+%% Save the data
+disp('saving ...');
+save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
+save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
+    'phi1','phi','phi2','q0','q1','q2','q3',...
+    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',...
+    'neighborStruct','misorientationStruct',...    
     'gArea','gCenterX','gCenterY','gDiameter','gExx','gID','gNNeighbors',...
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
     'ebsdStepSize','fileSetting','pathSetting',...

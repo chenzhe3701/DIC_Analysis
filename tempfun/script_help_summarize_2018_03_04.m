@@ -1,0 +1,10 @@
+disp('----------------------')
+disp(['strain: ', num2str(iE), ', grain: ',num2str(ID_current)]);
+disp('cluster overlap, cOverlap: ')
+disp(cOverlap)
+disp('link: ')
+disp(link)
+disp('pct overlaped in cluster at early strain, overlapPctA: ')
+disp(overlapPctA)
+% disp('volume change after strain, vrFwd: ')
+% disp(vrFwd)
