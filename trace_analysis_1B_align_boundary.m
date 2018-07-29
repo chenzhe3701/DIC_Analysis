@@ -33,25 +33,17 @@ STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
-% resReduceRatio = 3;         % to save space, reduce map resolution
-% grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
 
 % file name prefixes
 f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 neighbor_elim = 1;          % don't consider this ID as neighbor. For example, ID = 1 or 0 means bad region.
-% twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
 %%
 % pre-deformation SEM image with grain boundary
 [fileBoundaryImg, pathBoundaryImg] = uigetfile('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\ref imgs for gb\IpreToDIC_1.tif','select SEM img with grain boundary');
 ImgGB = imread([pathBoundaryImg,fileBoundaryImg]);
-
-%% modify exx, so that it is easier to be plotted by imagesc
-th = quantile(exx(:),[0.005, 0.995]);
-exx = mat_to_image(exx,th,'index');
-
 
 %% crop an area of data
 % indrs = 2001:3600;
@@ -138,8 +130,8 @@ end
 
 %% Select an AOI by [ir,ic], use with modify_gb_model to update the grain boundary model
 % Draw grain boundary and make handles, but use 'global index' for the points and grain boundaries
-ir = 7;
-ic = 15;
+ir = 1;
+ic = 1;
 
 % find the x_input, y_input, exx_input (or exy_input, eyy_input) in this AOI  
 [~,indrs_low] = min(abs(AOI{ir,ic}(2,1)-y_input(:,1)));
@@ -220,12 +212,12 @@ end
 axis equal;
 
 % can use this to find out close points
-for ii = all_pts_ind
-    ind = find((pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))<80) & (pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))>0));
-    if ~isempty(ind)
-        text(pt_pos(ii,1)+10,pt_pos(ii,2),'XXX')
-    end
-end
+% for ii = all_pts_ind
+%     ind = find((pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))<80) & (pdist2(pt_pos(ii,:),pt_pos(all_pts_ind,:))>0));
+%     if ~isempty(ind)
+%         text(pt_pos(ii,1)+10,pt_pos(ii,2),'XXX')
+%     end
+% end
 
 % can use this to save plot of an area
 % set(gca,'xlim',[4500, 11000],'ylim',[6500,13000]);
@@ -235,56 +227,38 @@ end
 %% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
 % and can save temporarily
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 save([sampleName,'_boundary_model_temp_',timeStr,'.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
-
-
-
-
-
-
-
 
 
 %% plot the mask to check
 [mask,~] = plot_spline_mask(gb_dir, gb_s_pt, pt_pos, x_input, y_input);
 myplot(ID_input, grow_boundary(mask));  % check how it align with ID map. If not too different, that's fine 
 
-%% Can save the mask and boundary model
-
+% Save the plotted mask, and boundary model
 save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize','mask');
-save([sampleName,'_boundary_mask.mat'], 'mask', 'ID_input');
 
-
-
-%% Load data, 2 options. This is currently used as example for illustration   
-
-load('D:\p\m\DIC_Analysis\boundary_mask.mat','mask','ID_input');
-
-load('D:\p\m\DIC_Analysis\try_align_gb_data.mat','mask','ID_input');
 
 %%
 gb_target = mask;
-% d_target = city_block(gb_target);
-% [FX,FY] = gradient(d_target);
 
 % grow gb_target to guarantee grains are disconnected.  May need grow multiple times.
 gb_target = (grow_boundary(gb_target));
 
 % just show how ID_temp compares with old ID (but use grain boundary to show) 
-myplot(ID_input, gb_target);
-% myplot(ID_input, grow_boundary(grow_boundary(gb_target)));
+% myplot(ID_input, gb_target);
+myplot(ID_input, grow_boundary(grow_boundary(gb_target)));
 
-%% find ID with boundary map. Temporarily make it [[[negative]]], so it can be recognized if not matched.  
-ID_temp = -find_ID_map_from_boundary_map(gb_target);
+%% find ID with boundary map. Could make it [[[negative]]], so it can be recognized if not matched.  
+ID_temp = find_ID_map_from_boundary_map(gb_target);
 
 % just show how ID_temp compares with old ID (but use grain boundary to show)  
 gb = find_one_boundary_from_ID_matrix(ID_input);
-myplot(ID_temp, (gb));
-% myplot(ID_temp, grow_boundary(grow_boundary(gb)));
+% myplot(ID_temp, (gb));
+myplot(ID_temp, grow_boundary(grow_boundary(gb)));
 
 %% change the id# in ID_temp to that in ID_input
-[ID_aligned, ID_link_additional] = hungarian_assign_ID_map(ID_temp, ID_input);
+[ID_aligned, ID_link_additional] = hungarian_assign_ID_map(ID_temp, ID_input, max(gID));
+
 gb_aligned = find_one_boundary_from_ID_matrix(ID_aligned);
 
 % show the new, aligned ID map
@@ -293,16 +267,16 @@ myplot(ID_aligned, grow_boundary(grow_boundary(grow_boundary(gb_aligned))));
 % show the linked-ID of the newly-generated grains
 maxInputID = max(ID_input(:));
 ID_new_assign = ID_aligned;
-ID_new_assign(ID_new_assign<maxInputID) = 0;
+ID_new_assign(ID_new_assign <= maxInputID) = 0;
 for ii = 1:size(ID_link_additional,1)
     ID_new_assign(ID_new_assign==ID_link_additional(ii,1)) = ID_link_additional(ii,2);
 end
 myplot(ID_new_assign, grow_boundary(grow_boundary(gb_aligned)));
 myplot(ID_input, grow_boundary(grow_boundary(gb)));
+
+
 %% Appended the aligned_ID which is from the modeled grain boundary, to the gb model file
 save([sampleName,'_boundary_model.mat'], 'ID_aligned', 'ID_link_additional', '-append');
-
-
 
 
 
