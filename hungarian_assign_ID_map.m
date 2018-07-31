@@ -1,4 +1,4 @@
-% function ID_new = hungarian_assign_ID_map(ID, ID_template)
+% function ID_new = hungarian_assign_ID_map(ID, ID_template, max_previous_ID)
 %
 % depending on the overlap area, change the id# in [ID] to that in
 % [ID_template], and return it as [ID_new]
@@ -11,8 +11,13 @@
 % many as possible. (ID_new is one-to-one match).
 % So, if clean EBSD, ID_new_unbalance can be used to assign euler angle.
 % And ID_new can be used to assign ID.
+% 
+% chenzhe, 2018-07-28, add additional input 'max_previous_ID'.
+% If do not give previous maximum ID, assume it is the max of input ID map.
+% The reason is, DIC area might be smaller than EBSD area, so ID_target may
+% actually have less grains than actually scanned during EBSD.
 
-function [ID_new, id_link_additional] = hungarian_assign_ID_map(ID_temp, ID_target)
+function [ID_new, id_link_additional] = hungarian_assign_ID_map(ID_temp, ID_target, max_previous_ID)
 
 % should ignore ID = 0. First if there are nans, convert to 0
 ID_temp(isnan(ID_temp)) = 0;
@@ -22,6 +27,10 @@ ID_target(isnan(ID_target)) = 0;
 [uniqueID_target,~,m2]=unique(ID_target);
 
 overlap = accumarray([m1,m2],1);
+
+if ~exist('max_previous_ID','var')
+    max_previous_ID = max(uniqueID_target);
+end
 
 % % This is easy to understand, but very slow.
 % % It is even slower if do not find all the pairs first.
@@ -71,7 +80,7 @@ end
 
 
 % (2) after one-to-one match, assign additional matches
-id_additional = max(uniqueID_target) + 1;
+id_additional = max_previous_ID + 1;
 id_link_additional = [];
 
 for ii = 1:length(worker_a)
