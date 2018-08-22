@@ -151,6 +151,14 @@ catch
     exy = strainData.exy;
     eyy = strainData.eyy;
 end
+
+% When load new strain data, First clear 'exy_corrected', then load
+% 'exy_corrected'.  If there is no such variable, it leads to a warning
+% rather than error.  Then you know if it was corrected, and can generate
+% and save the correct 'exy_corrected' variable.
+clear exy_corrected;
+load([strainFilePath, strainFileName], 'exy_corrected');
+
 if exist('exy_corrected','var')&&(1==exy_corrected)
     disp('================= exy already corrected ! ========================');
     exy_corrected = 1;
