@@ -16,7 +16,11 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']);
+end
 
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -26,8 +30,7 @@ STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 6;
-resReduceRatio = 3;         % to save space, reduce map resolution
-grow_boundary_TF = 0;       % whether to grow boundary to make it thicker
+
 % file name prefixes
 f1 = 'WE43_T6_C1_s';
 f2 = '_';
@@ -36,8 +39,10 @@ neighbor_elim = 1;          % don't consider this ID as neighbor. For example, I
 twinTF_text = 'twin';        % do you want to analyze twin? Use things like 'twin' or 'notwin'
 
 %% Can load strain data for a specific strain level
-rng(1);
 for iE = iE_start:iE_stop
+    
+    rng(1);
+    
     strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile);
     clear('exy_corrected');
     load(strainFile,'exx','exy','eyy','sigma','exy_corrected');     % if 'exy_corrected' does not exist, this does not give error, rather, just warning. % ----------------------------------------------------------------------------------
