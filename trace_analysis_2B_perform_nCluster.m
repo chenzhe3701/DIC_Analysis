@@ -1,4 +1,12 @@
 % Start with analyzing more data, such as quantiles, ...
+%
+% chenzhe, 2018-08-23.
+% Clean-up, modify so that it is the same described in the paper.
+% (1) Find mDist, based on experimental strain vs. predicted twin strain
+% (2) That is the ts.
+% (3) That ts has the sf.
+% (4) Score is the phi_classifier, which is 7 * mDist - sf.
+
 
 clear;
 addChenFunction;
@@ -14,7 +22,11 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 % load previous data and settings
 saveDataPath = [uigetdir('','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']);
+end
 
 gIDwithTrace = gID(~isnan(gExx));
 % gIDwithTrace = [89,129,135,191,201,210,327,401,422,553];        % WE43 T5 #7, new
@@ -39,7 +51,7 @@ useClusterCentroid = 1; % use clusterCentroid, otherwise use clusterMedium
 
 % can define how to determine nCluster.
 nClusterCriterion = {'maxAllAvg','maxClusterNegSum'};
-nClusterCriterion = nClusterCriterion{2};
+nClusterCriterion = nClusterCriterion{1};
 
 %% Can load strain data for a specific strain level
 rng(1);
@@ -234,9 +246,13 @@ for iE = iE_start:iE_stop
                 %             [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
                 
                 % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
-                score = pdistCS * 7 - stru(iS).tSF;
-                [m_score, ind_t] = nanmin(score,[],2);  % could be score
-                m_dist = pdistCS(ind_t);
+                score_phi = pdistCS * 7 - stru(iS).tSF;     % 2018-08-23, change this to phi_classifier
+%                 [m_score, ind_t] = nanmin(score,[],2);  % could be score
+%                 m_dist = pdistCS(ind_t);
+                
+                % 2018-08-23, change this criterion back to dissimilarity
+                [m_dist, ind_t] = nanmin(pdistCS,[],2);  % could be score
+                m_score = score_phi(ind_t);
                 
                 tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
                 
