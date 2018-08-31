@@ -16,7 +16,11 @@ dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC dir
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx','gPhi1','gPhi','gPhi2');
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx','gPhi1','gPhi','gPhi2','gCenterX','gCenterY');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx','gPhi1','gPhi','gPhi2','gCenterX','gCenterY');
+end
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -25,9 +29,16 @@ gIDwithTrace = gID(~isnan(gExx));
 STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
-iE_stop = 5;
+iE_stop = 6;
 
-saveTF = 0;
+% file name prefixes
+f1 = 'WE43_T6_C1_s';
+f2 = '_';
+
+saveTF = 1;
+scoreForDisabled = 0;   % arbitrary, but depend on data distribution.  Assign to score for disabled clusters. 
+scoreForEnabled = 1;
+
 %% select iE to analyze
 iE = 5;
 
@@ -64,35 +75,22 @@ ss = crystal_to_cart_ss(ssa,c_a);
 name_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat']    % data from previous step.
 load([saveDataPath,name_source]);
 
-scoreCF = 0.1;
-scoreForDisabled = 1;   % arbitrary, but depend on data distribution.  Assign to score for disabled clusters. 
-% if strcmpi(sampleName,'WE43_T6_C1')
-%     switch iE
-%         case 5
-%             scoreCF = 0.230;
-%         case 4
-%             scoreCF = 0.215;
-%         case 3
-%             scoreCF = 0.217;
-%         case 2
-%             scoreCF = 0.291;
-%     end
-% end
-
-% new ones for: 7*Dis-SF
+% Threshold values.
+scoreCF = 0;   % to start with. After adjusting threshold, disable this line.
 if strcmpi(sampleName,'WE43_T6_C1')
     switch iE
         case 5
-            scoreCF = -0.243;
+            scoreCF = 0.964;    % -0.243;
         case 4
-            scoreCF = -0.218;
+            scoreCF = 0.964;    % -0.218;
         case 3
-            scoreCF = -0.218;
+            scoreCF = 0.964;    % -0.218;
         case 2
-            scoreCF = -0.218;
+            scoreCF = 0.964;    % -0.218;
     end
 end
-% scoreCF = 0.15;  % can manually modify
+
+
 % criterion final, for modifying
 % distCF = 0.035;
 % sfCF = -1;
@@ -162,18 +160,21 @@ for iS =1:length(stru)
         %         pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
         %         [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
         
-        % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
+        % A boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5], then map into [0, 1] to define the phi-classifier 
+        % This is the straight-forward definition.
         score = pdistCS * 7 - stru(iS).tSF;
         
-        [m_score, ind_t] = nanmin(score,[],2);
-        m_dist = pdistCS(ind_t);
-        % chenzhe, 2018-04-30, 
-        % Note that the above was the initial analysis. It was not exactly as I would introduce in the paper.
-        % The final analysis as described in the paper should be summarized in code 2H_combine_().
-        % If want to follow the way described in the paper, I think the following code should be used instead of the above two. 
-        % I think I need to come back and fix and organize the codes, if this analysis will be repeated !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  
-        % [m_dist, ind_t] = nanmin(pdistCS,[],2);
-        % m_score = score(ind_t);
+        [m_dist, ind_t] = nanmin(pdistCS,[],2);     % Select the best-match twin system. 
+        m_score = score(ind_t);
+        % The other way is:
+        % [m_score, ind_t] = nanmin(score,[],2);
+        % m_dist = pdistCS(ind_t);
+
+        % Then convert m_socre to phi_classifier (phi_score)
+        C = 7;  % C is slope
+        H = 1;  % H is the truncate position for mDist 
+        % With this, phi_classifier = (SF - 7*mDist)/8 + 15/16 
+        phi_score = stru(iS).tSF(ind_t)/(1+C*H) -C/(1+C*H)*min(H,m_dist) + (1+2*C*H)/2/(1+C*H);
         
         tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
         if ~isempty(tNote.enable) && ismember([ID_current,iCluster],tNote.enable,'rows')
@@ -181,8 +182,8 @@ for iS =1:length(stru)
             
         end
         if ~isempty(tNote.disable) && ismember([ID_current,iCluster],tNote.disable,'rows') 
-            if (m_score < scoreCF)
-                stru(iS).cEnable(iCluster) = -1;        % to qualify to 'disable', it has to be identified as twin if were not disabled (m_score < scoreCF)
+            if (phi_score > scoreCF)
+                stru(iS).cEnable(iCluster) = -1;        % to qualify to 'disable', it has to be identified as twin if were not disabled (phi_score < scoreCF)
             end
         end
         
@@ -190,18 +191,18 @@ for iS =1:length(stru)
         if tsNum > nss
             sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
             disSimiMapLocal(indClusterLocal) = m_dist;
-            scoreMapLocal(indClusterLocal) = m_score;
-            if ((m_score < scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
+            scoreMapLocal(indClusterLocal) = phi_score;
+            if ((phi_score > scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
 
-                if m_score < scoreCF
-                    % (1) condition: if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
+                if phi_score > scoreCF
+                    % (1) condition: if phi_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
                     stru(iS).cEnable(iCluster) = 0;
-                    scoreMapLocal(indClusterLocal) = m_score;
+                    scoreMapLocal(indClusterLocal) = phi_score + 1;
                 else
                     % (2) condition: else, it needs to be enabled
-                    scoreMapLocal(indClusterLocal) = scoreCF;
+                    scoreMapLocal(indClusterLocal) = scoreForEnabled;
                 end
-                twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
+                twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if phi_score < scoreCF
                 stru(iS).c2t(iCluster) = tsNum;     % c2t is the identification label.  Cluster->Twin
             end
             if (-1 == stru(iS).cEnable(iCluster))
@@ -247,9 +248,10 @@ for iS =1:length(stru)
     %     shearMap(indR_min:indR_max, indC_min:indC_max) = shearMap(indR_min:indR_max, indC_min:indC_max) + shearMapLocal;
     %     sfMap_2(indR_min:indR_max, indC_min:indC_max) = sfMap_2(indR_min:indR_max, indC_min:indC_max) + sfMapLocal_2;
     %     costMap(indR_min:indR_max, indC_min:indC_max) = costMap(indR_min:indR_max, indC_min:indC_max) + costMapLocal;
-    
-    waitbar(iS/length(stru), hWaitbar);
-    %     input('press to continue');
+    try
+        waitbar(iS/length(stru), hWaitbar);
+    catch
+    end
 end
 
 scoreMap(scoreMap==0)=nan;
@@ -265,22 +267,23 @@ if saveTF
     save([saveDataPath,'twin_label_tNote_s',num2str(iE),'_',timeStr,'.mat'],'iE','tNote','scoreCF');
 end
 %%
-myplotc(exx,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+[~,ae,~] = myplotm(exx,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
 colormapA('parula');
-%% 
-myplot(X, Y, twinMap,boundaryTFB); caxis([0 24]);
-%%
-myplot(X, Y, grow_boundary((shrink_boundary((twinMap>0)))),boundaryTFB);
-%%
-myplot(X, Y, grow_boundary(grow_boundary(shrink_boundary(shrink_boundary((twinMap>0))))),boundaryTFB);
+% 
+[~,at,~] = myplot(X, Y, twinMap,boundaryTFB); caxis([0 24]);
+% %%
+% myplot(X, Y, grow_boundary((shrink_boundary((twinMap>0)))),boundaryTFB);
+% %%
+% myplot(X, Y, grow_boundary(grow_boundary(shrink_boundary(shrink_boundary((twinMap>0))))),boundaryTFB);
 %% adjust scale bar to select criterion.  run each of these individually as needed, and finally generate a twinMap.
-[f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+% [f,a,c,s,v]= myplotc(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+[f,a,c,s,v]= myplotc_high(scoreMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);     % This is used to select value higher than threshold
 % colormapA;
 cl = caxis;
-caxis([scoreCF,cl(2)])
+caxis([scoreCF,max(scoreCF+0.1*(cl(2)-cl(1)),cl(2))])
 
 %% try this for disable using twinMap
-[f,a,c,s,v]= myplotc(twinMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
+[f,a,c,s,v]= myplotc_low(twinMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
 caxis([-20,10]);
 
 %% get ID from map, then plot unit cell to check trace, one at a time
@@ -348,11 +351,21 @@ for iS =1:length(stru)
             %         pdistCS(stru(iS).tSF < sfCF) = nan;             % [criterion-2] SF must > 0.35
             %         [m_dist, ind_t] = nanmin(pdistCS,[],2);         % [criterion-3] choose the smallest distanced twinSystem -- [minVal, ind], ind is the corresponding twin system number
             
-            % score boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5]
+            % A boundary y=kx+b passes [pdist2,sf] = [0, 0.15] and [0.05, 0.5], then map into [0, 1] to define the phi-classifier
+            % This is the straight-forward definition.
             score = pdistCS * 7 - stru(iS).tSF;
             
-            [m_score, ind_t] = nanmin(score,[],2);
-            m_dist = pdistCS(ind_t);
+            [m_dist, ind_t] = nanmin(pdistCS,[],2);     % Select the best-match twin system.
+            m_score = score(ind_t);
+            % The other way is:
+            % [m_score, ind_t] = nanmin(score,[],2);
+            % m_dist = pdistCS(ind_t);
+            
+            % Then convert m_socre to phi_classifier (phi_score)
+            C = 7;  % C is slope
+            H = 1;  % H is the truncate position for mDist
+            % With this, phi_classifier = (SF - 7*mDist)/8 + 15/16
+            phi_score = stru(iS).tSF(ind_t)/(1+C*H) -C/(1+C*H)*min(H,m_dist) + (1+2*C*H)/2/(1+C*H);
             
             tsNum = stru(iS).tLabel(ind_t);               % match cluster to this twin system
             if ~isempty(tNote.enable) && ismember([ID_current,iCluster],tNote.enable,'rows')
@@ -360,8 +373,8 @@ for iS =1:length(stru)
                 
             end
             if ~isempty(tNote.disable) && ismember([ID_current,iCluster],tNote.disable,'rows')
-                if (m_score < scoreCF)
-                    stru(iS).cEnable(iCluster) = -1;        % to qualify to 'disable', it has to be identified as twin if were not disabled (m_score < scoreCF)
+                if (phi_score > scoreCF)
+                    stru(iS).cEnable(iCluster) = -1;        % to qualify to 'disable', it has to be identified as twin if were not disabled (phi_score < scoreCF)
                 end
             end
             
@@ -369,18 +382,18 @@ for iS =1:length(stru)
             if tsNum > nss
                 sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
                 disSimiMapLocal(indClusterLocal) = m_dist;
-                scoreMapLocal(indClusterLocal) = m_score;
+                scoreMapLocal(indClusterLocal) = phi_score;
 
-                if ((m_score < scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
-                    if m_score < scoreCF
-                        % (1) condition: if m_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
+                if ((phi_score > scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
+                    if phi_score > scoreCF
+                        % (1) condition: if phi_score < scoreCF, then no need to use 'Enable', so set the .cEnable(iCluster) back to 0
                         stru(iS).cEnable(iCluster) = 0;
-                        scoreMapLocal(indClusterLocal) = m_score;
+                        scoreMapLocal(indClusterLocal) = phi_score + 1;
                     else
                         % (2) condition: else, it needs to be enabled
-                        scoreMapLocal(indClusterLocal) = scoreCF;
+                        scoreMapLocal(indClusterLocal) = scoreForEnabled;
                     end
-                    twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if m_score < scoreCF
+                    twinMapLocal(indClusterLocal) = tsNum;    % assign twinSysNum to the region in the local map. For twinMap, assign if phi_score < scoreCF
                     stru(iS).c2t(iCluster) = tsNum;     % c2t is the identification label.  Cluster->Twin
                 end
                 if (-1 == stru(iS).cEnable(iCluster))
@@ -474,7 +487,7 @@ if 0
 end
 
 
-%% interactively compare the clusterNumMap at each stop, to see if need to add or delete
+%% This loads the strain maps at all strain levels considered.
 for iE = iE_start:iE_stop
     name_cluster_to_twin_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,name_cluster_to_twin_result],'clusterNumMap');
