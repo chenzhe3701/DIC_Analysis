@@ -19,7 +19,11 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+end
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -29,6 +33,10 @@ STOP = {'0','1','2','3','4','5','6','7'};
 B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
+
+% file name prefixes
+f1 = 'WE43_T6_C1_s';
+f2 = '_';
 
 allImgPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose/make a parent path for all twin & notwin images.'),'\'];
 mkdir(allImgPath,'twin');
@@ -145,11 +153,13 @@ for iE = iE_start:iE_stop
             
             imgName = ([num2str(iE*100000 + ID_current*10 + cNum),'.tif']);
             imwrite(imgLocal, fullfile(allImgPath,imgName));   % to parent folder
-            % then to each labeld folder
-            if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
-                imwrite(imgLocal, fullfile(allImgPath,'twin',imgName));
-            else
-                imwrite(imgLocal, fullfile(allImgPath,'notwin',imgName));
+            % then to each labeld folder (if already classified)
+            if isfield(stru,'c2t')
+                if (stru(iS).c2t(iCluster)>nss) && (stru(iS).cEnable(iCluster)>=0)
+                    imwrite(imgLocal, fullfile(allImgPath,'twin',imgName));
+                else
+                    imwrite(imgLocal, fullfile(allImgPath,'notwin',imgName));
+                end
             end
         end       
         
