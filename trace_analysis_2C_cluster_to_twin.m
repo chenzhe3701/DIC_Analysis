@@ -40,7 +40,7 @@ scoreForDisabled = 0;   % arbitrary, but depend on data distribution.  Assign to
 scoreForEnabled = 1;
 
 %% select iE to analyze
-iE = 2;
+iE = 3;
 
 % strain data
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
@@ -292,7 +292,7 @@ ind = find(gID==ids(1));
 hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0 0; 0 0 0; 0 0 0]);
 
 %% label_grain of interest on map to observe
-label_grain( 1556 ,X,Y,ID,gcf);
+label_map_with_ID(X,Y,ID,gcf, 102);
 
 %% Use tNote to modify
 hWaitbar = waitbar(0,'Re-matching cluster with twin system ...');
