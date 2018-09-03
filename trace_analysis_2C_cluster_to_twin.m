@@ -40,7 +40,7 @@ scoreForDisabled = 0;   % arbitrary, but depend on data distribution.  Assign to
 scoreForEnabled = 1;
 
 %% select iE to analyze
-iE = 5;
+iE = 2;
 
 % strain data
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
@@ -108,7 +108,7 @@ end
 % Create a few maps to record the criterion.
 twinMap = zeros(size(exx));
 sfMap = zeros(size(exx));
-disSimiMap = zeros(size(exx));
+mDistMap = zeros(size(exx));
 scoreMap = zeros(size(exx));
 
 % twinMap_2 = zeros(size(exx));
@@ -133,7 +133,7 @@ for iS =1:length(stru)
     
     twinMapLocal = zeros(size(ID_local));          % local map to record twin_system_number
     sfMapLocal = zeros(size(ID_local));            % local map to record schmid_factor
-    disSimiMapLocal = zeros(size(ID_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
+    mDistMapLocal = zeros(size(ID_local));       % local map to record dissimilarity between measured_strain and assigned_twin_system_theoretical_strain
     scoreMapLocal = zeros(size(ID_local));
     
     %     twinMapLocal_2 = zeros(size(ID_local));          % local map to record twin_system_number
@@ -190,7 +190,7 @@ for iS =1:length(stru)
         
         if tsNum > nss
             sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
-            disSimiMapLocal(indClusterLocal) = m_dist;
+            mDistMapLocal(indClusterLocal) = m_dist;
             scoreMapLocal(indClusterLocal) = phi_score;
             if ((phi_score > scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
 
@@ -241,7 +241,7 @@ for iS =1:length(stru)
     % copy identified twin system number to twinMap
     twinMap(indR_min:indR_max, indC_min:indC_max) = twinMap(indR_min:indR_max, indC_min:indC_max) + twinMapLocal;
     sfMap(indR_min:indR_max, indC_min:indC_max) = sfMap(indR_min:indR_max, indC_min:indC_max) + sfMapLocal;
-    disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMap(indR_min:indR_max, indC_min:indC_max) + disSimiMapLocal;
+    mDistMap(indR_min:indR_max, indC_min:indC_max) = mDistMap(indR_min:indR_max, indC_min:indC_max) + mDistMapLocal;
     scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMap(indR_min:indR_max, indC_min:indC_max) + scoreMapLocal;
     
     %     twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal_2;
@@ -307,7 +307,7 @@ for iS =1:length(stru)
         ind_global = (ID==ID_current);
         twinMap(ind_global) = 0;
         sfMap(ind_global) = 0;
-        disSimiMap(ind_global) = 0;
+        mDistMap(ind_global) = 0;
         scoreMap(ind_global) = 0;
         
         
@@ -324,7 +324,7 @@ for iS =1:length(stru)
         % to modify, first copy the old values.
         twinMapLocal = twinMap(indR_min:indR_max, indC_min:indC_max);
         sfMapLocal = sfMap(indR_min:indR_max, indC_min:indC_max);
-        disSimiMapLocal = disSimiMap(indR_min:indR_max, indC_min:indC_max);
+        mDistMapLocal = mDistMap(indR_min:indR_max, indC_min:indC_max);
         scoreMapLocal = scoreMap(indR_min:indR_max, indC_min:indC_max);
         
         %     twinMapLocal_2 = zeros(size(ID_local));          % local map to record twin_system_number
@@ -381,7 +381,7 @@ for iS =1:length(stru)
             
             if tsNum > nss
                 sfMapLocal(indClusterLocal) = stru(iS).tSF(ind_t);
-                disSimiMapLocal(indClusterLocal) = m_dist;
+                mDistMapLocal(indClusterLocal) = m_dist;
                 scoreMapLocal(indClusterLocal) = phi_score;
 
                 if ((phi_score > scoreCF)&&(-1 ~= stru(iS).cEnable(iCluster))) || (1 == stru(iS).cEnable(iCluster))
@@ -433,7 +433,7 @@ for iS =1:length(stru)
         % copy identified twin system number to twinMap
         twinMap(indR_min:indR_max, indC_min:indC_max) = twinMapLocal;
         sfMap(indR_min:indR_max, indC_min:indC_max) = sfMapLocal;
-        disSimiMap(indR_min:indR_max, indC_min:indC_max) = disSimiMapLocal;
+        mDistMap(indR_min:indR_max, indC_min:indC_max) = mDistMapLocal;
         scoreMap(indR_min:indR_max, indC_min:indC_max) = scoreMapLocal;
         
         %     twinMap_2(indR_min:indR_max, indC_min:indC_max) = twinMap_2(indR_min:indR_max, indC_min:indC_max) + twinMapLocal_2;
@@ -461,7 +461,7 @@ end
 %% save the result (including stru, tNote, maps) at the end
 name_cluster_to_twin_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
 
-save([saveDataPath,name_cluster_to_twin_result],'clusterNumMap','twinMap','sfMap','disSimiMap','scoreMap','stru','tNote','scoreCF','-append');
+save([saveDataPath,name_cluster_to_twin_result],'clusterNumMap','twinMap','sfMap','mDistMap','scoreMap','stru','tNote','scoreCF','-append');
 try
     save([saveDataPath,name_cluster_to_twin_result],'clusterNumMapCleaned','-append');
 end
@@ -475,7 +475,7 @@ if 0
     %     myplot(X,Y,exx,boundaryTFB);
     %     myplot(X,Y,clusterNumMap,boundaryTFB);
     %
-    %     myplot(X,Y,disSimiMap,boundaryTFB);
+    %     myplot(X,Y,mDistMap,boundaryTFB);
     %     myplot(X,Y,twinMap,boundaryTFB); caxis([18,24]);
     %     myplot(X,Y,sfMap,boundaryTFB);
     %
