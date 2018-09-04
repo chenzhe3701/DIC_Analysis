@@ -73,10 +73,10 @@ predictedLabels = classify(netTransfer,validationImages);
 accuracy = mean(predictedLabels == validationImages.Labels)
 
 %% can also test on the groud truth data
-truthFolder_twin = uigetdir(allImgPath,'select parent folder 1 of twin grouth truth images');
+truthFolder_twin = uigetdir(allImgPath,'select parent folder 1 of twin ground truth images');
 truthImages_twin = imageDatastore({truthFolder_twin},'IncludeSubfolders',true,'LabelSource','foldernames');
 
-truthFolder_notwin = uigetdir(allImgPath,'select parent folder 1 of nontwin training images');
+truthFolder_notwin = uigetdir(allImgPath,'select parent folder 1 of nontwin ground truth images');
 truthImages_notwin = imageDatastore({truthFolder_notwin},'IncludeSubfolders',true,'LabelSource','foldernames');
 
 predictedLabels = classify(netTransfer,truthImages_twin);
