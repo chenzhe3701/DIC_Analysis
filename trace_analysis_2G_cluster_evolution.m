@@ -12,7 +12,11 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+end
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -43,6 +47,10 @@ for iE = iE_start:iE_stop
     try
         stru = rmfield(stru,{'dummy'});
     end
+    if ~isfield(stru,'cVol')
+        disp('field cVol does not exist in stru, consider using moidfy_cvol_TF=1');
+    end
+    
     % initialize/zero fields
     for iS =1:length(stru)
         if modify_cVol_TF
@@ -57,7 +65,7 @@ for iE = iE_start:iE_stop
         stru(iS).volEvoCleaned = zeros(length(stru(iS).cLabel),length(STOP)-1);
         stru(iS).tProbEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
         stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
-        stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
+%         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
     end
     struCell{iE} = stru;
 end
@@ -187,8 +195,8 @@ for iE = iE_start:iE_stop
         stru(iS).volEvoCleaned = zeros(length(stru(iS).cLabel),length(STOP)-1);
         stru(iS).tProbEvo = zeros(length(stru(iS).cLabel),length(STOP)-1);
         stru(iS).tProbMax = zeros(size(stru(iS).cLabel));
-        stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
-        stru(iS).cvIncAfter = zeros(size(stru(iS).cLabel));
+%         stru(iS).cvInc = zeros(size(stru(iS).cLabel));      % based on looking at the volume evolution in all strain levels
+%         stru(iS).cvIncAfter = zeros(size(stru(iS).cLabel));
 %         stru(iS).cVolGrowthRateNormalizedEvo = zeros(length(stru(iS).cLabel),length(STOP)-1); 
 %         stru(iS).cVolGrowthRateNormalizedMax = zeros(size(stru(iS).cLabel));
         stru(iS).cVolGrowthRatio = zeros(length(stru(iS).cLabel),length(STOP)-1);
@@ -230,35 +238,35 @@ for iE = iE_start:iE_stop
                 tProbEvo = [tProbEvo, struCell{iE_list(end)}(iS).tProb(iC_list(end))];
             end
             
-            % evaluate if volume seems to be increasing. Is this method OK?
-            vol_valid = vol_cleaned; % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
-            vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
-            
-            if 1==length(vol_valid)
-                cvInc = 0;
-            else
-                cvInc = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
-                cvInc = mean(cvInc);
-            end
-            % replace 'nan' 'inf' with '0'
-            if isnan(cvInc)||isinf(cvInc)
-                cvInc = 0;
-            end
-            
-            % Method-(2): volume evolution from this point on, added on 2018-04-10.
-            vol_valid = vol_cleaned(find(iE_list==iE):end);
-            vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
-            
-            if 1==length(vol_valid)
-                cvIncAfter = 0;
-            else
-                cvIncAfter = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
-                cvIncAfter = mean(cvIncAfter);
-            end
-            % replace 'nan' 'inf' with '0'
-            if isnan(cvIncAfter)||isinf(cvIncAfter)
-                cvIncAfter = 0;
-            end
+%             % Method-(1) evaluate if volume seems to be increasing. Is this method OK?
+%             vol_valid = vol_cleaned; % volume evolution in whole history. Use 'vol' or use 'vol_cleaned'?
+%             vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
+%             
+%             if 1==length(vol_valid)
+%                 cvInc = 0;
+%             else
+%                 cvInc = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
+%                 cvInc = mean(cvInc);
+%             end
+%             % replace 'nan' 'inf' with '0'
+%             if isnan(cvInc)||isinf(cvInc)
+%                 cvInc = 0;
+%             end
+%             
+%             % Method-(2): volume evolution from this point on, added on 2018-04-10.
+%             vol_valid = vol_cleaned(find(iE_list==iE):end);
+%             vol_valid(vol_valid<0) = 0;     % clusters too small, vol/vol_cleaned was made as negative. (Artificial treatment)
+%             
+%             if 1==length(vol_valid)
+%                 cvIncAfter = 0;
+%             else
+%                 cvIncAfter = diff(vol_valid)./conv(vol_valid, [0, 1], 'valid');
+%                 cvIncAfter = mean(cvIncAfter);
+%             end
+%             % replace 'nan' 'inf' with '0'
+%             if isnan(cvIncAfter)||isinf(cvIncAfter)
+%                 cvIncAfter = 0;
+%             end
             
 %             % First try on 2018-04-29, but I have a better idea
 %             % Method-(3): at stop i, use cVol(i)-cVol(i-1) / gVol / strainPauses(i)-strainPauses(i-1) to normalize cVol change rate  
@@ -289,13 +297,13 @@ for iE = iE_start:iE_stop
                     struCell{iE_to_assign}(iS).volEvoCleaned(iC_to_assign,iE_list) = vol_cleaned;
                     struCell{iE_to_assign}(iS).tProbEvo(iC_to_assign,iE_list) = tProbEvo;
                     
-                    struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc;
+%                     struCell{iE_to_assign}(iS).cvInc(iC_to_assign) = cvInc;
 %                     struCell{iE_to_assign}(iS).cVolGrowthRateNormalizedEvo(iC_to_assign,iE_list) = cVolGrowthRateNormalized;
                     struCell{iE_to_assign}(iS).cVolGrowthRatio(iC_to_assign,iE_list) = cVolGrowthRatio;
                     
-                    if (iE_to_assign>=iE)&&(iE~=iE_stop)
-                        struCell{iE_to_assign}(iS).cvIncAfter(iC_to_assign) = cvIncAfter;
-                    end
+%                     if (iE_to_assign>=iE)&&(iE~=iE_stop)
+%                         struCell{iE_to_assign}(iS).cvIncAfter(iC_to_assign) = cvIncAfter;
+%                     end
                     
                     % The search is form iE_start to iE_to_assign !!!
                     struCell{iE_to_assign}(iS).tProbMax(iC_to_assign) = max(tProbEvo(1:find(iE_list==iE_to_assign)));
@@ -319,7 +327,7 @@ for iE = iE_start:iE_stop
     save([saveDataPath,fName_c2t_result],'stru','-append');
 end
 
-%% [for debug, check cVolGrowthRateNormalizedMax distribution]
+%% [for debug, check cVolGrowthRateRatio distribution]
 f = figure;
 for iE=2:5
     rate = [];
