@@ -178,3 +178,11 @@ for iE = iE_start:iE_stop
 end
 
 
+%% Plot the true twin map at all strain levels for visualization.
+
+for iE = iE_start:iE_stop
+    fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
+    load([saveDataPath,fName_c2t_result],'trueTwinMap');
+    myplot(X,Y,trueTwinMap,boundaryTFB);
+end
+
