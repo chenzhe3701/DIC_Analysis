@@ -9,6 +9,11 @@
 % based on confusion analysis code version 6. I think both classifiers need
 % to be re-defined, so maybe just use a new code to only look at the new
 % classifiers.
+%
+% chenzhe, 2018-09-04
+% Comment: looks like this code focus on the combining effect of the 2 classifiers. 
+% Note that part (1) directly shows the result.  
+% But actually, part (2) should be run first to find what values should be used in part (1) 
 
 clear;clc;
 addChenFunction;
@@ -20,7 +25,11 @@ dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC dir
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+end
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -38,7 +47,7 @@ colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
+load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
 
 
 switch iE
@@ -137,7 +146,7 @@ caxis([0.87, 0.965]);
 hold on; plot3(th(1),th(2),1,'xk','LineWidth',3,'MarkerSize',12);
 %% Could compare naive algorithm
 
-%%  (1.3b) use both score [StrainScoreNormalized (c=7 H=1)] OR [ShapeScore_New], set (phi_th=0.9496)AND(eta_th=0.0395), (0.9711)OR(0.5370)
+%%  (1.3b) use both score [phi_classifier (c=7 H=1)] AND [eta_classifier]
 colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
@@ -208,7 +217,7 @@ c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['
 
 % set(a,'fontsize',18,'xticklabel',{''},'yticklabel',{''});
 set(a,'fontsize',18);
-ttl = ['(explore_StrainScoreNormalized-th=',num2str(strainScoreCF),') OR (ShapeScoreNormalized-th=',num2str(shapeScoreCF),')'];
+ttl = ['(StrainScoreNormalized-th=',num2str(strainScoreCF),') AND (ShapeScoreNormalized-th=',num2str(shapeScoreCF),')'];
 ttl_text = ['(\phi_{th}= ',num2str(strainScoreCF),') AND (\eta_{th}= ',num2str(shapeScoreCF),')'];
 title(a,ttl,'fontweight','normal');
 annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttl_text, 'LineStyle','none', 'FontSize',24);
@@ -240,7 +249,7 @@ set(a,'fontsize', 18);
 caxis([0.87, 0.965]);
 hold on; plot3(th(1),th(2),1,'xk','LineWidth',3,'MarkerSize',12);
 
-%%  (1.4b) use both score [StrainScoreNormalized (c=7 H=1)] OR [ShapeScore_New], set (phi_th=0.9496)AND(eta_th=0.0395), (0.9711)OR(0.5370)
+%%  (1.4b) use both score [phi_classifier (c=7 H=1)] OR [eta_classifier]
 colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
@@ -311,7 +320,7 @@ c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['
 
 % set(a,'fontsize',18,'xticklabel',{''},'yticklabel',{''});
 set(a,'fontsize',18);
-ttl = ['(explore_StrainScoreNormalized-th=',num2str(strainScoreCF),') OR (ShapeScoreNormalized-th=',num2str(shapeScoreCF),')'];
+ttl = ['(StrainScoreNormalized-th=',num2str(strainScoreCF),') OR (ShapeScoreNormalized-th=',num2str(shapeScoreCF),')'];
 ttl_text = ['(\phi_{th}= ',num2str(strainScoreCF),') OR (\eta_{th}= ',num2str(shapeScoreCF),')'];
 title(a,ttl,'fontweight','normal');
 annotation(f,'textbox', [0.635 0.96 0.3 0.042], 'String',ttl_text, 'LineStyle','none', 'FontSize',24);

@@ -23,7 +23,11 @@ dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC dir
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+try
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','exx');    
+end
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -34,12 +38,14 @@ B=1;    % 0-based B=1.  1-based B=0.
 iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
+f2 = '_';
+
 %% (0) Plot the clusterNumMap/cleaned, strainScoreMap, shapeScoreMap at a selected strain level.
 iE = 4;
 strainFile = [dicPath,'\',f2,STOP{iE+B}]; disp(strainFile)
 load(strainFile,'exx','u','v');  
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
+load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
 
 %% (0.0) clusterNumMap
 [f,a,c] = myplotm(clusterNumMap,'x',X,'y',Y,'tf',boundaryTFB,'r',2);
@@ -157,7 +163,7 @@ colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
 
 fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
+load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
 
 %% (1.1) Use [StrainScore_Normalized (c=7, H=1)], set (phi_th=0.9648)
 strainScoreCF = 0.9648;    % 0.22, 0.17
@@ -475,7 +481,7 @@ print([ttl,'.tif'],'-dtiff');
 %% (2) summarize the twin area/vol fraction at strain levels 2-5
 for iE = 2:5
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','strainScoreMap','shapeScoreMap','trueTwinMap');
+    load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','trueTwinMap');
     twinSizePct(iE) = sum(trueTwinMap(:)>0)/sum(trueTwinMap(:)>=0);
 end
 
