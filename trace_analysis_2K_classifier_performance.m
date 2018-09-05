@@ -283,7 +283,7 @@ fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result
 load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned','trueTwinMap','scoreCF','cVolGrowthRatioMap','tProbMaxMap','mDistMap','sfMap');
 %% (1.1) Use [phi-classifier (c=7, H=1)], set (phi_th=0.9648)
 strainScoreCF = 0.9648;    % 0.22, 0.17
-shapeScoreCF = 0.2;
+% shapeScoreCF = 0.2;
 % previous criterion, 7Dis+(0.5-SF)< scoreCF
 % i.e., new criterion, 7Dis-SF<socre-0.5
 
@@ -362,7 +362,7 @@ end
 
 
 %% (1.3) use [eta-classifier], set (eta_th=0.5075)
-strainScoreCF = 0.965;    % 0.22, 0.17
+% strainScoreCF = 0.965;    % 0.22, 0.17
 shapeScoreCF = 0.5075;
 
 TP = 0;    % hit
