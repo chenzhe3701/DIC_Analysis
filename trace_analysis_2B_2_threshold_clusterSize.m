@@ -9,7 +9,7 @@
 % data required: 'cluster_to_twin_result', load clusterNumMap (& _cleaned),
 % 'stru' to edit the 'cVol' field.
 
-clear;
+clear;clc;
 addChenFunction;
 
 % looks like have to include this part to read the sample name.
@@ -19,7 +19,12 @@ load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMat
 
 % load previous data and settings
 saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
+if ~strcmpi(saveDataPath,saveDataPathInput)
+    disp('Input saveDataPath is different from that saved in setting.mat file. Check files or code.');
+    return;
+end
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'ID');
 catch
@@ -34,7 +39,8 @@ iE_stop = 6;
 
 threshold = 1000;
 %% data
-for iE = iE_start:iE_stop
+saveDataPath
+for iE = 6%iE_start:iE_stop
     fName_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result],'f');
