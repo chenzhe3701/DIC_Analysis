@@ -40,7 +40,7 @@ iE_stop = 6;
 threshold = 1000;
 %% data
 saveDataPath
-for iE = 6%iE_start:iE_stop
+for iE = iE_start:iE_stop
     fName_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result],'f');
