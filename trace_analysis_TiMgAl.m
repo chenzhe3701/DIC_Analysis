@@ -17,8 +17,8 @@ function [abs_schmid_factor, sorted_schmid_factor, burgersXY] = trace_analysis_T
 
 euler = euler + ones(size(euler))*100*eps;
 % if TF
-disp(['Euler = [',num2str(euler(1)),',',num2str(euler(2)),',',num2str(euler(3)),'],  phi_sys = ',num2str(phi_sys),',  phi_error = ',num2str(phi_error)]);
-disp([]);
+% disp(['Euler = [',num2str(euler(1)),',',num2str(euler(2)),',',num2str(euler(3)),'],  phi_sys = ',num2str(phi_sys),',  phi_error = ',num2str(phi_error)]);
+% disp([]);
 
 %  define slip systems, format: [slip PLANE, slip DIRECTION]
 [ssa, c_a, nss, nts, ~] = define_SS(sampleMaterial,twinTF);
