@@ -119,8 +119,8 @@ hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0
 
 stru = struCell{iE_start};
 % for iS = 1 %1:length(stru)
-% 181, 1350, 1390, 697, 193
-iS = find(arrayfun(@(x) x.gID == 193,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
+% 181, 262, 1350, 1390, 697, 193, 442, 1016, 1532
+iS = find(arrayfun(@(x) x.gID == 378,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
 struCell{2}(iS).cVolGrowthRatio
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
@@ -275,7 +275,7 @@ if iE_list(1) == iE_outer
     peaks = houghpeaks(H, maxNumPeaks, 'Threshold', 0.3 * max(H(:)), 'NHoodSize',[round_odd(0.05*min(size(clusterNumMapL))),5] );
     peakAngles = Theta(peaks(:,2));
     peakStrength = H(sub2ind(size(H),peaks(:,1),peaks(:,2)));
-    % disp( table(peakAngles(:),peakStrength(:),'VariableNames',{'PeakAngles','PeakStrength'}) );
+    disp( table(peakAngles(:),peakStrength(:),'VariableNames',{'PeakAngles','PeakStrength'}) );
     
     % This is just to [illustrate] where the peak is in the hough space
     if debugTF
