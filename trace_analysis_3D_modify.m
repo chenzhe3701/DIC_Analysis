@@ -119,8 +119,9 @@ hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0
 
 stru = struCell{iE_start};
 % for iS = 1 %1:length(stru)
-%
-iS = find(arrayfun(@(x) x.gID == 378+0*ids(1),stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace]
+% 181, 1350, 1390, 697, 193
+iS = find(arrayfun(@(x) x.gID == 193,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
+struCell{2}(iS).cVolGrowthRatio
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
 ID_current = stru(iS).gID;
@@ -175,6 +176,9 @@ end
 iLoop_iE = iE_start;
 iLoop_iC = 1;
 iLoop_iEC = 1;
+cVolPctOld = 0;
+cVolPctNotDecrease = 1;
+
 %% This is the loop to run
 close all;
 % for iE_outer = iE_start:iE_stop
@@ -207,10 +211,12 @@ if iE_list(1) == iE_outer
     
     % (3) Already filled holes.
     
-    % (4) Decide if any is twin cluster?  Check if the strain is reasonable compared to theoretical twin strain.
+    % (4) Decide if any is twin cluster?  Check if the strain is reasonable compared to theoretical twin strain.   
+    % 
     % (4.1) Strain should be close, e.g., dist < 1.5 min_dist
     % (4.2) Effective strain should also be similar in magnitude. Otherwise, it is just closest, but not similar
-    % (4.3) Maybe, select the clusters with higher strains, e.g. 1-out-of-2, 2-out-of-3, 2-out-of-4, 3-out-of-5, ...
+    % (4.3) Maybe, select the clusters with higher strains, e.g. 1-out-of-2, 2-out-of-3, 2-out-of-4, 3-out-of-5, ...   
+    % (4.4) Not active before
     cNum = struCell{iE}(iS).cLabel(iC);
     indClusterLocal = (clusterNumMapL==cNum);
     
@@ -225,10 +231,11 @@ if iE_list(1) == iE_outer
     cAllCluster = effective_strain_nBy3(struCell{iE}(iS).cCen);
     [sorted,rank_in_raw] = sort(cAllCluster);
     [tf,rank_in_sorted] = ismember(cAllCluster,sorted);
-    ok_3 = rank_in_sorted(iC) > 0.5 * length(struCell{iE}(iS).cLabel);
+    rank_in_sorted_0_base = rank_in_sorted - 1; % convert to 0-based rank for easier comparison
+    ok_3 = rank_in_sorted_0_base(iC) >= 0.3 * (length(struCell{iE}(iS).cLabel)-1);
     ok_3 = ones(size(ok_1)) * ok_3;
     
-    strainOKSS =  ok_1 & ok_2 & ok_3;
+    %strainOKSS =  ok_1 & ok_2 & ok_3;
     
     disp(['eCluster = ', num2str(eCluster)]);
     disp(['all clusters strain = ',num2str(cAllCluster')]);
@@ -238,6 +245,13 @@ if iE_list(1) == iE_outer
     
     clusterNumMapC = clusterNumMapL;    % for this cluster.  -- Note that sometimes, the cluster was already cleaned to 0 size.
     clusterNumMapC(clusterNumMapC~=iC) = 0;
+    cVolPct = sum(clusterNumMapC>0)/sum(clusterNumMapL>0);
+    if cVolPct < cVolPctOld
+        cVolPctNotDecrease = 0;
+    else
+        cVolPctNotDecrease = 1;
+    end
+    cVolPctOld = cVolPct;
     % myplot(clusterNumMapC);
     
     % (5) Then Do thinning/skeleton. The bwskel() function can perform some prunning at the same time.
@@ -300,49 +314,65 @@ if iE_list(1) == iE_outer
         for ip = 1:length(peakAngles)
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
-            score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            dAngle(dAngle < 1) = 1;
+%             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            score = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9)) ./ dAngle;
             
             % normalize
             if max(score)>0
                 score = score/max(score);
-            elseif min(score)<0
-                % if there are traces match direction, but has negative SF
-                score = (0.5-traceSF)./dAngle;
-                score = score/max(score);
+%             elseif min(score)<0
+%                 % if there are traces match direction, but has negative SF
+%                 score = (0.5-traceSF)./dAngle;
+%                 score = score/max(score);
             end
+
+
             traceVote = traceVote + score;
         end
     end
     
     % [Need enough distinct peaks] The voted trace should be distinct. So if max(traceVote) < 0.3 * length(peakAngles), that means it's 'junk' vote
-    enough_votes = max(traceVote) > length(peakAngles) * 0.3;
+    enough_votes = max(traceVote) >= length(peakAngles) * 0.3;
     
     traceOKSS = (traceVote > 0.3*max(traceVote)) .* enough_votes;    % Any one larger than 30% max vote is also selected --> this need re-tunning
     
-    % [Additionally] If traces match super good, but clusterSize very small, then maybe it's ok. --------------------> This criterion need tunning.
-    % Where is the cluster 'small' criterion? .
+%     % [Additionally] If traces match super good, but clusterSize very small, then maybe it's ok. --------------------> This criterion need tunning.
+%     % Where is the cluster 'small' criterion? .
     cVolPct = sum(clusterNumMapL(:)==iC)/sum(clusterNumMapL(:));
-    small_cluster_good_trace = zeros(size(traceOKSS));
-    [val, ind] = max(traceVote);
-    if val >= 0.75 * length(peakAngles)
-        small_cluster_good_trace(ind) = 1;
-    end
+%     small_cluster_good_trace = zeros(size(traceOKSS));
+%     [val, ind] = max(traceVote);
+%     if val >= 0.75 * length(peakAngles)
+%         small_cluster_good_trace(ind) = 1;
+%     end
     
-    activeSS = strainOKSS & traceOKSS | small_cluster_good_trace;  % combine strainOK and traceOK
+%     activeSS = strainOKSS & traceOKSS | small_cluster_good_trace;  % combine strainOK and traceOK
     
     % [10] Should also consider the activeSS from previous step, and combine
     if iEC > 1
         refActiveSS = struCell{iE_list(iEC-1)}(iS).cActiveSS(iC_list(iEC-1),:);
     else
-        refActiveSS = zeros(size(activeSS));
+        refActiveSS = zeros(ntwin,1);
     end
-    activeSS = activeSS | refActiveSS(:);
+    ok_4 = ~refActiveSS(:);
+    
+    % ----------------------- criterion -----------------------------------------------------------------------------------------------------------------------------------------
+    % ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    % traceMatch  
+    % ok_1: strain close enough
+    % ok_2: strain high enough
+    % ok_3: it is the high strain cluster
+    % refActiveSS: previously strain level active
+    % ok_4: previous strain NOT active
+    % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level 
+    activeSS = (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
     
     if debugTF
         disp(['# of peaks found: ', num2str(length(peakAngles))]);
         disp(['cluster vol pct: ', num2str(cVolPct)]);
-        disp(table(traceSF,traceND,traceVote,double(strainOKSS),double(traceOKSS),double(small_cluster_good_trace),refActiveSS(:),double(activeSS),...
-            'variableNames',{'traceSF','traceND','traceVote','strainOK','traceOK','smallGoodTrace','refActiveSS','activeSS'}));
+        disp(['cluster vol not decrease: ', num2str(cVolPctNotDecrease)]);
+        disp(table(traceSF,traceND,traceVote,double(traceOKSS),double(ok_1),double(ok_2),double(ok_3),double(ok_4),refActiveSS(:),double(activeSS),...
+            'variableNames',{'traceSF','traceND','traceVote','traceOk','ok_1','ok_2','ok_3','ok_4','refActiveSS','activeSS'}));
     end
     
     % record the activeSS
@@ -440,6 +470,8 @@ iLoop_iEC = iLoop_iEC + 1;
 if iLoop_iEC > length(iE_list)
     iLoop_iEC = 1;
     iLoop_iC = iLoop_iC + 1;
+    cVolPctOld = 0;
+    cVolPctNotDecrease = 1;
 end
 if iLoop_iC > length(struCell{iE_outer}(iS).cLabel)
     iLoop_iEC = 1;
