@@ -120,7 +120,7 @@ hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0
 stru = struCell{iE_start};
 % for iS = 1 %1:length(stru)
 % 181, 262, 1350, 1390, 697, 193, 442, 1016, 1532
-iS = find(arrayfun(@(x) x.gID == 1350,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
+iS = find(arrayfun(@(x) x.gID == 1016,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
 struCell{2}(iS).cVolGrowthRatio
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
@@ -209,8 +209,9 @@ if iE_list(1) == iE_outer
         myplot(clusterNumMapL);
     end
     
+    ssAllowed = ones(ntwin,1);
     [fragments, struCell, haveActiveSS] = label_twin_trace(cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-        struCell,iS,iE,iC,iE_list,iC_list,iEC,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3);
+        struCell,iS,iE,iC,iE_list,iC_list,iEC,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
     
     twinMapLocal{iE} = twinMapLocal{iE} + fragments;
     
