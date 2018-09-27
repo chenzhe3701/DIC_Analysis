@@ -1,6 +1,17 @@
 
-function [fragments, struCell, haveActiveSS] = label_twin_trace(cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-    struCell,iS,iE,iC,iE_list,iC_list,iEC,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
+% This function returns a cell that contains the cluster map labeled by twin system number.  
+% for each cluster, its cLabel [iC] might be different depending on the strain level [iE].  So, refer to: [iE_list, iC_list].
+% The selected/input [iE] is the 'strain label' entry point for the anlaysis for the selected/input [iC] (the cLable at the entry point)   
+% It runs iteratively, and analyze all necessary strain levels, but not always all strain levels.  
+% In the output, each cell contains TS map of the cluster at the analyzed [iE]  
+% For iEs that is not anlayzed, the cell contains [].  
+%
+% It can change the cluster's twin label/map in the current and previous iEs history. 
+% The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.  
+% This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)  
+
+function [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
 
 % first check if the active system is the same. If so, skip the code
 alreadyActive = struCell{iE_list(iEC)}(iS).cActiveSS(iC_list(iEC),:);
@@ -129,20 +140,18 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % [To prevent it is an all-zero map].
     if sum(peakStrength)>0
         for ip = 1:length(peakAngles)
+            
+            % v-3, try set a threshold traceSF = 0.15?
+            SF_th = 0.15;
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
-            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            score = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9)) ./ dAngle;
+            score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            score(traceSF < SF_th) = 0;
             
             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
             for ii=1:length(refActiveSS)
                 if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-                    %                 for jj = 1:length(traceND)
-                    %                     if (abs(traceND(jj)-traceND(ii))>0)&&(abs(traceND(jj)-traceND(ii))<10)
-                    %                         score(jj) = score(jj)/2*0;
-                    %                     end
-                    %                 end
                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
                     score(ind) = 0;
                 end
@@ -153,6 +162,49 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                 score = score/max(score);
             end
             traceVote = traceVote + score;
+            
+            %             % v-2
+            %             dAngle = abs(traceND - peakAngles(ip));
+            %             dAngle(dAngle > angleThreshold) = inf;
+            %             dAngle(dAngle < 1) = 1;
+            %             %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            %             score = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9)) ./ dAngle;
+            %
+            %             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
+            %             for ii=1:length(refActiveSS)
+            %                 if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
+            %                     %                 for jj = 1:length(traceND)
+            %                     %                     if (abs(traceND(jj)-traceND(ii))>0)&&(abs(traceND(jj)-traceND(ii))<10)
+            %                     %                         score(jj) = score(jj)/2*0;
+            %                     %                     end
+            %                     %                 end
+            %                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
+            %                     score(ind) = 0;
+            %                 end
+            %             end
+            %
+            %             % normalize
+            %             if max(score)>0
+            %                 score = score/max(score);
+            %             end
+            %             traceVote = traceVote + score;
+            
+            
+            %             % v-1
+            %             dAngle = abs(traceND - peakAngles(ip));
+            %             dAngle(dAngle > angleThreshold) = inf;
+            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            %
+            %             % normalize
+            %             if max(score)>0
+            %                 score = score/max(score);
+            %             elseif min(score)<0
+            %                 % if there are traces match direction, but has negative SF
+            %                 score = (0.5-traceSF)./dAngle;
+            %                 score = score/max(score);
+            %             end
+            %             traceVote = traceVote + score;
+
         end
     end
     
@@ -283,11 +335,13 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         haveActiveSS = 0;
     end
     
-    % check if need to go back.  If have activeSS, and not the first in the iE_list, go back.  If go back, only activeSS is allowed.
-    if (haveActiveSS)&&(iEC~=1)
-        display(iEC);
-        [~, struCell, haveActiveSS] = label_twin_trace(cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-            struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
+    % check if need to go back.  If have activeSS, and not the first in the iE_list, go back.  If go back, only activeSS is allowed.  
+    % If go back, it may affect the previous strain levels maps.
+    goBack = 1;
+    if (goBack)&&(haveActiveSS)&&(iEC~=1)
+        display(['go back: ' num2str(iE_list(iEC-1))]);
+        [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+            struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
     else
         haveActiveSS = 0;
     end
@@ -296,4 +350,11 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
 else
     haveActiveSS = 0;
     fragments = [];
+end
+
+% Only update iE level.  Other levels were updated iteratively.
+if ~isempty(fragments)
+    twinMapCell{iE,iC} = fragments;
+end
+
 end

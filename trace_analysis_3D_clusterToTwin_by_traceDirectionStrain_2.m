@@ -108,17 +108,23 @@ for iS = 1:length(stru)
     x_local = X(indR_min:indR_max, indC_min:indC_max);
     y_local = Y(indR_min:indR_max, indC_min:indC_max);
     
+    % initialize for each grain (iS)
     for iE = iE_start:iE_stop
         twinMapLocal{iE} = zeros(size(ID_local));
     end
-        
-    for iE_outer = iE_start:iE_stop
-        % for each iE_outer, iC_outer, find the tracked iE_list, iC_list.
-        for iC_outer = 1:length(struCell{iE_outer}(iS).cLabel)
-            [iE_list, iC_list] = find_tracked_iE_iC_list(struCell, iS, iE_outer, iC_outer);
+    twinMapCell = [];
+    
+    % for each iE_entry (the entry point for analysis)
+    for iE_entry = iE_start:iE_stop
+        % for each iC_outer
+        for iC_entry = 1:length(struCell{iE_entry}(iS).cLabel)
+            
+            % We need to analyze this cluster [iC_outer] at the strain level [iE_outer], but this will need the information from the tracked [iE_list] and [iC_list].
+            % So, first find the [iE_list, iC_list]
+            [iE_list, iC_list] = find_tracked_iE_iC_list(struCell, iS, iE_entry, iC_entry);
             
             % Analyze all the linked iEs.  So, if iE_list(1)==iE_outer, it means it has not been analyzed before, then do [iE_list(ii),iC_list(ii)] pairs
-            if iE_list(1) == iE_outer  
+            if iE_list(1) == iE_entry  
                 for iEC = 1:length(iE_list)
                     close all;
                     iE = iE_list(iEC);
@@ -131,10 +137,10 @@ for iS = 1:length(stru)
                     end
                     
                     ssAllowed = ones(ntwin,1);
-                    [fragments, struCell, haveActiveSS] = label_twin_trace(cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-                        struCell,iS,iE,iC,iE_list,iC_list,iEC,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
-                    
-                    twinMapLocal{iE} = twinMapLocal{iE} + fragments;
+                    [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell,cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                        struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
+                    % each cell contains cells of tMap at an iEs
+
                 end % end of iEC
                 
             end
@@ -143,7 +149,17 @@ for iS = 1:length(stru)
         
     end % end of iE_outer
     
+    % for each strain level, update twinMapLocal{iE} with tMapCell
     for iE = iE_start:iE_stop
+        for jj = 1:size(twinMapCell,2)
+            if ~isempty(twinMapCell{iE,jj})
+                twinMapLocal{iE} = twinMapLocal{iE} + twinMapCell{iE,jj};
+            end
+        end
+        
+        % update. First clean old map, then add new map.
+        toClean = twinMap{iE}(indR_min:indR_max, indC_min:indC_max);
+        toClean(ID_local ~= ID_current) = 0;
         twinMap{iE}(indR_min:indR_max, indC_min:indC_max) = twinMap{iE}(indR_min:indR_max, indC_min:indC_max) + twinMapLocal{iE};
     end
     disp(iS);
