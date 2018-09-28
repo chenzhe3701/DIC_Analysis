@@ -171,6 +171,7 @@ end
 
 for iE = iE_start:iE_stop
     twinMapLocal{iE} = zeros(size(ID_local));
+    sfMapLocal{iE} = zeros(size(ID_local));
 end
 
 iLoop_iE = iE_start;
@@ -179,6 +180,7 @@ iLoop_iEC = 1;
 cVolPctOld = 0;
 cVolPctNotDecrease = 1;
 twinMapCell = [];
+sfMapCell = [];
 %% This is the loop to run
 close all;
 % for iE_outer = iE_start:iE_stop
@@ -210,7 +212,7 @@ if iE_list(1) == iE_outer
     end
     
     ssAllowed = ones(ntwin,1);
-    [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
     
 %     twinMapLocal{iE} = twinMapLocal{iE} + fragments;
@@ -248,10 +250,12 @@ for ii = 1:size(twinMapCell,1)
    for jj = 1:size(twinMapCell,2)
       if ~isempty(twinMapCell{ii,jj}) 
          twinMapLocal{ii} = twinMapLocal{ii} + twinMapCell{ii,jj}; 
+         sfMapLocal{ii} = sfMapLocal{ii} + sfMapCell{ii,jj}; 
       end
    end
    if ~isempty(twinMapLocal{ii})
        myplot(twinMapLocal{ii}); title(['twinMap at strain: ',num2str(ii)]);
+       myplot(sfMapLocal{ii}); title(['sfMap at strain: ',num2str(ii)])
    end
 end
 %% update. First clean old map, then add new map.

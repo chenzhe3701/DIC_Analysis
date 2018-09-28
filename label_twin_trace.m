@@ -10,7 +10,7 @@
 % The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.  
 % This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)  
 
-function [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+function [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
 
 % first check if the active system is the same. If so, skip the code
@@ -142,7 +142,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         for ip = 1:length(peakAngles)
             
             % v-3, try set a threshold traceSF = 0.15?
-            SF_th = 0.15;
+            SF_th = -0.5;
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
@@ -159,6 +159,11 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             
             % normalize
             if max(score)>0
+                score = score/max(score);
+            end
+            if (SF_th<0) && (min(score)<0)
+                % if there are traces match direction, but has negative SF
+                score = (0.5-traceSF)./dAngle;
                 score = score/max(score);
             end
             traceVote = traceVote + score;
@@ -340,7 +345,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     goBack = 1;
     if (goBack)&&(haveActiveSS)&&(iEC~=1)
         display(['go back: ' num2str(iE_list(iEC-1))]);
-        [twinMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+        [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
             struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
     else
         haveActiveSS = 0;
@@ -355,6 +360,11 @@ end
 % Only update iE level.  Other levels were updated iteratively.
 if ~isempty(fragments)
     twinMapCell{iE,iC} = fragments;
+    sfMap = zeros(size(fragments));
+    for it = 1:ntwin
+       sfMap(fragments==it+nss) = traceSF(it); 
+    end
+    sfMapCell{iE,iC} = sfMap;
 end
 
 end
