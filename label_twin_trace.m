@@ -141,48 +141,17 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     if sum(peakStrength)>0
         for ip = 1:length(peakAngles)
             
-            % v-3, try set a threshold traceSF = 0.15?
-            SF_th = -0.5;
-            dAngle = abs(traceND - peakAngles(ip));
-            dAngle(dAngle > angleThreshold) = inf;
-            dAngle(dAngle < 1) = 1;
-            score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            score(traceSF < SF_th) = 0;
-            
-            % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
-            for ii=1:length(refActiveSS)
-                if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
-                    score(ind) = 0;
-                end
-            end
-            
-            % normalize
-            if max(score)>0
-                score = score/max(score);
-            end
-            if (SF_th<0) && (min(score)<0)
-                % if there are traces match direction, but has negative SF
-                score = (0.5-traceSF)./dAngle;
-                score = score/max(score);
-            end
-            traceVote = traceVote + score;
-            
-            %             % v-2
+            %             % v-3, try set a threshold traceSF = 0.15?
+            %             SF_th = -0.5;
             %             dAngle = abs(traceND - peakAngles(ip));
             %             dAngle(dAngle > angleThreshold) = inf;
             %             dAngle(dAngle < 1) = 1;
-            %             %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            %             score = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9)) ./ dAngle;
+            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            %             score(traceSF < SF_th) = 0;
             %
             %             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
             %             for ii=1:length(refActiveSS)
             %                 if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-            %                     %                 for jj = 1:length(traceND)
-            %                     %                     if (abs(traceND(jj)-traceND(ii))>0)&&(abs(traceND(jj)-traceND(ii))<10)
-            %                     %                         score(jj) = score(jj)/2*0;
-            %                     %                     end
-            %                     %                 end
             %                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
             %                     score(ind) = 0;
             %                 end
@@ -192,7 +161,34 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             %             if max(score)>0
             %                 score = score/max(score);
             %             end
+            %             if (SF_th<0) && (min(score)<0)
+            %                 % if there are traces match direction, but has negative SF
+            %                 score = (0.5-traceSF)./dAngle;
+            %                 score = score/max(score);
+            %             end
             %             traceVote = traceVote + score;
+            
+            % v-2, SF -> logsig, so no SF_th.
+            dAngle = abs(traceND - peakAngles(ip));
+            dAngle(dAngle > angleThreshold) = inf;
+            dAngle(dAngle < 1) = 1;
+            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));
+            score = traceSF_logsig./dAngle;
+            
+            % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
+            for ii=1:length(refActiveSS)
+                if (refActiveSS(ii)==1)
+                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
+                    score(ind) = 0;
+                end
+            end
+            
+            % normalize
+            if max(score)>0
+                score = score/max(score);
+            end
+            traceVote = traceVote + score;
             
             
             %             % v-1
@@ -362,7 +358,7 @@ if ~isempty(fragments)
     twinMapCell{iE,iC} = fragments;
     sfMap = zeros(size(fragments));
     for it = 1:ntwin
-       sfMap(fragments==it+nss) = traceSF(it); 
+       sfMap(fragments==it+nss) = traceSF_logsig(it); 
     end
     sfMapCell{iE,iC} = sfMap;
 end
