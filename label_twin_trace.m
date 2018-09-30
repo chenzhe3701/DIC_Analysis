@@ -10,7 +10,7 @@
 % The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.  
 % This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)  
 
-function [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+function [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
 
 % first check if the active system is the same. If so, skip the code
@@ -141,44 +141,17 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     if sum(peakStrength)>0
         for ip = 1:length(peakAngles)
             
-            %             % v-3, try set a threshold traceSF = 0.15?
-            %             SF_th = -0.5;
-            %             dAngle = abs(traceND - peakAngles(ip));
-            %             dAngle(dAngle > angleThreshold) = inf;
-            %             dAngle(dAngle < 1) = 1;
-            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            %             score(traceSF < SF_th) = 0;
-            %
-            %             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
-            %             for ii=1:length(refActiveSS)
-            %                 if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-            %                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
-            %                     score(ind) = 0;
-            %                 end
-            %             end
-            %
-            %             % normalize
-            %             if max(score)>0
-            %                 score = score/max(score);
-            %             end
-            %             if (SF_th<0) && (min(score)<0)
-            %                 % if there are traces match direction, but has negative SF
-            %                 score = (0.5-traceSF)./dAngle;
-            %                 score = score/max(score);
-            %             end
-            %             traceVote = traceVote + score;
-            
-            % v-2, SF -> logsig, so no SF_th.
+            % v-3, try set a threshold traceSF = 0.15?
+            SF_th = -0.5;
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
-            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));
-            score = traceSF_logsig./dAngle;
+            score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            score(traceSF < SF_th) = 0;
             
             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
             for ii=1:length(refActiveSS)
-                if (refActiveSS(ii)==1)
+                if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
                     score(ind) = 0;
                 end
@@ -188,7 +161,35 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             if max(score)>0
                 score = score/max(score);
             end
+            if (SF_th<0) && (min(score)<0)
+                % if there are traces match direction, but has negative SF
+                score = (0.5-traceSF)./dAngle;
+                score = score/max(score);
+            end
             traceVote = traceVote + score;
+            
+            
+            %             % v-2, SF -> logsig, so no SF_th.
+            %             dAngle = abs(traceND - peakAngles(ip));
+            %             dAngle(dAngle > angleThreshold) = inf;
+            %             dAngle(dAngle < 1) = 1;
+            %             %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            %             traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));
+            %             score = traceSF_logsig./dAngle;
+            %
+            %             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
+            %             for ii=1:length(refActiveSS)
+            %                 if (refActiveSS(ii)==1)
+            %                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
+            %                     score(ind) = 0;
+            %                 end
+            %             end
+            %
+            %             % normalize
+            %             if max(score)>0
+            %                 score = score/max(score);
+            %             end
+            %             traceVote = traceVote + score;
             
             
             %             % v-1
@@ -255,13 +256,16 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     switch sum(activeSS)
         case 0
             fragments = zeros(size(clusterNumMapC));
-        case 1
+            fragmentsR2 = zeros(size(clusterNumMapC));
+        case -1     % try always run fit r2 procedure, so temporarily disable this part by using case '-1'
             ind = find(activeSS);
             fragments = (nss+ind) * ones(size(clusterNumMapC));
             fragments(clusterNumMapC==0) = 0;
             if debugTF >= 1
                 myplot(fragments); caxis([18,24]);
             end
+            fragmentsR2 = ones(size(clusterNumMapC));   % no other choices,  simply make it as one.
+            fragmentsR2(clusterNumMapC==0) = 0;
         otherwise
             % (11) Then break skeleton. Use broken skeleton as seed to grow, to fragment the cluster.
             % Here we have room to improve -- only the 'end' branches need to be seperated. Basically, we need traversal from end ponints.
@@ -291,6 +295,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             % (11.3) match each numbered skeleton branch to one of the active ts/ss, based on direction comparison.
             % Assign the ts/ss ID to the branches, which can be considered as grouped.
             branchGrouped = zeros(size(branchNumbered));
+            branchR2 = zeros(size(branchNumbered));
             % store the twin system r2 fit
             for itwin = 1:ntwin
                 tR2{itwin} = 0;
@@ -310,6 +315,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                     r2 = 0;
                 end
                 tR2{ind} = [tR2{ind},r2];
+                branchR2(branchNumbered == uniqueBranchNum(ib)) = r2;
             end
             for itwin = 1:ntwin
                 struCell{iE}(iS).tR2(iC,itwin) = mean(tR2{itwin});
@@ -323,9 +329,12 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             % (12) Grow each grouped branch into a a fragment with ID equals to active ss/ts.
             [~,fragments] = city_block(branchGrouped);
             fragments(clusterNumMapC==0) = 0;
+            [~,fragmentsR2] = city_block(branchR2);            
+            fragmentsR2(clusterNumMapC==0) = 0;
             % [illustrate] the fragments
             if debugTF >= 1
                 myplot(fragments, branch); caxis([18,24]);
+                myplot(fragmentsR2, branch); caxis([18,24]);
             end
             
     end
@@ -341,7 +350,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     goBack = 1;
     if (goBack)&&(haveActiveSS)&&(iEC~=1)
         display(['go back: ' num2str(iE_list(iEC-1))]);
-        [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+        [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
             struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
     else
         haveActiveSS = 0;
@@ -351,16 +360,19 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
 else
     haveActiveSS = 0;
     fragments = [];
+    fragmentsR2 = [];
 end
 
 % Only update iE level.  Other levels were updated iteratively.
 if ~isempty(fragments)
     twinMapCell{iE,iC} = fragments;
     sfMap = zeros(size(fragments));
+    %     traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));    % this is just a copy of that code for debug.
     for it = 1:ntwin
-       sfMap(fragments==it+nss) = traceSF_logsig(it); 
+       sfMap(fragments==it+nss) = traceSF(it); 
     end
     sfMapCell{iE,iC} = sfMap;
+    r2MapCell{iE,iC} = fragmentsR2;
 end
 
 end

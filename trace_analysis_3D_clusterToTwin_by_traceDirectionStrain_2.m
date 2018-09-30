@@ -55,6 +55,7 @@ for iE = iE_start:iE_stop
     cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
     twinMap{iE} = zeros(size(clusterNumMapCleaned));
     sfMap{iE} = zeros(size(clusterNumMapCleaned));
+    r2Map{iE} = zeros(size(clusterNumMapCleaned));
     % initialize/zero related fields
     for iS =1:length(stru)
         stru(iS).tR2 = zeros(length(stru(iS).cLabel),length(stru(iS).tLabel));
@@ -113,9 +114,11 @@ for iS = 1:length(stru)
     for iE = iE_start:iE_stop
         twinMapLocal{iE} = zeros(size(ID_local));
         sfMapLocal{iE} = zeros(size(ID_local));
+        r2MapLocal{iE} = zeros(size(ID_local));
     end
     twinMapCell = [];
     sfMapCell = [];
+    r2MapCell = [];
     
     % for each iE_entry (the entry point for analysis)
     for iE_entry = iE_start:iE_stop
@@ -140,7 +143,7 @@ for iS = 1:length(stru)
                     end
                     
                     ssAllowed = ones(ntwin,1);
-                    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                    [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
                         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
                     % each cell contains cells of tMap at an iEs
 
@@ -158,6 +161,7 @@ for iS = 1:length(stru)
             if ~isempty(twinMapCell{iE,jj})
                 twinMapLocal{iE} = twinMapLocal{iE} + twinMapCell{iE,jj};
                 sfMapLocal{iE} = sfMapLocal{iE} + sfMapCell{iE,jj};
+                r2MapLocal{iE} = r2MapLocal{iE} + r2MapCell{iE,jj};
             end
         end
         
@@ -169,13 +173,17 @@ for iS = 1:length(stru)
         toClean = sfMap{iE}(indR_min:indR_max, indC_min:indC_max);
         toClean(ID_local ~= ID_current) = 0;
         sfMap{iE}(indR_min:indR_max, indC_min:indC_max) = sfMap{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
+        
+        toClean = r2Map{iE}(indR_min:indR_max, indC_min:indC_max);
+        toClean(ID_local ~= ID_current) = 0;
+        r2Map{iE}(indR_min:indR_max, indC_min:indC_max) = r2Map{iE}(indR_min:indR_max, indC_min:indC_max) + r2MapLocal{iE};
     end
     disp(iS);
 end % end of iS
 warning('on','all');
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMap','sfMap','struCell','-v7.3');
+save([timeStr,'_twinMaps.mat'],'twinMap','sfMap','r2Map','struCell','-v7.3');
 %%
 
 
