@@ -10,7 +10,8 @@
 % The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.  
 % This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)  
 
-function [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+function [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(...
+    twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
 
 % first check if the active system is the same. If so, skip the code
@@ -161,9 +162,9 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             if max(score)>0
                 score = score/max(score);
             end
-            if (SF_th<0) && (min(score)<0)
+            if (SF_th<0) && (max(score)<0)
                 % if there are traces match direction, but has negative SF
-                score = (0.5-traceSF)./dAngle;
+                score = (0.5 + traceSF)./dAngle;
                 score = score/max(score);
             end
             traceVote = traceVote + score;
