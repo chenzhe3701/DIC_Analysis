@@ -138,6 +138,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % Use a [5 deg] threshold. Then, for those within valid angle range, make a score = SF/deltaAngle.
     traceVote = zeros(size(traceND));
     angleThreshold = 5;
+    angle_to_block = 9;    % if use tracking, block within an angle range of the already active SS.
     % [To prevent it is an all-zero map].
     if sum(peakStrength)>0
         for ip = 1:length(peakAngles)
@@ -147,13 +148,14 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
-            score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            score = (0.5 + traceSF)./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
             score(traceSF < SF_th) = 0;
             
             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
+            
             for ii=1:length(refActiveSS)
                 if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
+                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<angle_to_block);
                     score(ind) = 0;
                 end
             end
@@ -240,7 +242,8 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % refActiveSS: previously strain level active
     % ok_4: previous strain NOT active
     % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level
-    activeSS = ssAllowed & (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
+%     activeSS = ssAllowed & (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
+    activeSS = ssAllowed & (traceOKSS & ok_3 & ok_1 & ok_2) | refActiveSS(:);
     
     if debugTF >= 1
         disp(['# of peaks found: ', num2str(length(peakAngles))]);
