@@ -55,7 +55,7 @@ for iE = iE_start:iE_stop
     cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
     twinMap{iE} = zeros(size(clusterNumMapCleaned));
     sfMap{iE} = zeros(size(clusterNumMapCleaned));
-    r2Map{iE} = zeros(size(clusterNumMapCleaned));
+    cToGbDistMap{iE} = zeros(size(clusterNumMapCleaned));
     % initialize/zero related fields
     for iS =1:length(stru)
         stru(iS).tR2 = zeros(length(stru(iS).cLabel),length(stru(iS).tLabel));
@@ -114,11 +114,11 @@ for iS = 1:length(stru)
     for iE = iE_start:iE_stop
         twinMapLocal{iE} = zeros(size(ID_local));
         sfMapLocal{iE} = zeros(size(ID_local));
-        r2MapLocal{iE} = zeros(size(ID_local));
+        cToGbDistMapLocal{iE} = zeros(size(ID_local));
     end
     twinMapCell = [];
     sfMapCell = [];
-    r2MapCell = [];
+    r2MapCell = []; % but not used currently
     
     % for each iE_entry (the entry point for analysis)
     for iE_entry = iE_start:iE_stop
@@ -161,8 +161,15 @@ for iS = 1:length(stru)
             if ~isempty(twinMapCell{iE,jj})
                 twinMapLocal{iE} = twinMapLocal{iE} + twinMapCell{iE,jj};
                 sfMapLocal{iE} = sfMapLocal{iE} + sfMapCell{iE,jj};
-                r2MapLocal{iE} = r2MapLocal{iE} + r2MapCell{iE,jj};
             end
+        end
+        
+        clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+        clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
+        cToGbDistMapLocal{iE} = zeros(size(ID_local));
+        for iC = 1:length(struCell{iE}(iS).cLabel)
+            cNum = struCell{iE}(iS).cLabel(iC);
+            cToGbDistMapLocal{iE}(clusterNumMapL==cNum) = struCell{iE}(iS).cToGbDist(iC,end);
         end
         
         % update. First clean old map, then add new map.
@@ -174,16 +181,16 @@ for iS = 1:length(stru)
         toClean(ID_local ~= ID_current) = 0;
         sfMap{iE}(indR_min:indR_max, indC_min:indC_max) = sfMap{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
         
-        toClean = r2Map{iE}(indR_min:indR_max, indC_min:indC_max);
+        toClean = cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max);
         toClean(ID_local ~= ID_current) = 0;
-        r2Map{iE}(indR_min:indR_max, indC_min:indC_max) = r2Map{iE}(indR_min:indR_max, indC_min:indC_max) + r2MapLocal{iE};
+        cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max) = cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max) + cToGbDistMapLocal{iE};
     end
     disp(iS);
 end % end of iS
 warning('on','all');
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMap','sfMap','r2Map','struCell','-v7.3');
+save([timeStr,'_twinMaps.mat'],'twinMap','sfMap','cToGbDistMap','struCell','-v7.3');
 %%
 
 

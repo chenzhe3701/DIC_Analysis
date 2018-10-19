@@ -120,7 +120,7 @@ hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0
 stru = struCell{iE_start};
 % for iS = 1 %1:length(stru)
 % 181, 262, 1350, 1390, 697, 193, 442, 1016, 1532
-iS = find(arrayfun(@(x) x.gID == ids(1),stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
+iS = find(arrayfun(@(x) x.gID == 181,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
 
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
@@ -169,10 +169,15 @@ if needStrain
     sigma_local = strainFile{iE}.sigma(indR_min:indR_max, indC_min:indC_max);
 end
 
+% initialize for each grain (iS)
 for iE = iE_start:iE_stop
     twinMapLocal{iE} = zeros(size(ID_local));
     sfMapLocal{iE} = zeros(size(ID_local));
+    r2MapLocal{iE} = zeros(size(ID_local));
 end
+twinMapCell = [];
+sfMapCell = [];
+r2MapCell = [];    
 
 iLoop_iE = iE_start;
 iLoop_iC = 1;
@@ -184,14 +189,14 @@ sfMapCell = [];
 %% This is the loop to run
 close all;
 % for iE_outer = iE_start:iE_stop
-iE_outer = iLoop_iE;
+iE_entry = iLoop_iE;
 
 % for each iE_outer, iC_outer, find the tracked iE_list, iC_list.
 
 % for iC_outer = 1:length(struCell{iE_outer}(iS).cLabel)
-iC_outer = iLoop_iC;
+iC_entry = iLoop_iC;
 
-[iE_list, iC_list] = find_tracked_iE_iC_list(struCell, iS, iE_outer, iC_outer);
+[iE_list, iC_list] = find_tracked_iE_iC_list(struCell, iS, iE_entry, iC_entry);
 
 % Analyze all the linked iEs.  So, if iE_list(1)==iE_outer, it means it has not been analyzed before, then do [iE_list(ii),iC_list(ii)] pairs
 
@@ -201,9 +206,9 @@ iEC = iLoop_iEC;
 
 iE = iE_list(iEC);
 iC = iC_list(iEC);
-disp(['------------------------ [iE_outer, iC_outer, iE, iC] = [',num2str(iE_outer),', ',num2str(iC_outer),', ',num2str(iE),', ',num2str(iC),'] ------------------------']);
+disp(['------------------------ [iE_outer, iC_outer, iE, iC] = [',num2str(iE_entry),', ',num2str(iC_entry),', ',num2str(iE),', ',num2str(iC),'] ------------------------']);
 
-if iE_list(1) == iE_outer
+if iE_list(1) == iE_entry
     close all;
     clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
@@ -212,9 +217,9 @@ if iE_list(1) == iE_outer
     end
     
     ssAllowed = ones(ntwin,1);
-    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+    [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
-    
+                    
 %     twinMapLocal{iE} = twinMapLocal{iE} + fragments;
     
     % end % end_For of iEC
@@ -229,7 +234,7 @@ if iLoop_iEC > length(iE_list)
     cVolPctOld = 0;
     cVolPctNotDecrease = 1;
 end
-if iLoop_iC > length(struCell{iE_outer}(iS).cLabel)
+if iLoop_iC > length(struCell{iE_entry}(iS).cLabel)
     iLoop_iEC = 1;
     iLoop_iC = 1;
     iLoop_iE = iLoop_iE + 1;
