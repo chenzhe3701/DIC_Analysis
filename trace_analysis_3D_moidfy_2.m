@@ -88,13 +88,15 @@ for iE = iE_start:iE_stop
 end
 
 %% (0) load data
-cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
+load('cityDistMap.mat');
+
+% cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
 cluster_number_maps_cleaned = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
-    cluster_number_maps{iE} = clusterNumMap;
+%     cluster_number_maps{iE} = clusterNumMap;
     cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
     
 end
@@ -120,7 +122,7 @@ hcp_cell('euler',[gPhi1(ind),gPhi(ind),gPhi2(ind)], 'ss', 25:30, 'stress', [-1 0
 stru = struCell{iE_start};
 % for iS = 1 %1:length(stru)
 % 181, 262, 1350, 1390, 697, 193, 442, 1016, 1532
-iS = find(arrayfun(@(x) x.gID == 181,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
+iS = find(arrayfun(@(x) x.gID == ids(1),stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
 
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
@@ -173,19 +175,18 @@ end
 for iE = iE_start:iE_stop
     twinMapLocal{iE} = zeros(size(ID_local));
     sfMapLocal{iE} = zeros(size(ID_local));
-    r2MapLocal{iE} = zeros(size(ID_local));
+%     r2MapLocal{iE} = zeros(size(ID_local));
 end
 twinMapCell = [];
 sfMapCell = [];
-r2MapCell = [];    
+% r2MapCell = [];    
 
 iLoop_iE = iE_start;
 iLoop_iC = 1;
 iLoop_iEC = 1;
 cVolPctOld = 0;
 cVolPctNotDecrease = 1;
-twinMapCell = [];
-sfMapCell = [];
+
 %% This is the loop to run
 close all;
 % for iE_outer = iE_start:iE_stop
@@ -217,7 +218,7 @@ if iE_list(1) == iE_entry
     end
     
     ssAllowed = ones(ntwin,1);
-    [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
                     
 %     twinMapLocal{iE} = twinMapLocal{iE} + fragments;

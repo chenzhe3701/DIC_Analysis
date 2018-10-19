@@ -45,26 +45,29 @@ f2 = '_';
 debugTF = 0;
 
 %% (0) load data
-cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
+% store all the clusterNumMap s, omit stop-0
+% cluster_number_maps = cell(1,length(STOP)-1);    
 cluster_number_maps_cleaned = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
-    cluster_number_maps{iE} = clusterNumMap;
+%     cluster_number_maps{iE} = clusterNumMap;
     cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
     twinMap{iE} = zeros(size(clusterNumMapCleaned));
     sfMap{iE} = zeros(size(clusterNumMapCleaned));
     cToGbDistMap{iE} = zeros(size(clusterNumMapCleaned));
     % initialize/zero related fields
     for iS =1:length(stru)
-        stru(iS).tR2 = zeros(length(stru(iS).cLabel),length(stru(iS).tLabel));
+%         stru(iS).tR2 = zeros(length(stru(iS).cLabel),length(stru(iS).tLabel));
         stru(iS).cActiveSS = zeros(length(stru(iS).cLabel), length(stru(iS).tLabel));
+    end
+    % try to remove some fields, if needed
+    try
+        stru = rmfield(stru,{'tR2'});
     end
     struCell{iE} = stru;
 end
-
-
 
 %% (1) analyze
 warning('off','all');
@@ -118,7 +121,7 @@ for iS = 1:length(stru)
     end
     twinMapCell = [];
     sfMapCell = [];
-    r2MapCell = []; % but not used currently
+%     r2MapCell = []; % but not used currently
     
     % for each iE_entry (the entry point for analysis)
     for iE_entry = iE_start:iE_stop
@@ -143,7 +146,7 @@ for iS = 1:length(stru)
                     end
                     
                     ssAllowed = ones(ntwin,1);
-                    [twinMapCell, sfMapCell, r2MapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, r2MapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
                         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
                     % each cell contains cells of tMap at an iEs
 
