@@ -124,6 +124,11 @@ stru = struCell{iE_start};
 % 181, 262, 1350, 1390, 697, 193, 442, 1016, 1532
 iS = find(arrayfun(@(x) x.gID == ids(1),stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace], 
 
+% clean old data to relabel.
+for iE = iE_start:iE_stop
+    struCell{iE}(iS).cActiveSS = zeros(size(struCell{iE}(iS).cActiveSS));
+end
+
 %     iS = find(gIDwithTrace == 296); % for debugging.
 % close all;
 ID_current = stru(iS).gID;
