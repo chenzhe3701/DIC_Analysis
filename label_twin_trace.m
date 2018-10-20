@@ -53,7 +53,12 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     ok_3 = rank_in_sorted_0_base(iC) >= 0.3 * (length(struCell{iE}(iS).cLabel)-1);
     ok_3 = ones(size(ok_1)) * ok_3;
     
-    %strainOKSS =  ok_1 & ok_2 & ok_3;
+    % If known to be active in later step, when coming back, we might be able to relax requirement for ok_1 and ok_2 
+    ok_4 = zeros(size(ok_1));
+    if sum(ssAllowed) < numel(ssAllowed)
+        ok_4 = ssAllowed;
+    end
+    %strainOKSS =  ok_3 & ((ok_1 & ok_2)|(ok_4));
     
     if debugTF >= 1
         disp(['eCluster = ', num2str(eCluster)]);
@@ -139,7 +144,6 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     else
         refActiveSS = zeros(ntwin,1);
     end
-    ok_4 = ~refActiveSS(:);
     
     % (9) Determine the active variant/ss by matching the peakAngles with traceND.
     % Use a [5 deg] threshold. Then, for those within valid angle range, make a score = SF/deltaAngle.
@@ -155,7 +159,10 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
-            score = (0.5 + traceSF)./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
+            % score = (0.5 + traceSF)./dAngle;  
+            traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.25, 0.4, 0.8));
+            score = traceSF_logsig./dAngle;
             score(traceSF < SF_th) = 0;
             
             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
@@ -171,11 +178,6 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             if max(score)>0
                 score = score/max(score);
             end
-            %             if (SF_th<0) && (max(score)<0)
-            %                 % if there are traces match direction, but has negative SF
-            %                 score = (0.5 + traceSF)./dAngle;
-            %                 score = score/max(score);
-            %             end
             traceVote = traceVote + score;
             
             
@@ -250,7 +252,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % ok_4: previous strain NOT active
     % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level
     %     activeSS = ssAllowed & (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
-    activeSS = ssAllowed & (traceOKSS & ok_3 & ok_1 & ok_2) | refActiveSS(:);
+    activeSS = ssAllowed & (traceOKSS & ok_3 & ((ok_1&ok_2)|ok_4)) | refActiveSS(:);
     
     if debugTF >= 1
         disp(['# of peaks found: ', num2str(length(peakAngles))]);
@@ -361,11 +363,11 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % If go back, it may affect the previous strain levels maps.
     goBack = 1;
     if (goBack)&&(haveActiveSS)&&(iEC~=1)
-        display(['go back: ' num2str(iE_list(iEC-1))]);
+        display([' ---------------> go back: ' num2str(iE_list(iEC-1))]);
         [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
             struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
     else
-        haveActiveSS = 0;
+        haveActiveSS = 0;   % why set it to zero?
     end
     
     
