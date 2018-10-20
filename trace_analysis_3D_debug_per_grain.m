@@ -1,9 +1,10 @@
-% clusterToTwin_modify
-
 % chenzhe, 2018-09-19
 %
 % After running 3D_(), need some modification.
 % For correction, select a grain, and correct all strain levels.
+%
+% chenzhe, 2018-10-20.
+% This is the debug version of analysis.
 
 clear;
 addChenFunction;
@@ -274,6 +275,10 @@ for iE = iE_start:iE_stop
     toClean = twinMap{iE}(indR_min:indR_max, indC_min:indC_max);
     toClean(ID_local ~= ID_current) = 0;
     twinMap{iE}(indR_min:indR_max, indC_min:indC_max) = twinMap{iE}(indR_min:indR_max, indC_min:indC_max) - toClean + twinMapLocal{iE};
+    
+    toClean = sfMap{iE}(indR_min:indR_max, indC_min:indC_max);
+    toClean(ID_local ~= ID_current) = 0;
+    sfMap{iE}(indR_min:indR_max, indC_min:indC_max) = sfMap{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
 end
 
 

@@ -5,6 +5,9 @@
 % identify active twin/slip system.
 %
 % Run this code after cluster tracking.
+%
+% chenzhe, 2018-10-20.
+% A temporarily ok version.
 
 clear;
 addChenFunction;

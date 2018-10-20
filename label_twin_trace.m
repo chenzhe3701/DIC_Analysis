@@ -29,12 +29,12 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         myplot(clusterNumMapL);
     end
     
-    % (4) Decide if any is twin cluster?  Check if the strain is reasonable compared to theoretical twin strain.
+    % (1) Decide if any is twin cluster?  Check if the strain is reasonable compared to theoretical twin strain.
     %
-    % (4.1) Strain should be close, e.g., dist < 1.5 min_dist
-    % (4.2) Effective strain should also be similar in magnitude. Otherwise, it is just closest, but not similar
-    % (4.3) Maybe, select the clusters with higher strains, e.g. 1-out-of-2, 2-out-of-3, 2-out-of-4, 3-out-of-5, ...
-    % (4.4) Not active before
+    % (1.1) Strain should be close, e.g., dist < 1.5 min_dist
+    % (1.2) Effective strain should also be similar in magnitude. Otherwise, it is just closest, but not similar
+    % (1.3) Maybe, select the clusters with higher strains, e.g. 1-out-of-2, 2-out-of-3, 2-out-of-4, 3-out-of-5, ...
+    % (1.4, 1.5) Is it active in a previous/later step.  This is useful when go back to a previous step and check  
     cNum = struCell{iE}(iS).cLabel(iC);
     indClusterLocal = (clusterNumMapL==cNum);
     
@@ -53,12 +53,22 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     ok_3 = rank_in_sorted_0_base(iC) >= 0.3 * (length(struCell{iE}(iS).cLabel)-1);
     ok_3 = ones(size(ok_1)) * ok_3;
     
-    % If known to be active in later step, when coming back, we might be able to relax requirement for ok_1 and ok_2 
-    ok_4 = zeros(size(ok_1));
-    if sum(ssAllowed) < numel(ssAllowed)
-        ok_4 = ssAllowed;
+    % Known to be active in later step. (If not every ss is allowed, then it must be a check coming back from a later step)  
+    % When coming back, we might be able to relax requirement for ok_1 and ok_2 
+    if iEC < length(iE_list)
+        active_post = reshape(struCell{iE_list(iEC+1)}(iS).cActiveSS(iC_list(iEC+1),:), ntwin, 1);
+    else
+        active_post = zeros(ntwin,1);
     end
-    %strainOKSS =  ok_3 & ((ok_1 & ok_2)|(ok_4));
+    %strainOKSS =  ok_3 & ((ok_1 & ok_2)|(active_post));
+    
+    % Know to be active in a previous step   
+    if iEC > 1
+        active_pre = struCell{iE_list(iEC-1)}(iS).cActiveSS(iC_list(iEC-1),:);
+    else
+        active_pre = zeros(ntwin,1);
+    end
+
     
     if debugTF >= 1
         disp(['eCluster = ', num2str(eCluster)]);
@@ -67,23 +77,17 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         disp(table(pdistCS(:), double(ok_1(:)),eTwin(:), double(ok_2(:)),...
             'variableNames',{'pdistCS','ok_1','eTwin','ok_2'}));
     end
+
+    
     clusterNumMapC = clusterNumMapL;    % for this cluster.  -- Note that sometimes, the cluster was already cleaned to 0 size.
     clusterNumMapC(clusterNumMapC~=iC) = 0;
     
-    % Check if this cluster is too close to the grain boundary
+    % (2) Check if this cluster is too close to the grain boundary ---------------------------------------------------------------      
     if struCell{iE}(iS).cToGbDist(iC,end) < 50
         % This means OK, cluster not too close to gb
         clusterNumMapC(clusterNumMapC==iC) = 0;
     end
-    
-    cVolPct = sum(clusterNumMapC>0)/sum(clusterNumMapL>0);
-    % if cVolPct < cVolPctOld
-    %     cVolPctNotDecrease = 0;
-    % else
-    %     cVolPctNotDecrease = 1;
-    % end
-    % cVolPctOld = cVolPct;
-    % myplot(clusterNumMapC);
+ 
     
     % (5) Then Do thinning/skeleton. The bwskel() function can perform some prunning at the same time.
     % Default no pruning. Because it uses 8-connectivity in bwskel_(), prunning sometimes makes analysis worse.
@@ -138,109 +142,47 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         end
     end
     
-    % [10] Should also consider the activeSS from previous step, and combine
-    if iEC > 1
-        refActiveSS = struCell{iE_list(iEC-1)}(iS).cActiveSS(iC_list(iEC-1),:);
-    else
-        refActiveSS = zeros(ntwin,1);
-    end
-    
     % (9) Determine the active variant/ss by matching the peakAngles with traceND.
     % Use a [5 deg] threshold. Then, for those within valid angle range, make a score = SF/deltaAngle.
     traceVote = zeros(size(traceND));
     angleThreshold = 5;
-    angle_to_block = 9;    % if use tracking, block within an angle range of the already active SS.
+    angleToBlock = 9;    % if use tracking, block within an angle range of the already active SS.
     % [To prevent it is an all-zero map].
     if sum(peakStrength)>0
         for ip = 1:length(peakAngles)
             
-            % v-3, try set a threshold traceSF = 0.15?
-            SF_th = -0.5;
+            % Can preset a threshold, but maybe just record the SF rather than using a threshold 
+            SF_th = -0.5; 
             dAngle = abs(traceND - peakAngles(ip));
             dAngle(dAngle > angleThreshold) = inf;
             dAngle(dAngle < 1) = 1;
             % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            % score = (0.5 + traceSF)./dAngle;  
             traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.25, 0.4, 0.8));
             score = traceSF_logsig./dAngle;
             score(traceSF < SF_th) = 0;
             
-            % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
-            
-            for ii=1:length(refActiveSS)
-                if (refActiveSS(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
-                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<angle_to_block);
+            % [add someting] if there was already an activeSS, any trace within +-XXX degree will have reduced voting power, reduce score to 0.
+            for ii=1:length(active_pre)
+                if (active_pre(ii)==1)%&& (sum(abs(traceND-traceND(ii))<10) > 1)
+                    ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<angleToBlock);
                     score(ind) = 0;
                 end
             end
             
             % normalize
-            if max(score)>0
-                score = score/max(score);
-            end
+            score = score/max(score);
+
             traceVote = traceVote + score;
-            
-            
-            %             % v-2, SF -> logsig, so no SF_th.
-            %             dAngle = abs(traceND - peakAngles(ip));
-            %             dAngle(dAngle > angleThreshold) = inf;
-            %             dAngle(dAngle < 1) = 1;
-            %             %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            %             traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));
-            %             score = traceSF_logsig./dAngle;
-            %
-            %             % [add someting] if there was already an activeSS, any trace within +-10 degree will have reduced voting power, reduce score to 0.
-            %             for ii=1:length(refActiveSS)
-            %                 if (refActiveSS(ii)==1)
-            %                     ind = (abs(traceND-traceND(ii))>0)&(abs(traceND-traceND(ii))<12);
-            %                     score(ind) = 0;
-            %                 end
-            %             end
-            %
-            %             % normalize
-            %             if max(score)>0
-            %                 score = score/max(score);
-            %             end
-            %             traceVote = traceVote + score;
-            
-            
-            %             % v-1
-            %             dAngle = abs(traceND - peakAngles(ip));
-            %             dAngle(dAngle > angleThreshold) = inf;
-            %             score = traceSF./dAngle;  % here we want to achieve that, for dAngle sasitfied, even if traceSF < 0, it still contributes
-            %
-            %             % normalize
-            %             if max(score)>0
-            %                 score = score/max(score);
-            %             elseif min(score)<0
-            %                 % if there are traces match direction, but has negative SF
-            %                 score = (0.5-traceSF)./dAngle;
-            %                 score = score/max(score);
-            %             end
-            %             traceVote = traceVote + score;
-            
         end
     end
-    
-    
-    
     
     % [Need enough distinct peaks] The voted trace should be distinct. So if max(traceVote) < th_1 (e.g., 30%) * length(peakAngles), that means it's 'junk' vote
     enough_votes = max(traceVote) >= length(peakAngles) * th_1;
     
     traceOKSS = (traceVote > th_2 * max(traceVote)) .* enough_votes;    % Any one larger than 30% max vote is also selected --> this need re-tunning
     
-    %     % [Additionally] If traces match super good, but clusterSize very small, then maybe it's ok. --------------------> This criterion need tunning.
-    %     % Where is the cluster 'small' criterion? .
+    % something left for debugging ...
     cVolPct = sum(clusterNumMapL(:)==iC)/sum(clusterNumMapL(:));
-    %     small_cluster_good_trace = zeros(size(traceOKSS));
-    %     [val, ind] = max(traceVote);
-    %     if val >= 0.75 * length(peakAngles)
-    %         small_cluster_good_trace(ind) = 1;
-    %     end
-    
-    %     activeSS = strainOKSS & traceOKSS | small_cluster_good_trace;  % combine strainOK and traceOK
-    
     
     % ----------------------- criterion -----------------------------------------------------------------------------------------------------------------------------------------
     % ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -252,14 +194,14 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % ok_4: previous strain NOT active
     % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level
     %     activeSS = ssAllowed & (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
-    activeSS = ssAllowed & (traceOKSS & ok_3 & ((ok_1&ok_2)|ok_4)) | refActiveSS(:);
+    activeSS = ssAllowed & (traceOKSS & ok_3 & ((ok_1&ok_2)|active_post)) | active_pre(:);
     
     if debugTF >= 1
         disp(['# of peaks found: ', num2str(length(peakAngles))]);
         disp(['cluster vol pct: ', num2str(cVolPct)]);
         %     disp(['cluster vol not decrease: ', num2str(cVolPctNotDecrease)]);
-        disp(table(traceSF,traceND,traceVote,double(traceOKSS),double(ok_1),double(ok_2),double(ok_3),refActiveSS(:),double(activeSS),...
-            'variableNames',{'traceSF','traceND','traceVote','traceOk','ok_1','ok_2','ok_3','refActiveSS','activeSS'}));
+        disp(table(traceSF,traceND,traceVote,double(traceOKSS),double(ok_1),double(ok_2),double(ok_3),active_pre(:),active_post(:),double(activeSS),...
+            'variableNames',{'traceSF','traceND','traceVote','traceOk','ok_1','ok_2','ok_3','activePre','activePost','activeSS'}));
     end
     
     % record the activeSS
@@ -309,13 +251,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             % (11.3) match each numbered skeleton branch to one of the active ts/ss, based on direction comparison.
             % Assign the ts/ss ID to the branches, which can be considered as grouped.
             branchGrouped = zeros(size(branchNumbered));
-            %             branchR2 = zeros(size(branchNumbered));
-            % store the twin system r2 fit
-            %             for itwin = 1:ntwin
-            %                 tR2{itwin} = 0;
-            %             end
             for ib = 1:length(uniqueBranchNum)
-                
                 model = fitlm(x_local(branchNumbered==uniqueBranchNum(ib)), y_local(branchNumbered==uniqueBranchNum(ib)));
                 
                 branchND = atand(-1/model.Coefficients.Estimate(2));
@@ -323,32 +259,15 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                 dAngle(~activeSS) = inf;
                 [~,ind] = min(dAngle);
                 branchGrouped(branchNumbered == uniqueBranchNum(ib)) = nss + ind;
-                
-                %                 r2 = model.Rsquared.Ordinary;
-                %                 if isnan(r2)
-                %                     r2 = 0;
-                %                 end
-                %                 tR2{ind} = [tR2{ind},r2];
-                %                 branchR2(branchNumbered == uniqueBranchNum(ib)) = r2;
             end
-            %             for itwin = 1:ntwin
-            %                 struCell{iE}(iS).tR2(iC,itwin) = mean(tR2{itwin});
-            %             end
-            %         if debugTF
-            %             struCell{iE}(iS).tR2(iC,:)
-            %         end
-            % tR2 only have number when multiple ts are fitted.
-            
             
             % (12) Grow each grouped branch into a a fragment with ID equals to active ss/ts.
             [~,fragments] = city_block(branchGrouped);
             fragments(clusterNumMapC==0) = 0;
-            %             [~,fragmentsR2] = city_block(branchR2);
-            %             fragmentsR2(clusterNumMapC==0) = 0;
+
             % [illustrate] the fragments
             if debugTF >= 1
                 myplot(fragments, branch); caxis([18,24]);
-                %                 myplot(fragmentsR2, branch); caxis([18,24]);
             end
             
     end
@@ -370,23 +289,20 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         haveActiveSS = 0;   % why set it to zero?
     end
     
-    
 else
     haveActiveSS = 0;
     fragments = [];
-    %     fragmentsR2 = [];
 end
 
 % Only update iE level.  Other levels were updated iteratively.
 if ~isempty(fragments)
     twinMapCell{iE,iC} = fragments;
+    
     sfMap = zeros(size(fragments));
-    %     traceSF_logsig = logsig(transfer_to_logsig(traceSF, 0.2, 0.4, 0.9));    % this is just a copy of that code for debug.
     for it = 1:ntwin
         sfMap(fragments==it+nss) = traceSF(it);
     end
     sfMapCell{iE,iC} = sfMap;
-    %     r2MapCell{iE,iC} = fragmentsR2;
 end
 
 end
