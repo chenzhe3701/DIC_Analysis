@@ -49,7 +49,11 @@ debugTF = 0;
 
 %% Calculate the city block distance
 cityDistMap = city_block(boundaryTF);
-
+try
+    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'cityDistMap','-append');
+catch
+    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','-append');
+end
 %% (0) Load cluster number data at all stops
 
 cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
