@@ -4,7 +4,7 @@
 % This code combines traceDirection analysis and traceStrain analysis to
 % identify active twin/slip system.
 %
-% Run this code after cluster tracking.
+% Run this code after cluster tracking, and finding gb clusters, etc.
 %
 % chenzhe, 2018-10-20.
 % A temporarily ok version.
@@ -50,19 +50,17 @@ debugTF = 0;
 %% (0) load data
 % store all the clusterNumMap s, omit stop-0
 % cluster_number_maps = cell(1,length(STOP)-1);    
-cluster_number_maps_cleaned = cell(1,length(STOP)-1);
+clusterNumberMapCell = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
-%     cluster_number_maps{iE} = clusterNumMap;
-    cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
-    twinMap{iE} = zeros(size(clusterNumMapCleaned));
-    sfMap{iE} = zeros(size(clusterNumMapCleaned));
-    cToGbDistMap{iE} = zeros(size(clusterNumMapCleaned));
+    clusterNumberMapCell{iE} = clusterNumMapCleaned;
+    twinMapCell{iE} = zeros(size(clusterNumMapCleaned));
+    sfMapCell{iE} = zeros(size(clusterNumMapCleaned));
+    cToGbDistMapCell{iE} = zeros(size(clusterNumMapCleaned));
     % initialize/zero related fields
     for iS =1:length(stru)
-%         stru(iS).tR2 = zeros(length(stru(iS).cLabel),length(stru(iS).tLabel));
         stru(iS).cActiveSS = zeros(length(stru(iS).cLabel), length(stru(iS).tLabel));
     end
     % try to remove some fields, if needed
@@ -76,7 +74,6 @@ end
 warning('off','all');
 stru = struCell{iE_start};
 for iS = 1:length(stru)
-    %
     %     iS = find(arrayfun(@(x) x.gID == 378,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace]
     %     iS = find(gIDwithTrace == 296); % for debugging.
     close all;
@@ -122,9 +119,8 @@ for iS = 1:length(stru)
         sfMapLocal{iE} = zeros(size(ID_local));
         cToGbDistMapLocal{iE} = zeros(size(ID_local));
     end
-    twinMapCell = [];
-    sfMapCell = [];
-%     r2MapCell = []; % but not used currently
+    twinMapCell_cluster = []; % for cluster
+    sfMapCell_cluster = [];
     
     % for each iE_entry (the entry point for analysis)
     for iE_entry = iE_start:iE_stop
@@ -142,14 +138,14 @@ for iS = 1:length(stru)
                     iE = iE_list(iEC);
                     iC = iC_list(iEC);
                     
-                    clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+                    clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
                     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
                     if debugTF
                         myplot(clusterNumMapL);
                     end
                     
                     ssAllowed = ones(ntwin,1);
-                    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                    [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
                         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
                     % each cell contains cells of tMap at an iEs
 
@@ -163,14 +159,14 @@ for iS = 1:length(stru)
     
     % for each strain level, update twinMapLocal{iE} with tMapCell
     for iE = iE_start:iE_stop
-        for jj = 1:size(twinMapCell,2)
-            if ~isempty(twinMapCell{iE,jj})
-                twinMapLocal{iE} = twinMapLocal{iE} + twinMapCell{iE,jj};
-                sfMapLocal{iE} = sfMapLocal{iE} + sfMapCell{iE,jj};
+        for jj = 1:size(twinMapCell_cluster,2)
+            if ~isempty(twinMapCell_cluster{iE,jj})
+                twinMapLocal{iE} = twinMapLocal{iE} + twinMapCell_cluster{iE,jj};
+                sfMapLocal{iE} = sfMapLocal{iE} + sfMapCell_cluster{iE,jj};
             end
         end
         
-        clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+        clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
         clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
         cToGbDistMapLocal{iE} = zeros(size(ID_local));
         for iC = 1:length(struCell{iE}(iS).cLabel)
@@ -179,24 +175,30 @@ for iS = 1:length(stru)
         end
         
         % update. First clean old map, then add new map.
-        toClean = twinMap{iE}(indR_min:indR_max, indC_min:indC_max);
-        toClean(ID_local ~= ID_current) = 0;
-        twinMap{iE}(indR_min:indR_max, indC_min:indC_max) = twinMap{iE}(indR_min:indR_max, indC_min:indC_max) + twinMapLocal{iE};
+        map_local = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);  % (1) Cut a squared map from big map
+        twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;          % (2) Eliminate this sqaured region from the big map
+        map_local(ID_local == ID_current) = 0;                              % (3) clean the grain area on the cut map
+        map_local = map_local + twinMapLocal{iE};                           % (4) update the grain area on the cut map
+        twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;  % (5) Add the modified cut map to big map
         
-        toClean = sfMap{iE}(indR_min:indR_max, indC_min:indC_max);
-        toClean(ID_local ~= ID_current) = 0;
-        sfMap{iE}(indR_min:indR_max, indC_min:indC_max) = sfMap{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
+        map_local = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max); 
+        sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;
+        map_local(ID_local == ID_current) = 0; 
+        map_local = map_local + sfMapLocal{iE}; 
+        sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;
         
-        toClean = cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max);
-        toClean(ID_local ~= ID_current) = 0;
-        cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max) = cToGbDistMap{iE}(indR_min:indR_max, indC_min:indC_max) + cToGbDistMapLocal{iE};
+        map_local = cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+        cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;
+        map_local(ID_local == ID_current) = 0; 
+        map_local = map_local + cToGbDistMapLocal{iE};
+        cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;
     end
     disp(iS);
 end % end of iS
 warning('on','all');
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMap','sfMap','cToGbDistMap','struCell','-v7.3');
+save([timeStr,'_twinMaps.mat'],'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','-v7.3');
 %%
 
 

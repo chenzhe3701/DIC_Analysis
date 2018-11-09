@@ -10,8 +10,8 @@
 % The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.
 % This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)
 
-function [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(...
-    twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(...
+    twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
 
 % first check if the active system is the same. If so, skip the code
@@ -23,7 +23,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % th_1; % max(traceVote) >= th_1 * length(peakAngles) to have enough_votes
     % th_2; % any traceVote > th_2 * max(traceVote) to become acceptable trace
     
-    clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+    clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
     if debugTF==1
         myplot(clusterNumMapL);
@@ -169,9 +169,10 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                 end
             end
             
-            % normalize
-            score = score/max(score);
-
+            % normalize.  Need to check if max value > 0, becuase it can be all zero. 
+            if max(score)>0
+                score = score/max(score);
+            end
             traceVote = traceVote + score;
         end
     end
@@ -283,7 +284,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     goBack = 1;
     if (goBack)&&(haveActiveSS)&&(iEC~=1)
         display([' ---------------> go back: ' num2str(iE_list(iEC-1))]);
-        [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+        [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
             struCell,iS,iE_list(iEC-1),iC_list(iEC-1),iE_list,iC_list,iEC-1,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF, 0.25, 0.7, activeSS);
     else
         haveActiveSS = 0;   % why set it to zero?
@@ -296,13 +297,13 @@ end
 
 % Only update iE level.  Other levels were updated iteratively.
 if ~isempty(fragments)
-    twinMapCell{iE,iC} = fragments;
+    twinMapCell_cluster{iE,iC} = fragments;
     
     sfMap = zeros(size(fragments));
     for it = 1:ntwin
         sfMap(fragments==it+nss) = traceSF(it);
     end
-    sfMapCell{iE,iC} = sfMap;
+    sfMapCell_cluster{iE,iC} = sfMap;
 end
 
 end

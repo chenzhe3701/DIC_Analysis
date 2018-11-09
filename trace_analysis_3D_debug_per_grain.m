@@ -91,24 +91,26 @@ end
 %% (0) load data
 load('cityDistMap.mat');
 
-% cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
-cluster_number_maps_cleaned = cell(1,length(STOP)-1);
+% store all the clusterNumMap s, omit stop-0
+clusterNumberMapCell = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
-%     cluster_number_maps{iE} = clusterNumMap;
-    cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
+    clusterNumberMapCell{iE} = clusterNumMapCleaned;
     
 end
-% load struCell{}, twinMap{}
+% load labeled results for debugging: 
 load('twinMaps.mat');
 
 %% plot something of interest
 close all;
 iE_select = 2;
-myplot(X,Y,twinMap{iE_select},boundaryTFB);caxis([18,24]);
-myplot(X,Y,cluster_number_maps_cleaned{iE_select},boundaryTFB);
+try
+    myplot(X,Y,twinMapCell{iE_select},boundaryTFB);caxis([18,24]);
+catch
+end
+myplot(X,Y,clusterNumberMapCell{iE_select},boundaryTFB);
 
 %% get ID from map, then
 ids = find_ID_on_map(X,Y,ID,gcf,gca);
@@ -181,11 +183,9 @@ end
 for iE = iE_start:iE_stop
     twinMapLocal{iE} = zeros(size(ID_local));
     sfMapLocal{iE} = zeros(size(ID_local));
-%     r2MapLocal{iE} = zeros(size(ID_local));
 end
-twinMapCell = [];
-sfMapCell = [];
-% r2MapCell = [];    
+twinMapCell_cluster = [];
+sfMapCell_cluster = [];
 
 iLoop_iE = iE_start;
 iLoop_iC = 1;
@@ -217,14 +217,14 @@ disp(['------------------------ [iE_outer, iC_outer, iE, iC] = [',num2str(iE_ent
 
 if iE_list(1) == iE_entry
     close all;
-    clusterNumMapL = cluster_number_maps_cleaned{iE}(indR_min:indR_max, indC_min:indC_max);
+    clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
     if debugTF
         myplot(clusterNumMapL);
     end
     
     ssAllowed = ones(ntwin,1);
-    [twinMapCell, sfMapCell, struCell, haveActiveSS] = label_twin_trace(twinMapCell, sfMapCell, cluster_number_maps_cleaned,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+    [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
                     
 %     twinMapLocal{iE} = twinMapLocal{iE} + fragments;
@@ -256,13 +256,13 @@ end
 
 % disp(iS);
 % end % end of iS
-disp(twinMapCell);
+disp(twinMapCell_cluster);
 %% update twinMapLocal with tMapCell
-for ii = 1:size(twinMapCell,1)
-   for jj = 1:size(twinMapCell,2)
-      if ~isempty(twinMapCell{ii,jj}) 
-         twinMapLocal{ii} = twinMapLocal{ii} + twinMapCell{ii,jj}; 
-         sfMapLocal{ii} = sfMapLocal{ii} + sfMapCell{ii,jj}; 
+for ii = 1:size(twinMapCell_cluster,1)
+   for jj = 1:size(twinMapCell_cluster,2)
+      if ~isempty(twinMapCell_cluster{ii,jj}) 
+         twinMapLocal{ii} = twinMapLocal{ii} + twinMapCell_cluster{ii,jj}; 
+         sfMapLocal{ii} = sfMapLocal{ii} + sfMapCell_cluster{ii,jj}; 
       end
    end
    if ~isempty(twinMapLocal{ii})
@@ -272,20 +272,39 @@ for ii = 1:size(twinMapCell,1)
 end
 %% update. First clean old map, then add new map.
 for iE = iE_start:iE_stop
-    toClean = twinMap{iE}(indR_min:indR_max, indC_min:indC_max);
-    toClean(ID_local ~= ID_current) = 0;
-    twinMap{iE}(indR_min:indR_max, indC_min:indC_max) = twinMap{iE}(indR_min:indR_max, indC_min:indC_max) - toClean + twinMapLocal{iE};
+    %     toClean = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    %     toClean(ID_local ~= ID_current) = 0;
+    %     twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) - toClean + twinMapLocal{iE};
+    %
+    %     toClean = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    %     toClean(ID_local ~= ID_current) = 0;
+    %     sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
     
-    toClean = sfMap{iE}(indR_min:indR_max, indC_min:indC_max);
-    toClean(ID_local ~= ID_current) = 0;
-    sfMap{iE}(indR_min:indR_max, indC_min:indC_max) = sfMap{iE}(indR_min:indR_max, indC_min:indC_max) + sfMapLocal{iE};
+    map_local = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);  % (1) Cut a squared map from big map
+    twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;          % (2) Eliminate this sqaured region from the big map
+    map_local(ID_local == ID_current) = 0;                              % (3) clean the grain area on the cut map
+    map_local = map_local + twinMapLocal{iE};                           % (4) update the grain area on the cut map
+    twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;  % (5) Add the modified cut map to big map
+    
+    map_local = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;
+    map_local(ID_local ~= ID_current) = 0;
+    map_local = map_local + sfMapLocal{iE};
+    sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;
+    
+    map_local = cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;
+    map_local(ID_local ~= ID_current) = 0;
+    map_local = map_local + cToGbDistMapLocal{iE};
+    cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;
+    
 end
 
 
 %%
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMap','-v7.3');
+save([timeStr,'_twinMaps.mat'],'twinMapCell','-v7.3');
 
 
 
