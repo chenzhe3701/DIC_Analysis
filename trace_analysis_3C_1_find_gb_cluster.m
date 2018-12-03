@@ -3,6 +3,8 @@
 %
 % find/label clusters that are close to gb, so they can be eliminated from
 % analysis.
+% This code, currently, calculate the percentiles of cluster points
+% distance to grain boundary.
 
 clear;
 addChenFunction;

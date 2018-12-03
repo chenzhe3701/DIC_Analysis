@@ -119,8 +119,9 @@ for iE = iE_start:iE_stop
     trueTwinMapCell{iE}(sfMapCell{iE}<SF_th)=0;
     % But have to modify each field in the struCell
     
-    [idic,IA,IC] = unique(ID(:)*1000+trueTwinMapCell{iE}(:));
-    idicCount = histcounts(ID(:)*1000+trueTwinMapCell{iE}(:),[idic(:);idic(end)+1]);
+    ind = trueTwinMapCell{iE}(:)~=0;
+    [idic,IA,IC] = unique(ID(ind)*1000+trueTwinMapCell{iE}(ind));   % without using 'ind', it can include point that does not belong to any twin !!! 2018-11-19
+    idicCount = histcounts(ID(ind)*1000+trueTwinMapCell{iE}(ind),[idic(:);idic(end)+1]);
     
     for iS = 1:length(struCell{iE})
         ID_current = struCell{iE}(iS).gID;
@@ -304,11 +305,14 @@ warning('on','all');
 for iE = iE_start:iE_stop
     % use the updated trueTwinMapCell
     
-    [idic,IA,IC] = unique(ID(:)*1000+trueTwinMapCell{iE}(:));
-    idicCount = histcounts(ID(:)*1000+trueTwinMapCell{iE}(:),[idic(:);idic(end)+1]);
+    ind = trueTwinMapCell{iE}(:)~=0;
+    [idic,IA,IC] = unique(ID(ind)*1000+trueTwinMapCell{iE}(ind));   % without using 'ind', it can include point that does not belong to any twin !!! 2018-11-19
+    idicCount = histcounts(ID(ind)*1000+trueTwinMapCell{iE}(ind),[idic(:);idic(end)+1]);
     
     for iS = 1:length(struCell{iE})
         ID_current = struCell{iE}(iS).gID;
+        
+        struCell{iE}(iS).tVol = zeros(1, length(struCell{iE}(iS).tLabel));  % reset and count again.
         
         for iTwin = 1:length(struCell{iE}(iS).tSF)
             if struCell{iE}(iS).tSF(iTwin) < SF_th
