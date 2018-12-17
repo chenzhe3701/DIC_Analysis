@@ -47,7 +47,7 @@ debugTF = 0;
 
 %% [data] strain data. Convert into v7.3 for partial loading
 clear strainFile;
-for iE = iE_start:iE_stop
+for iE = iE_start-1:iE_stop
     strainFileName = [dicPath,'\',f2,STOP{iE+B}];
     disp(strainFileName);
     if ~exist([strainFileName,'_v73.mat'],'file')
@@ -109,6 +109,56 @@ end
 
 
 %% Summarize, e.g., grain with twins, without twins, and their distribution on IPF/pole figure
+%% (s0) The SF distribution of all grains w.r.t grain size. (i.e., does larger grain tend to have larger/smaller SF? should not, but was asked to check ...)
+% (1) using box plot to check
+% (2) plot on IPF map to check
+close all;
+um_per_dp = 5*360/4096;    % micron per data point, ~0.43
+stru = struCell{2};
+eulers = [];
+sf = [];
+gd = [];
+gs = [];
+
+for iS = 1:length(stru)
+    ID_current = stru(iS).gID;
+    ind = find(gID == ID_current);
+    eulers(iS,:) = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
+    sf(iS) = max(stru(iS).tSF);
+    gd(iS) = sqrt(struCell{iE}(iS).gVol/pi*4) * um_per_dp;
+    gs(iS) = struCell{iE}(iS).gVol*um_per_dp.^2;
+end
+
+edges_d = [0:20:20*15,400];
+edges_a = [0:3000:3000*15, 125000];
+
+figure; histogram(gd,edges_d);ylabel('counts');
+label_d = discretize(gd,edges_d);
+hold on;
+yyaxis right; boxplot(sf, label_d, 'positions', 10:20:20*16); 
+for ii = 1:length(edges_d)-1
+    labels_d{ii} = [num2str(edges_d(ii)),'-',num2str(edges_d(ii+1))];
+end
+set(gca,'xticklabels',labels_d,'xticklabelrotation',45);
+ylabel('Schmid Factor (m)');
+xlabel('Grain diameter (um)');
+
+for ii = unique(label_d)
+    plot_on_IPF(eulers(label_d==ii,:),[0 0 0],[0 0 0],[1 0 0],19:24,[-1 0 0; 0 0 0; 0 0 0],'Mg','Twin');
+    title([labels_d{ii},'um']);
+end
+
+figure; histogram(gs,edges_a);ylabel('counts');
+label_a = discretize(gs,edges_a);
+hold on;
+yyaxis right; boxplot(sf, label_a, 'positions', 1500:3000:3000*16);
+for ii = 1:length(edges_d)-1
+    labels_a{ii} = [num2str(edges_a(ii)),'-',num2str(edges_a(ii+1))];
+end
+set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+ylabel('Schmid Factor (m)');
+xlabel('Grain size (um^2)');
+
 %% (s1) as discussed on Nov-14, check [grains_twinned, grains-nontwinned] as a function of [grain_size], -- large vs small grains.
 
 close all;
@@ -141,6 +191,70 @@ for iE = iE_start:iE_stop
     ylabel('pct grain twinned');
     set(gca,'ylim',[0 0.4]);
 end
+
+%%
+close all;
+for iE = iE_start:iE_stop
+    um_per_dp = 5*360/4096;    % micron per data point, ~0.43
+    gs_t = [];
+    sf_t = [];
+    gs_nt = [];
+    sf_nt = [];
+    
+    ic_t = 1;
+    ic_nt = 1;
+    for iS = 1:length(struCell{iE})
+        if any(sum(struCell{iE}(iS).cTrueTwin,1))
+            gs_t(ic_t) = struCell{iE}(iS).gVol*um_per_dp.^2;
+            sf_t(ic_t) = mean(struCell{iE}(iS).tSF(sum(struCell{iE}(iS).cTrueTwin,1)>0));
+            ic_t = ic_t + 1;
+        else
+            gs_nt(ic_nt) = struCell{iE}(iS).gVol*um_per_dp.^2;
+            sf_nt(ic_nt) = max(struCell{iE}(iS).tSF);
+            ic_nt = ic_nt + 1;
+        end
+    end
+    
+%     edges_d = [0:20:20*15,400];
+    edges_a = [0:3000:3000*15, 125000];
+
+    bn_t = discretize(gs_t,edges_a);
+    bn_nt = discretize(gs_nt,edges_a);
+    
+    figure;
+    histogram([gs_nt,gs_t],edges_a);
+    hold on;
+    histogram(gs_t,edges_a);
+
+    xlabel('grain size (um^2)');
+    ylabel('Counts');
+    title(['iE = ',num2str(iE)]);
+    yyaxis right;
+    set(gca,'ycolor','r')
+    plot(edges_a(1:end-1)+(edges_a(2)-edges_a(1))/2,histcounts(gs_t,edges_a)./(histcounts(gs_t,edges_a)+histcounts(gs_nt,edges_a)),'-ro');
+    ylabel('pct grain twinned');
+    set(gca,'ylim',[0 0.4], 'xlim',[0,48000]);
+    legend('Total', 'Twinned','Pct Grains Twinned','location','west');
+    
+    for ii = 1:length(edges_d)-1
+        labels_a{ii} = [num2str(edges_a(ii)),'-',num2str(edges_a(ii+1))];
+    end
+    figure;
+    boxplot(sf_t,bn_t);
+    set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+    title('SF Distribution in Twinned Grains');
+    xlabel('grain size (um^2)'); ylabel('Schmid Factor (m)');
+    
+    figure;
+    boxplot(sf_nt,bn_nt);
+    set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+    title('SF Distribution in Non-Twinned Grains');
+    xlabel('grain size (um^2)'); ylabel('Schmid Factor (m)');
+end
+
+
+
+
 
 %% (s2) Only consider twinned grains, [pct_of_twinned_area] as a function of [grain_size] 
 close all;
