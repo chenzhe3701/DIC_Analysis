@@ -28,9 +28,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 catch
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
@@ -49,13 +49,13 @@ f2 = '_';
 debugTF = 0;
 
 
-%% Calculate the city block distance
-cityDistMap = city_block(boundaryTF);
-try
-    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'cityDistMap','-append');
-catch
-    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','-append');
-end
+%% Calculate the city block distance, if not calculated yet.
+% cityDistMap = city_block(boundaryTF);
+% try
+%     save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'cityDistMap','-append');
+% catch
+%     save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','-append');
+% end
 %% (0) Load cluster number data at all stops
 
 cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0

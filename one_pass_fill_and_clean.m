@@ -45,10 +45,11 @@ for ii = 1:length(uniqueLabel)
 end
 
 
-% (1) For segments large enough, and distance large enough to the grain boundary, change the label to the same as in raw.
+% (1) For segments (subclusters) large enough, and distance large enough to the grain boundary, change the label to the same as in raw.
 gSizeOK = uniqueLabel(gSize>=min_size);
 validLabel = [];
 useRaw = false(size(label));
+useRaw(thisGrain~=1) = 1; % change cluster number to '0' for areas outside of this grain.  --- Here, outside this code, need to make sure that '0' is used outside of this grain!!!
 for ii = 1:length(gSizeOK)
     ind = label == gSizeOK(ii);
 
@@ -56,18 +57,26 @@ for ii = 1:length(gSizeOK)
     qts = quantile(ds,0.95);
       
     if (qts(end) > dist_th)
-        useRaw(ind) = 1;  % need just record
-        validLabel =  [validLabel;unique(raw(ind))];
+        useRaw(ind) = 1;  % useRaw is a logical matrix, 1 indicates the positions where it should be labeled using the cluster number in the 'raw' matrix. 
+        validLabel =  [validLabel;unique(label(ind))];  % should record the valid label number in the 'label' matrix. But immediately, this will be changed to the label number in 'raw' matrix, so directly record it in the 'raw' matrix.
     end
 end
 label(useRaw) = raw(useRaw);
 validLabel = unique(validLabel);    % the question is, we need to make sure there is at least one valid? 
+
+if ~any(validLabel==0)
+    disp('add 0 to valid label');
+    validLabel = [0;validLabel];    % add '0' to validLabel
+end
+
 if isempty(validLabel)
    error('empty valid label'); 
 end
 
+validLabel_in_updated_mat = unique(label(useRaw(:)==1));
 % (3) find labels corresponding to grains that are too small, set to its
-% neighboring ID that are valid
+% neighboring ID that are valid. (If adjacent to grian boundary, it should
+% be set to '0')
 
 nonValidLabel = uniqueLabel(~ismember(uniqueLabel,validLabel));
 count = 0;
@@ -78,7 +87,7 @@ while sum(ismember(label(:),nonValidLabel))
         
         ind_nb = imdilate(ind,[0 1 0; 1 1 1; 0 1 0]) - ind;
         nb = label(ind_nb==1);
-        nbOK = nb(ismember(nb,validLabel));
+        nbOK = nb(ismember(nb,validLabel_in_updated_mat));
         if ~isempty(nbOK)
             label(ind) = nbOK(1);
             nonValidLabel(ii) = nan;
@@ -87,7 +96,7 @@ while sum(ismember(label(:),nonValidLabel))
     nonValidLabel(isnan(nonValidLabel)) = [];
 end
 
-label(thisGrain~=1) = 0;
+% label(thisGrain~=1) = 0;
 
 % % [add new] analyze it again, search for sub-clusters too close to the grain boundary, eliminate  
 % thisGrain = double(label>0);
