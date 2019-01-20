@@ -17,18 +17,11 @@ function label = one_pass_fill_and_clean(raw, size_pct)
 %%
 
 % [add new] analyze it again, search for sub-clusters too close to the grain boundary, eliminate  
-thisGrain = double(raw~=0);
-thisGrain(thisGrain~=1) = -1;    % cannot use 0 to find grain boundary!!!
+thisGrain = double(raw~=0); % thisGrain(thisGrain~=1) = -1;    % cannot use 0 to find grain boundary!  Fixed on 2019-01-20.
 gbLocal = find_one_boundary_from_ID_matrix(thisGrain);
-cityDistMapLocal = city_block(gbLocal);     % calculate a cityDistMapLocal
-% gDia = sqrt(sum(thisGrain(:)==1)/pi);
+distMapLocal = bwdist(gbLocal);     % cityDistMapLocal = city_block(gbLocal);     % old code, calculate a cityDistMapLocal 
 % try to use a threshold distance
-dist_th = quantile(cityDistMapLocal(thisGrain==1), 0.36);     % assume circles 4:5 radius, area ratio is 16:25
-
-
-% if ~exist('dist_pct','var')
-%     dist_pct = 0.3;    % pct of diameter, considered to be too close to gb. 
-% end
+dist_th = quantile(distMapLocal(thisGrain==1), 0.36);     % assume circles 4:5 radius, area ratio is 16:25
 
 if ~exist('size_pct','var')
     size_pct = 0.0025;
@@ -44,7 +37,6 @@ for ii = 1:length(uniqueLabel)
     gSize(ii) = sum(label(:)==uniqueLabel(ii));
 end
 
-
 % (1) For segments (subclusters) large enough, and distance large enough to the grain boundary, change the label to the same as in raw.
 gSizeOK = uniqueLabel(gSize>=min_size);
 validLabel = [];
@@ -53,7 +45,7 @@ useRaw(thisGrain~=1) = 1; % change cluster number to '0' for areas outside of th
 for ii = 1:length(gSizeOK)
     ind = label == gSizeOK(ii);
 
-    ds = cityDistMapLocal(ind);
+    ds = distMapLocal(ind);
     qts = quantile(ds,0.95);
       
     if (qts(end) > dist_th)

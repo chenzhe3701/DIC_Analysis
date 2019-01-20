@@ -335,7 +335,7 @@ end
 
 %% save again
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_relabeled_result.mat'],'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');
+save([timeStr,'_relabeled_result.mat'],'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');     % maybe save 'twinMapCell' just to compare with 'trueTwinMapCell' ?
 
 
 

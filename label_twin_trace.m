@@ -86,6 +86,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     if struCell{iE}(iS).cToGbDist(iC,end) < 50
         % This means OK, cluster not too close to gb
         clusterNumMapC(clusterNumMapC==iC) = 0;
+        disp(['cluster too close to gb: ID=',num2str(struCell{iE}(iS).gID),',iE=',num2str(iE),',iC=',num2str(iC)]);
     end
  
     

@@ -113,7 +113,7 @@ end
 myplot(X,Y,clusterNumberMapCell{iE_select},boundaryTFB);
 
 %% get ID from map, then
-ids = find_ID_on_map(X,Y,ID,gcf,gca);
+ids = find_ID_on_map(X,Y,ID,gcf,gca);   % 190
 
 %% plot unit cell to check trace, one at a time
 ind = find(gID==ids(1));
