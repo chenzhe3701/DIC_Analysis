@@ -79,7 +79,7 @@ while sum(ismember(label(:),nonValidLabel))
         
         ind_nb = imdilate(ind,[0 1 0; 1 1 1; 0 1 0]) - ind;
         nb = label(ind_nb==1);
-        nbOK = nb(ismember(nb,validLabel_in_updated_mat));
+        nbOK = unique(nb(ismember(nb,validLabel_in_updated_mat)));
         if ~isempty(nbOK)
             label(ind) = nbOK(1);
             nonValidLabel(ii) = nan;

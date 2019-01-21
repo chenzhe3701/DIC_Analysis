@@ -81,7 +81,7 @@ if ~useParallel
             clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
             clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
             
-            clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal);
+            clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.001);
             
             clusterNumMapCleaned(indR_min:indR_max, indC_min:indC_max) = clusterNumMapCleaned(indR_min:indR_max, indC_min:indC_max) + clusterNumMapLocal;
             disp(['ID = ',num2str(ID_current)]);
@@ -129,7 +129,7 @@ if useParallel
                     clusterNumMapLocal = clusterNumMap(indR_min:indR_max, indC_min:indC_max);
                     clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
                     
-                    clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal);
+                    clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.001);
                     
                     partMap{ii}(indR_min:indR_max, indC_min:indC_max) = partMap{ii}(indR_min:indR_max, indC_min:indC_max) + clusterNumMapLocal;
                     disp(['iPool: ',num2str(ii),', ID = ',num2str(ID_current)]);

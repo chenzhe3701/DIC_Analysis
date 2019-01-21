@@ -12,7 +12,11 @@
 
 function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(...
     twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed)
+    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed, goBack)
+
+if ~exist('goBack','var')
+    goBack = 1;
+end
 
 % first check if the active system is the same. If so, skip the code
 alreadyActive = struCell{iE_list(iEC)}(iS).cActiveSS(iC_list(iEC),:);
@@ -258,15 +262,29 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                 
                 branchND = atand(-1/model.Coefficients.Estimate(2));
                 dAngle = abs(traceND - branchND);
+                for ii=1:length(dAngle)
+                   if dAngle(ii) > 90
+                       dAngle(ii) = 180 - dAngle(ii);   % this is how you findout the diff between angles ----------------------------------------  
+                   end
+                end                
                 dAngle(~activeSS) = inf;
                 [~,ind] = min(dAngle);
+                %  (*) 2019-01-22. Here we might have something to improve: if doesn't match well, maybe just assign zero? ----------------------------------------------------------
+                %  if set to >90, means just accept it, use closest match
+                if 1&&(min(dAngle)>90)
+                    ind = nan;
+                end
+                
                 branchGrouped(branchNumbered == uniqueBranchNum(ib)) = nss + ind;
             end
             
             % (12) Grow each grouped branch into a a fragment with ID equals to active ss/ts.
             [~,fragments] = city_block(branchGrouped);
             fragments(clusterNumMapC==0) = 0;
-
+            
+            % (*) Use together with previous (*)
+            fragments(isnan(fragments)) = 0;
+            
             % [illustrate] the fragments
             if debugTF >= 1
                 myplot(fragments, branch); caxis([18,24]);
@@ -282,7 +300,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     
     % check if need to go back.  If have activeSS, and not the first in the iE_list, go back.  If go back, only activeSS is allowed.
     % If go back, it may affect the previous strain levels maps.
-    goBack = 1;
+    goBack = goBack;
     if (goBack)&&(haveActiveSS)&&(iEC~=1)
         display([' ---------------> go back: ' num2str(iE_list(iEC-1))]);
         [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...

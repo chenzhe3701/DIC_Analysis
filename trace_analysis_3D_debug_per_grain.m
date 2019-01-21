@@ -187,7 +187,8 @@ end
 twinMapCell_cluster = [];
 sfMapCell_cluster = [];
 
-iLoop_iE = iE_start;
+% strain level at which the analysis was started -- it enters at every possible strain level, starting at iE_start 
+iLoop_iE = iE_start;     
 iLoop_iC = 1;
 iLoop_iEC = 1;
 cVolPctOld = 0;
