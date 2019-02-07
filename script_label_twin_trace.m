@@ -1,18 +1,16 @@
 
-% This function returns a cell that contains the cluster map labeled by twin system number.
-% for each cluster, its cLabel [iC] might be different depending on the strain level [iE].  So, refer to: [iE_list, iC_list].
-% The selected/input [iE] is the 'strain label' entry point for the anlaysis for the selected/input [iC] (the cLable at the entry point)
-% It runs iteratively, and analyze all necessary strain levels, but not always all strain levels.
-% In the output, each cell contains TS map of the cluster at the analyzed [iE]
-% For iEs that is not anlayzed, the cell contains [].
-%
-% It can change the cluster's twin label/map in the current and previous iEs history.
-% The label is stored in the tMap_iEC_entry_cell{iE,iC}, where iE, iC can be determined from iE_list, iC_list, iEC.
-% This function is actually update the tMap_cell which is of max dimension (iE_stop, iC_max)
 
-function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(...
-    twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed, goBack)
+% script to run a single iteration of function label_twin_trace
+% function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(...
+%     twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+%     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed, goBack)
+
+% Gather necessary info for script mode
+goBack = 0;
+th_1 = 0.3;
+th_2 = 0.3;
+
+
 
 if ~exist('goBack','var')
     goBack = 1;
@@ -22,7 +20,7 @@ end
 alreadyActive = struCell{iE_list(iEC)}(iS).cActiveSS(iC_list(iEC),:);
 if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     
-    [~, ~, nss, ntwin, ~] = define_SS(sampleMaterial,twinTF);
+    [~, ~, nss, ntwin, ~] = define_SS(sampleMaterial,'twin');
     
     % th_1; % max(traceVote) >= th_1 * length(peakAngles) to have enough_votes
     % th_2; % any traceVote > th_2 * max(traceVote) to become acceptable trace
@@ -30,7 +28,9 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
     if debugTF==1
-        myplot(clusterNumMapL);
+        myplot(clusterNumMapL, grow_boundary(boundaryTFLocal));
+        title('cluster number map');
+        set(gca,'xticklabel','','yticklabel','');
     end
     
     % (1) Decide if any is twin cluster?  Check if the strain is reasonable compared to theoretical twin strain.
@@ -85,6 +85,11 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     
     clusterNumMapC = clusterNumMapL;    % for this cluster.  -- Note that sometimes, the cluster was already cleaned to 0 size.
     clusterNumMapC(clusterNumMapC~=iC) = 0;
+    if debugTF==1
+        myplot(clusterNumMapC, grow_boundary(boundaryTFLocal));
+        title('cluster considered');
+        set(gca,'xticklabel','','yticklabel','');
+    end
     
     % (2) Check if this cluster is too close to the grain boundary ---------------------------------------------------------------      
     if struCell{iE}(iS).cToGbDist(iC,end) < 50
@@ -99,13 +104,18 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     thinTF = 1;    % This is mainly for debug, but looks like we should always consider thinning/skeleton.
     if thinTF
         clusterNumMapT = double( bwskel(imbinarize(clusterNumMapC),'MinBranchLength',0 * round(min(size(clusterNumMapC))*0.05)) );
-        [clusterNumMapT, branchPoints] = clean_skl(clusterNumMapT, round(min(size(clusterNumMapC))*0.05));
         % clusterNumMapT = double(thin(clusterNumMapC,inf));
         % clusterNumMapT = double(bwmorph((clusterNumMapC),'thin',inf) );
     end
     if debugTF==1
+        myplot(clusterNumMapT,  grow_boundary(boundaryTFLocal));
+        title('skeleton of cluster considered');
+        set(gca,'xticklabel','','yticklabel','');
+        
         myplotm(clusterNumMapL, 'TF',clusterNumMapT, 'r', 1);
         caxis([-0.1, max(clusterNumMapL(:))+0.1]);
+        title('skeleton overlaid on cluster number map');
+        set(gca,'xticklabel','','yticklabel','');
     end
     
     % (6) Then do hough transform. H = intensity on [rhos, thetas] map
@@ -123,7 +133,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % This is just to [illustrate] where the peak is in the hough space
     if debugTF==1
         myplot(Theta,Rho,H);
-        xlabel('theta'); ylabel('rho');
+        xlabel('theta'); ylabel('rho');title('Hough transform of skeleton')
         axis normal;
         hold on;
         for k = 1:size(peaks,1)
@@ -141,11 +151,22 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         hold on;
         for k = 1:length(lines)
             xy = [lines(k).point1; lines(k).point2];
+            plot(xy(:,1),xy(:,2),'LineWidth',2,'Color','r');
+            % Plot beginnings and ends of lines
+            plot(xy(1,1),xy(1,2),'.','LineWidth',2,'Color','r');
+            plot(xy(2,1),xy(2,2),'.','LineWidth',2,'Color','r');
+        end
+        
+        myplot(clusterNumMapT, grow_boundary(boundaryTFLocal));
+        hold on;
+        for k = 1:length(lines)
+            xy = [lines(k).point1; lines(k).point2];
             plot(xy(:,1),xy(:,2),'LineWidth',2,'Color','g');
             % Plot beginnings and ends of lines
-            plot(xy(1,1),xy(1,2),'x','LineWidth',2,'Color','r');
-            plot(xy(2,1),xy(2,2),'^','LineWidth',2,'Color','r');
+            plot(xy(1,1),xy(1,2),'.','LineWidth',2,'Color','g');
+            plot(xy(2,1),xy(2,2),'.','LineWidth',2,'Color','g');
         end
+        
     end
     
     % (9) Determine the active variant/ss by matching the peakAngles with traceND.
@@ -235,15 +256,17 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             
             % (11.1) break skeleton into small branches
             skl = clusterNumMapT;
-            % branchPoints = bwmorph(skl, 'branchpoints');    % blocked, [chenzhe 2019-02-03]
+            branchPoints = bwmorph(skl, 'branchpoints');
             
-            % can do this again to ensure to break skeleton, but not sure if its in general good ---------------
+            inds = find(branchPoints==1);
+            [suby,subx] = ind2sub(size(branchPoints),inds);
+            
+            % can do this again to ensure to break skeleton, but not sure if its in general good --------------- 
             heavyClean = 1;
             if heavyClean
                 branchPoints = imdilate(branchPoints, ones(3));
             end
-            branch = skl - branchPoints;    
-            branch(branch<0)=0; % added, should it? [chenzhe 2019-02-03] 
+            branch = skl - branchPoints;
             
             % (11.2) assign an ID to each skeleton branch
             branchNumbered = one_pass_label_8(branch);    % here should use 8-connectivity to label
@@ -253,7 +276,10 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             uniqueBranchNum(uniqueBranchNum==0)=[];
             % [illustrate] skeleton branches
             if debugTF==1
-                myplotm(mod(branchNumbered,5)+logical(branchNumbered));
+                % myplotm(mod(branchNumbered,5)+logical(branchNumbered));
+                myplot(skl,grow_boundary(boundaryTFLocal));
+                hold on;
+                plot(subx,suby,'.r','markersize',24);
             end
             
             % (11.3) match each numbered skeleton branch to one of the active ts/ss, based on direction comparison.
@@ -264,16 +290,10 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
                 
                 branchND = atand(-1/model.Coefficients.Estimate(2));
                 dAngle = abs(traceND - branchND);
-                for ii=1:length(dAngle)
-                   if dAngle(ii) > 90
-                       dAngle(ii) = 180 - dAngle(ii);   % this is how you findout the diff between angles ----------------------------------------  
-                   end
-                end                
                 dAngle(~activeSS) = inf;
                 [~,ind] = min(dAngle);
-                %  (*) 2019-01-22. Here we might have something to improve: if doesn't match well, maybe just assign zero? ----------------------------------------------------------
-                %  if set to >90, means just accept it, use closest match
-                if 1&&(min(dAngle)>90)
+                %  (*) 2019-01-22. Here we might have something to improve: if doesn't match well, maybe just assign zero? ----------------------------------------------------------  
+                if 1&&(min(dAngle)>10)
                     ind = nan;
                 end
                 
@@ -289,7 +309,8 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             
             % [illustrate] the fragments
             if debugTF >= 1
-                myplot(fragments, branch); caxis([18,24]);
+                myplot(fragments, imdilate(branch,[0 0 0; 0 1 1; 0 0 0])); caxis([18,24]);
+                myplot(fragments, grow_boundary(boundaryTFLocal)); caxis([18,24]);
             end
             
     end
@@ -327,4 +348,4 @@ if ~isempty(fragments)
     sfMapCell_cluster{iE,iC} = sfMap;
 end
 
-end
+% end

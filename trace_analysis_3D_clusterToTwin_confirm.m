@@ -140,7 +140,7 @@ for iE = iE_start:iE_stop
 end
 
 %% Then we need to plot strain maps, cluster number maps, temporary trueTwinMaps to modify
-iE_select = 5;  % select an iE
+iE_select = 4;  % select an iE
 
 % plot maps to check: strain map, twin map, cluster number map
 % close all;
@@ -206,6 +206,7 @@ for ii = 2:size(tNote,1)
         end
         % If thinTF==1
         clusterNumMapT = double( bwskel(imbinarize(clusterNumMapC),'MinBranchLength',0 * round(min(size(clusterNumMapC))*0.05)) );
+        [clusterNumMapT, branchPoints] = clean_skl(clusterNumMapT, round(min(size(clusterNumMapC))*0.05));
         
         % Modify the 'cTrueTwin' field, modification is based on manual input    
         struCell{iE}(iS).cTrueTwin(iC,:) = activeSS;
@@ -226,11 +227,12 @@ for ii = 2:size(tNote,1)
                 
                 % (11.1) break skeleton into small branches
                 skl = clusterNumMapT;
-                branchPoints = bwmorph(skl, 'branchpoints');
+                % branchPoints = bwmorph(skl, 'branchpoints');    % blocked, [chenzhe 2019-02-03]
                 
                 % If heavyClean = 1;
                 branchPoints = imdilate(branchPoints, ones(3));
                 branch = skl - branchPoints;
+                branch(branch<0)=0; % added, should it? [chenzhe 2019-02-03]
                 
                 % (11.2) assign an ID to each skeleton branch
                 branchNumbered = one_pass_label_8(branch);    % here should use 8-connectivity to label
@@ -326,7 +328,7 @@ for iE = iE_start:iE_stop
     end
     
 end
-
+disp('finished relabel');
 %% show the relabeled, updated map
 close all;
 for iE = 2:5

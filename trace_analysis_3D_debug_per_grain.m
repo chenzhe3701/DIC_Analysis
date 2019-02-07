@@ -226,7 +226,7 @@ if iE_list(1) == iE_entry
     
     ssAllowed = ones(ntwin,1);
     [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-        struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
+        struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF+1, 0.3,0.3,ssAllowed);
                     
 %     twinMapLocal{iE} = twinMapLocal{iE} + fragments;
     
