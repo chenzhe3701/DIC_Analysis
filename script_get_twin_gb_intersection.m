@@ -143,9 +143,9 @@ tb_pts = [];
 
 for iE = iE_start:iE_stop
 %%
-for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
+for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
     %%
-%     close all;
+    % close all;
     % Can initialize field
     % iS = find(arrayfun(@(x) x.gID == 378,struCell{iE}));
     struCell{iE}(iS).tGb = cell(1,ntwin);
@@ -196,9 +196,12 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
         trueTwinMapL = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
         trueTwinMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
         
-        trueTwinMapT = double( bwskel(imbinarize(trueTwinMapL),'MinBranchLength',1 * round(min(size(trueTwinMapL))*0.2)) );
+        trueTwinMapT = double(bwskel(imbinarize(trueTwinMapL),'MinBranchLength', round(0*min(size(trueTwinMapL))*0.2)));
+        % new code to remove small branches from skeleton
+        [trueTwinMapT, branchPoints] = clean_skl(trueTwinMapT, 0.05*min(size(trueTwinMapL)) );
+        
         skl_tn = trueTwinMapT .* trueTwinMapL;
-        branchPoints = bwmorph(skl_tn, 'branchpoints');
+        %  branchPoints = bwmorph(skl_tn, 'branchpoints');
         branchPoints = imdilate(branchPoints, ones(3));
         branch_tn = skl_tn;
         branch_tn(branchPoints>0) = 0;
@@ -221,7 +224,10 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
         npts_cr = 5;    % # of points within a certain distance to a gb ponint, then this frag can be considered as touching gb
         
         if plotTF
-            myplotm(fragments_N, 'r', 1); hold on;
+            exx_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
+            myplotm(exx_local, 'tf', uniqueBoundary_local, 'pn', 1, 'r', 1);
+            myplotm(fragments_N, 'tf', uniqueBoundary_local, 'pn', 1, 'r', 1); 
+            hold on;
         end
         for ii = 1:length(uniqueBranch_N)
             bn = uniqueBranch_N(ii);
@@ -240,7 +246,7 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
                 
                 theta_target = traceND(iTwin);
                 [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
-                % block other peaks, if any
+                % block other peaks (block the angles to find the position), if any
                 H(:,abs(Theta-theta_target)>2) = 0;
                 peaks = houghpeaks(H, 1);
                 peakRho = Rho(peaks(1));
@@ -261,12 +267,22 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
                     %                end
                     
                     % method-2: for each end point of houghline, calculate a distMap, and check if there is enough twin points within certain distance
+                    currentTwinMap = (trueTwinMapL==tsNum); % map of the twin system considered
+                    gd = sqrt(4*struCell{iE}(iS).gVol/pi);  % calculate the equivalent grain diameter, in # of data points
+                    % um_per_dp = (y_local(2)-y_local(1))*360/4096;    % micron per data point, ~0.43, sample specific ---------   
+                    % gd = sqrt(4*struCell{iE}(iS).gVol/pi) * um_per_dp;  % grain diameter, in micron
+                    
                     for jj = 1:2
                         distMap = zeros(size(fragMap));
                         distMap(xy(jj,2),xy(jj,1)) = 1;
                         distMap = bwdist(distMap);
-                        % criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr. 
-                        if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr 
+                        
+                        % criterion: if mean dist of twinned region within mantle to this intersection is in [0.3, 0.7] range 
+                        mask = (currentTwinMap==1)&(distMap<gd*0.1);
+                        meanDist = nanmean(distMap(mask(:)==1));    % if it is a triangle/trapezoid, the mean height should always be 0.5, (similarly the distance to the base)
+                        if (meanDist>0.0333*gd)&&(meanDist<0.0666*gd)
+                        % [alternatively] criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr. 
+                        % if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr 
                             if plotTF
                                 plot(xy(:,1),xy(:,2),'LineWidth',2,'Color','g');
                                 % Plot beginnings and ends of lines
@@ -274,21 +290,28 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390
                             end
                             % This is a contact point. Record the position, and the twin system
                             gbNum = uniqueBoundary_local(xy(jj,2),xy(jj,1));  % get gbNum
-                            ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
                             
-                            % convert xy to absolute coordinate using x_local, y_local
-                            xcoord = x_local(xy(jj,2),xy(jj,1));
-                            ycoord = y_local(xy(jj,2),xy(jj,1));                            
-                            
-                            if isempty(ind)
-                                % append
-                                struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
-                                iGb = length(struCell{iE}(iS).tGb{iTwin});
-                                struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
+                            % make sure the gb number contains this grain ID  
+                            two_grains = [floor(gbNum/10000), mod(gbNum,10000)];
+                            if ismember(ID_current,two_grains)
+                                ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+                                
+                                % convert xy to absolute coordinate using x_local, y_local
+                                xcoord = x_local(xy(jj,2),xy(jj,1));
+                                ycoord = y_local(xy(jj,2),xy(jj,1));
+                                
+                                if isempty(ind)
+                                    % append
+                                    struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
+                                    iGb = length(struCell{iE}(iS).tGb{iTwin});
+                                    struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
+                                else
+                                    % add
+                                    iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+                                    struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
+                                end
                             else
-                                % add
-                                iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-                                struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
+                                disp(['iE=',num2str(iE),',ID=',num2str(ID_current),',found boundary=',num2str(gbNum),' with intersection, but not belong to this grain.']);
                             end
                         end
                     end
@@ -344,73 +367,87 @@ for iS = 1:length(struCell{iE})
     end
 end
 
-%% plot, be careful
+% plot, be careful
 tBoundaryCell{iE} = [];
 tBoundaryCell{iE} = tboundary;
 
-if 1
+% if 1
+%     myplot(strainFile{iE}.exx);limit = caxis; close;
+%     myplot(X,Y,strainFile{iE}.exx + grow_boundary(grow_boundary(logical(uniqueBoundary))),grow_boundary(grow_boundary(tBoundaryCell{iE})));
+%     caxis(limit);
+%     myplot(X,Y,trueTwinMapCell{iE}+15*grow_boundary(grow_boundary(logical(uniqueBoundary))) ,grow_boundary(grow_boundary(tBoundaryCell{iE})));
+% end
+
+end
+
+%% Accumulatively, what the identified twin boundaries are
+tbd_accum = tBoundaryCell{iE_start};
+for iE = iE_start:iE_stop
     myplot(strainFile{iE}.exx);limit = caxis; close;
-    myplot(X,Y,strainFile{iE}.exx + grow_boundary(grow_boundary(logical(uniqueBoundary))),grow_boundary(grow_boundary(tBoundaryCell{iE})));
+    
+    tbd_accum = tbd_accum | tBoundaryCell{iE};
+    
+    myplot(X,Y,strainFile{iE}.exx + grow_boundary(grow_boundary(logical(uniqueBoundary))),grow_boundary(grow_boundary(logical(tbd_accum))));
     caxis(limit);
-    myplot(X,Y,trueTwinMapCell{iE}+15*grow_boundary(grow_boundary(logical(uniqueBoundary))) ,grow_boundary(grow_boundary(tBoundaryCell{iE})));
+    
+    myplot(X,Y,trueTwinMapCell{iE}+15*grow_boundary(grow_boundary(logical(uniqueBoundary))),grow_boundary(grow_boundary(logical(tbd_accum))));
+    
+    tBoundary_accum{iE} = tbd_accum;
 end
 
 
-
-
-end
 %%
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twin_at_boundary_result.mat'], 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','struCell','-v7.3');
+save([timeStr,'_twin_at_boundary_result.mat'], 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
 save([timeStr,'_twin_at_boundary_result_ws.mat'],'-v7.3');
 
 %% Analysis (1): Assume the previous analysis is correct.
 % (1) calculate the average misorientation of twinned boundary vs non twinned boundary
-
-figure;hold on;
-for iE = 2:5
-    gbTwinned_iE = tb_gbNum(tb_iE==iE);
-    gbMiso = zeros(length(uniqueBoundaryList),1);
-    ind_twinned = zeros(length(uniqueBoundaryList),1);
-    
-    for ii = 1:length(uniqueBoundaryList)
-        gbNum = uniqueBoundaryList(ii);
-        g1 = floor(gbNum/10000);
-        g2 = mod(gbNum,10000);
-        ind_euler = find(gID==g1);
-        euler_1 = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
-        ind_euler = find(gID==g2);
-        euler_2 = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
-        gbMiso(ii) = calculate_misorientation_hcp(euler_1,euler_2);
-        if ismember(gbNum,gbTwinned_iE)
-            ind_twinned(ii) = 1;
-        end
-    end
-    
-    gbMisoTwinned = gbMiso(ind_twinned==1);
-    gbMisoNonTwinned = gbMiso;
-    gbMisoNonTwinned(ind_twinned==1) = [];
-    
-    edges = 0:5:95;
-    
-    % figure;histogram(gbMisoTwinned,edges);
-    % title(['With twin, iE=',num2str(iE)]);
-    % xlabel('gb misorientation');
-    % ylabel('counts');
-    %
-    % figure;histogram(gbMisoNonTwinned,edges);
-    % title(['Without twin, iE=',num2str(iE)]);
-    % xlabel('gb misorientation');
-    % ylabel('counts');
-    
-    plot(edges(1:end-1), histcounts(gbMisoTwinned,edges)./(histcounts(gbMisoTwinned,edges)+histcounts(gbMisoNonTwinned,edges)), '-o')
-
-end
-
-title(['# grains twinned over # grains total']);
-legend({'iE=2','iE=3','iE=4','iE=5'})
-xlabel('gb misorientation');
-ylabel(' ');
+% 
+% figure;hold on;
+% for iE = 2:5
+%     gbTwinned_iE = tb_gbNum(tb_iE==iE);
+%     gbMiso = zeros(length(uniqueBoundaryList),1);
+%     ind_twinned = zeros(length(uniqueBoundaryList),1);
+%     
+%     for ii = 1:length(uniqueBoundaryList)
+%         gbNum = uniqueBoundaryList(ii);
+%         g1 = floor(gbNum/10000);
+%         g2 = mod(gbNum,10000);
+%         ind_euler = find(gID==g1);
+%         euler_1 = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
+%         ind_euler = find(gID==g2);
+%         euler_2 = [gPhi1(ind_euler),gPhi(ind_euler),gPhi2(ind_euler)];
+%         gbMiso(ii) = calculate_misorientation_hcp(euler_1,euler_2);
+%         if ismember(gbNum,gbTwinned_iE)
+%             ind_twinned(ii) = 1;
+%         end
+%     end
+%     
+%     gbMisoTwinned = gbMiso(ind_twinned==1);
+%     gbMisoNonTwinned = gbMiso;
+%     gbMisoNonTwinned(ind_twinned==1) = [];
+%     
+%     edges = 0:5:95;
+%     
+%     % figure;histogram(gbMisoTwinned,edges);
+%     % title(['With twin, iE=',num2str(iE)]);
+%     % xlabel('gb misorientation');
+%     % ylabel('counts');
+%     %
+%     % figure;histogram(gbMisoNonTwinned,edges);
+%     % title(['Without twin, iE=',num2str(iE)]);
+%     % xlabel('gb misorientation');
+%     % ylabel('counts');
+%     
+%     plot(edges(1:end-1), histcounts(gbMisoTwinned,edges)./(histcounts(gbMisoTwinned,edges)+histcounts(gbMisoNonTwinned,edges)), '-o')
+% 
+% end
+% 
+% title(['# grains twinned over # grains total']);
+% legend({'iE=2','iE=3','iE=4','iE=5'})
+% xlabel('gb misorientation');
+% ylabel(' ');
 
 %% 
 
