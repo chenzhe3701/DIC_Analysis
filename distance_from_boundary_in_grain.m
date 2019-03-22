@@ -21,6 +21,13 @@ if ~exist('roundTF','var')
     roundTF = 1;
 end
 
+if length(gbList)~=length(gList)
+   error('gbList and gList must be of the same length'); 
+end
+
+list = sortrows([gList(:),gbList(:)]);
+
+
 [~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
 uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
 
@@ -30,8 +37,9 @@ method = 'slow';
 switch method
     case 'slow'
         % slow method
-        for ii = 1:length(gList)
-            ID_current = gList(ii); disp(ID_current)
+        while ~isempty(list)
+%         for ii = 1:length(gList)
+            ID_current = list(1,1); disp(ID_current)
             ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
             % Make it one data point wider on each side
             indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
@@ -42,8 +50,12 @@ switch method
             ID_local = ID(indR_min:indR_max, indC_min:indC_max);
             uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
             
+            ind = (list(:,1)==ID_current);
+            gbs_current = list(ind,2);
+            list(ind,:) = [];   % remove the gbs of intereste related to this grain  
+            
             BW_local = zeros(size(ID_local));   % initalize with 0
-            BW_local(ismember(uniqueBoundary_local, gbList)) = 1;   % label initial boundary
+            BW_local(ismember(uniqueBoundary_local, gbs_current)) = 1;   % label initial boundary
             BW_local = bwdist(BW_local);    % calculate dist
             BW_local(~ismember(ID_local,ID_current)) = 0;
             
