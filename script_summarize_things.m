@@ -92,7 +92,7 @@ end
 %% (0) load data, using SF threshold values to assign active twin system, and make maps
 % Load cluster number maps (cleaned).
 clusterNumberMapCell = cell(1,length(STOP)-1);
-for iE = iE_start:iE_stop
+for iE = []%iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'clusterNumMapCleaned');
     clusterNumberMapCell{iE} = clusterNumMapCleaned;
@@ -109,7 +109,9 @@ end
 
 
 %% Summarize, e.g., grain with twins, without twins, and their distribution on IPF/pole figure
-%% (s0) The SF distribution of all grains w.r.t grain size. (i.e., does larger grain tend to have larger/smaller SF? should not, but was asked to check ...)
+%% () twinning is dominated by SF.  Histogram: [counts_of_twinned/non-twinned] vs. [SF]
+
+%% [r] (s0) The SF distribution of all grains w.r.t grain size. (i.e., does larger grain tend to have larger/smaller SF? should not, but was asked to check ...)
 % (1) using box plot to check
 % (2) plot on IPF map to check
 close all;
@@ -125,14 +127,13 @@ for iS = 1:length(stru)
     ind = find(gID == ID_current);
     eulers(iS,:) = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
     sf(iS) = max(stru(iS).tSF);
-    gd(iS) = sqrt(struCell{iE}(iS).gVol/pi*4) * um_per_dp;
+    gd(iS) = sqrt(4*struCell{iE}(iS).gVol/pi) * um_per_dp;  % grain diameter, in micron  
     gs(iS) = struCell{iE}(iS).gVol*um_per_dp.^2;
 end
 
 edges_d = [0:20:20*15,400];
-edges_a = [0:3000:3000*15, 125000];
 
-figure; histogram(gd,edges_d);ylabel('counts');
+figure; histogram(gd,edges_d);ylabel('Counts');
 label_d = discretize(gd,edges_d);
 hold on;
 yyaxis right; boxplot(sf, label_d, 'positions', 10:20:20*16); 
@@ -143,23 +144,25 @@ set(gca,'xticklabels',labels_d,'xticklabelrotation',45);
 ylabel('Schmid Factor (m)');
 xlabel('Grain diameter (um)');
 
-for ii = unique(label_d)
-    plot_on_IPF(eulers(label_d==ii,:),[0 0 0],[0 0 0],[1 0 0],19:24,[-1 0 0; 0 0 0; 0 0 0],'Mg','Twin');
-    title([labels_d{ii},'um']);
-end
+% for ii = unique(label_d)
+%     plot_on_IPF(eulers(label_d==ii,:),[0 0 0],[0 0 0],[1 0 0],19:24,[-1 0 0; 0 0 0; 0 0 0],'Mg','Twin');
+%     title([labels_d{ii},'um']);
+% end
 
-figure; histogram(gs,edges_a);ylabel('counts');
-label_a = discretize(gs,edges_a);
-hold on;
-yyaxis right; boxplot(sf, label_a, 'positions', 1500:3000:3000*16);
-for ii = 1:length(edges_d)-1
-    labels_a{ii} = [num2str(edges_a(ii)),'-',num2str(edges_a(ii+1))];
-end
-set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
-ylabel('Schmid Factor (m)');
-xlabel('Grain size (um^2)');
+% edges_a = [0:3000:3000*15, 125000];
+%
+% figure; histogram(gs,edges_a);ylabel('counts');
+% label_a = discretize(gs,edges_a);
+% hold on;
+% yyaxis right; boxplot(sf, label_a, 'positions', 1500:3000:3000*16);
+% for ii = 1:length(edges_d)-1
+%     labels_a{ii} = [num2str(edges_a(ii)),'-',num2str(edges_a(ii+1))];
+% end
+% set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+% ylabel('Schmid Factor (m)');
+% xlabel('Grain size (um^2)');
 
-%% (s1) as discussed on Nov-14, check [grains_twinned, grains-nontwinned] as a function of [grain_size], -- large vs small grains.
+%% [r] (s1) as discussed on Nov-14, check [grains_twinned, grains-nontwinned] as a function of [grain_size], -- large vs small grains.
 
 close all;
 for iE = iE_start:iE_stop
@@ -192,7 +195,7 @@ for iE = iE_start:iE_stop
     set(gca,'ylim',[0 0.4]);
 end
 
-%%
+%% [r] use Area
 close all;
 for iE = iE_start:iE_stop
     um_per_dp = 5*360/4096;    % micron per data point, ~0.43
@@ -236,9 +239,12 @@ for iE = iE_start:iE_stop
     set(gca,'ylim',[0 0.4], 'xlim',[0,48000]);
     legend('Total', 'Twinned','Pct Grains Twinned','location','west');
     
-    for ii = 1:length(edges_d)-1
+    
+    
+    for ii = 1:length(edges_a)-1
         labels_a{ii} = [num2str(edges_a(ii)),'-',num2str(edges_a(ii+1))];
     end
+    
     figure;
     boxplot(sf_t,bn_t);
     set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
@@ -251,12 +257,73 @@ for iE = iE_start:iE_stop
     title('SF Distribution in Non-Twinned Grains');
     xlabel('grain size (um^2)'); ylabel('Schmid Factor (m)');
 end
+%% [r] use diameter
+close all;
+for iE = iE_start:iE_stop
+    um_per_dp = 5*360/4096;    % micron per data point, ~0.43
+    gs_t = [];
+    sf_t = [];
+    gs_nt = [];
+    sf_nt = [];
+    
+    ic_t = 1;
+    ic_nt = 1;
+    for iS = 1:length(struCell{iE})
+        if any(sum(struCell{iE}(iS).cTrueTwin,1))
+            gs_t(ic_t) = sqrt(struCell{iE}(iS).gVol*um_per_dp.^2*4/pi);
+            sf_t(ic_t) = mean(struCell{iE}(iS).tSF(sum(struCell{iE}(iS).cTrueTwin,1)>0));
+            ic_t = ic_t + 1;
+        else
+            gs_nt(ic_nt) = sqrt(struCell{iE}(iS).gVol*um_per_dp.^2*4/pi);
+            sf_nt(ic_nt) = max(struCell{iE}(iS).tSF);
+            ic_nt = ic_nt + 1;
+        end
+    end
+    
+    edges_d = [0:20:20*15,400];
+    edges_a = [0:3000:3000*15, 125000];
+    
+    edges = edges_d;    % use diameter
+    
+    bn_t = discretize(gs_t,edges);
+    bn_nt = discretize(gs_nt,edges);
+    
+    figure;
+    histogram([gs_nt,gs_t],edges);
+    hold on;
+    histogram(gs_t,edges);
+
+    xlabel('grain diameter (um)');
+    ylabel('Counts');
+    title(['iE = ',num2str(iE)]);
+    yyaxis right;
+    set(gca,'ycolor','r')
+    plot(edges(1:end-1)+(edges(2)-edges(1))/2,histcounts(gs_t,edges)./(histcounts(gs_t,edges)+histcounts(gs_nt,edges)),'-ro');
+    ylabel('pct grain twinned');
+    set(gca,'ylim',[0 1], 'xlim',[0,320]);
+    legend('Total', 'Twinned','Pct Grains Twinned','location','west');
+    
+    for ii = 1:length(edges)-1
+        labels_a{ii} = [num2str(edges(ii)),'-',num2str(edges(ii+1))];
+    end
+    figure;
+    boxplot(sf_t,bn_t);
+    set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+    title('SF Distribution in Twinned Grains');
+    xlabel('grain diameter (um)'); ylabel('Schmid Factor (m)');
+    
+    figure;
+    boxplot(sf_nt,bn_nt);
+    set(gca,'xticklabels',labels_a,'xticklabelrotation',45);
+    title('SF Distribution in Non-Twinned Grains');
+    xlabel('grain diameter (um)'); ylabel('Schmid Factor (m)');
+end
 
 
 
 
 
-%% (s2) Only consider twinned grains, [pct_of_twinned_area] as a function of [grain_size] 
+%% [r] (s2) Only consider twinned grains, [pct_of_twinned_area] as a function of [grain_size] 
 close all;
 for iE = iE_start:iE_stop
     um_per_dp = 5*360/4096;    % micron per data point, ~0.43
@@ -291,20 +358,26 @@ end
 close all;
 
 % investigate the grain size, get an estimate, and eliminate the small grains  
-gSizeMap = zeros(size(ID));
 gSizes = zeros(1,length(struCell{5}));
+fieldData = zeros(1,numel(unique(gID)));
 for ii = 1:length(struCell{5})
    gSizes(ii) = struCell{5}(ii).gVol;
-   gSizeMap(ID==struCell{5}(ii).gID) = struCell{5}(ii).gVol;
+   ind = find(gID == struCell{5}(ii).gID);
+   if ~isempty(ind)
+       fieldData(ind) = sqrt(4*struCell{5}(ii).gVol/pi);
+   else
+       disp(struCell{5}(ii).gID);
+   end
 end
+gSizeMap = assign_field_to_cell(ID,gID,fieldData);
 figure; histogram(gSizes);
 myplotc_low(gSizeMap);  % choose 3000?
 
 % using this gSizeMap, we can quantile(gSizeMap(:),pct) to get the gSize below which accounts for pct of the total area 
 quantile(gSizeMap(:),[0.05, 0.4, 0.5, 0.6, 0.95])
 
-save('gSizeMap.mat','gSizeMap','gSizes');
-%% (2.1) summarize. from previous section, for WE43_T6, there is not a minimum grain size to consider. But it is possible for other sample  
+% save('gSizeMap.mat','gSizeMap','gSizes');
+%% [r] (2.1) summarize. from previous section, for WE43_T6, there is not a minimum grain size to consider. But it is possible for other sample  
 for iE = iE_start:iE_stop
     mTwinned = [];
     mNonTwinned = [];
@@ -335,7 +408,7 @@ end
 
 %% (3) for twinned grains, what is the rank of the twin system ?
 
-%% (4) exx_of_twin_area vs. exx_of_nontwinned_area.  And total u accommodated by twin vs nontwinned area.
+%% (4) exx_of_twin_area vs. exx_of_nontwinned_area.  And total u accommodated by twin vs nontwinned area. (P45, P56)
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 for iE = iE_start:iE_stop
     
@@ -446,7 +519,7 @@ title('approximate u ratio of twinned/nontwinned')
 
 
 
-%% Is the exx strain distribution of twinned area related to grain size ? (Daly asked 2018-11-08)
+%% Is the exx strain distribution of twinned area related to grain size ? (Daly asked 2018-11-08)  (I think it should not P52)
 for iE = iE_start:iE_stop
     clear grain_size twin_area_fraction e_avg e_std
     iCount = 1;
