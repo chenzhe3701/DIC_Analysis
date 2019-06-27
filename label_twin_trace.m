@@ -218,14 +218,14 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % If there are more than one active slip/twin systems, we should seperate them:
     switch sum(activeSS)
         case 0
-            fragments = zeros(size(clusterNumMapC));
+            fragmentsGrouped = zeros(size(clusterNumMapC));
             %             fragmentsR2 = zeros(size(clusterNumMapC));
         case 1     % If try always run fit r2 procedure, can disable this part by using case '-1'
             ind = find(activeSS);
-            fragments = (nss+ind) * ones(size(clusterNumMapC));
-            fragments(clusterNumMapC==0) = 0;
+            fragmentsGrouped = (nss+ind) * ones(size(clusterNumMapC));
+            fragmentsGrouped(clusterNumMapC==0) = 0;
             if debugTF >= 1
-                myplot(fragments); caxis([18,24]);
+                myplot(fragmentsGrouped); caxis([18,24]);
             end
             %             fragmentsR2 = ones(size(clusterNumMapC));   % no other choices,  simply make it as one.
             %             fragmentsR2(clusterNumMapC==0) = 0;
@@ -281,15 +281,15 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             end
             
             % (12) Grow each grouped branch into a a fragment with ID equals to active ss/ts.
-            [~,fragments] = city_block(branchGrouped);
-            fragments(clusterNumMapC==0) = 0;
+            [~,fragmentsGrouped] = city_block(branchGrouped);
+            fragmentsGrouped(clusterNumMapC==0) = 0;
             
             % (*) Use together with previous (*)
-            fragments(isnan(fragments)) = 0;
+            fragmentsGrouped(isnan(fragmentsGrouped)) = 0;
             
             % [illustrate] the fragments
             if debugTF >= 1
-                myplot(fragments, branch); caxis([18,24]);
+                myplot(fragmentsGrouped, branch); caxis([18,24]);
             end
             
     end
@@ -299,7 +299,11 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     else
         haveActiveSS = 0;
     end
-    
+    disp(ssAllowed(:)');
+    disp(active_post(:)');
+    if (sum(ssAllowed(:)-active_post(:))~=0)&&(sum(~ssAllowed(:))+sum(active_post(:))~=0)
+       error('error'); 
+    end
     % check if need to go back.  If have activeSS, and not the first in the iE_list, go back.  If go back, only activeSS is allowed.
     % If go back, it may affect the previous strain levels maps.
     goBack = goBack;
@@ -313,16 +317,16 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     
 else
     haveActiveSS = 0;
-    fragments = [];
+    fragmentsGrouped = [];
 end
 
 % Only update iE level.  Other levels were updated iteratively.
-if ~isempty(fragments)
-    twinMapCell_cluster{iE,iC} = fragments;
+if ~isempty(fragmentsGrouped)
+    twinMapCell_cluster{iE,iC} = fragmentsGrouped;
     
-    sfMap = zeros(size(fragments));
+    sfMap = zeros(size(fragmentsGrouped));
     for it = 1:ntwin
-        sfMap(fragments==it+nss) = traceSF(it);
+        sfMap(fragmentsGrouped==it+nss) = traceSF(it);
     end
     sfMapCell_cluster{iE,iC} = sfMap;
 end

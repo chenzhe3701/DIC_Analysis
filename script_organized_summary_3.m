@@ -1,4 +1,12 @@
 % script for analyzing twin-grain boundary intersection
+% 
+% 2019-06-13 note
+% Check [strain] distribution at [dist_to_gb], by plotting maps.
+% criterion: twin_twin_twin/nontwin_side, coactivation,
+% slip_twin_slip/twin_side, not_involved.
+% This code look at the previous strain level.
+%
+% The results were looked at in script_organized_5
 
 clear;
 addChenFunction;

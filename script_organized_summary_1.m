@@ -114,10 +114,11 @@ iE_select = 5;  % select iE to look at
 close all;
 um_per_dp = 5*360/4096;    % micron per data point, ~0.43
 
-sf_t = [];      % SF of activated twins in twinned grain
-sf_nt = [];     % SF_max of twins in non-twinned grain
+sf_t = [];      % max SF of the activated twins in twinned grain
+sf_nt = [];     % max SF of twins in non-twinned grain
 sf = [];        % combination of sf_t and sf_nt
-sf_max = [];
+sf_max = [];    % max SF of twins in that grain
+
 tTF= [];    % Is it twinned?
 gd_t = [];      % grain diameter in twinned grain
 gd_nt = [];     % grian diameter in non-twinned grain
@@ -136,7 +137,7 @@ for iS = 1:length(struCell{iE_select})
     t = double(logical(sum(t,1))).*reshape(struCell{iE}(iS).tSF(:),[],6);   % This indicates whether there is a twin
     
     if any(t)
-        sf_t = [sf_t; max(t)];      % SF of the active TS, may not be the highest one
+        sf_t = [sf_t; max(t)];      % max SF of the active TSs in the grain, may not be the highest one
         sf = [sf; max(t)];
         gd_t = [gd_t; sqrt(4*struCell{iE}(iS).gVol/pi) * um_per_dp];
         gd = [gd; gd_t(end)];

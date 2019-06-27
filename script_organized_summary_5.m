@@ -1,4 +1,15 @@
 % script for analyzing twin-grain boundary intersection
+%
+% chenzhe, 2019-06-24 note
+% summarize the strain distribution (mean, quantile) within [distance] to [gb] at [type of grains] e.g.,  
+% [gb, grain - nontwin side]  twin-induced-twin activity, old twin side  
+% [gb, grain - twin side] twin-induced-twin activity, new twin side
+% [gb, grain - coactivated] coactivated activity
+% [gb, grain -slip side] slip-induced activity, slip side 
+% [gb, grain -twin side] slip-induced activity, twin side
+% [gb, grain] where no twin activity is invovlde   
+%
+% For each grain, get one data, then use histogram to summarize.
 
 clear;
 addChenFunction;
@@ -118,15 +129,16 @@ for iE_select = 4%iE_start+1:iE_stop
     % (5) emap
     eMap = calculate_effective_strain(strainFile{iE_select-1}.exx, strainFile{iE_select-1}.exy, strainFile{iE_select-1}.eyy);
     
-    p1 = [];
-    p2 = [];
-    p3 = [];
-    p4 = [];
-    p5 = [];
-    p6 = [];
+    % pn contains data pair [grain boundary number, grain number of grain that satisfies some criterion: (newly activated events at this strain)   
+    p1 = [];    % [gb, grain - nontwin side]  twin-induced-twin activity, old twin side  
+    p2 = [];    % [gb, grain - twin side] twin-induced-twin activity, new twin side
+    p3 = [];    % [gb, grain - coactivated] coactivated activity
+    p4 = [];    % [gb, grain -slip side] slip-induced activity, slip side 
+    p5 = [];    % [gb, grain -twin side] slip-induced activity, twin side
+    p6 = [];    % [gb, grain] where no twin activity is invovlde   
     for ii = 1:size(activity_this_iE,1)
         activity = activity_this_iE(ii,:);
-        % (1) If activity is new?
+        % (1) If activity is new? --> analyze newly occured activity
         if ~ismember(activity,activity_previous_iE,'rows')
             gs = [floor(activity(1)/10000), mod(activity(1),10000)];
             gb = activity(1);
@@ -162,8 +174,8 @@ for iE_select = 4%iE_start+1:iE_stop
     p6 = unique(p6,'rows');
   
     th = 100;
-    d4 = [];
-    d44 = [];
+    d4 = [];    % 'd' for data.  Summarize mean/quantile of strain 
+    d44 = [];   
     for ii = 1:size(p4,1)
         ii
         ID_interest = p4(ii,2);

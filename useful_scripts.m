@@ -73,7 +73,28 @@ end
 
 
 
+%% scripts for predicted strain
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+ss = crystal_to_cart_ss(ssa,c_a);
 
+gamma = 0.1289; % twin shear for Mg
+cPred = nan*zeros(nss,5);   % [iss, SF, exx, exy, eyy]
+for iss = (nss+1):(nss+ntwin)   % for Mg
+    %         disp('---');
+    N(iss,:) = ss(1,:,iss) * g;
+    M(iss,:) = ss(2,:,iss) * g;
+    MN2{iss} = M(iss,:)'*N(iss,:);
+    MN2{iss} = MN2{iss}(1:2,1:2);
+    %         F3 = eye(3) + gamma*M(iss,:)'*N(iss,:);
+    %         F = F3(1:2,1:2);
+    F = eye(2) + gamma*MN2{iss};
+    epsilon = (F'*F-eye(2))/2;
+    %         disp((F3'*F3-eye(3))/2);
+    %         disp(epsilon);
+    cPred(iss,1) = iss;                                     % ss number
+    cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
+    cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy.  Note that 'conjugated' twin system, i.e., 19 and 22, almost always show similar components!!!
+end
 
 
 

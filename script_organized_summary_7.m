@@ -1,4 +1,9 @@
 % script for analyzing twin-grain boundary intersection
+%
+% chenzhe, 2019-06-24 note
+% use stepwiselm() to fit linear model and select the most relavant
+% variable for twin growth rate.
+
 
 clear;
 addChenFunction;
@@ -129,7 +134,7 @@ for iS = 1:length(struCell{iE_start})
     end
     tvol_allT_allE(tvol_allT_allE==0) = nan;
     
-    % when comparing twin vol, it's not proper to compare absolute side, because grain size is different  
+    % when comparing twin vol, it's not proper to compare absolute size, because grain size is different  
     % but when comparing twin growth speed, it's better to compare advancing rate in um/pixels (currently I don't have this ability to count individual twins, number of twin fragments, etc)   
     for it = 1:6
         iEs = find(tvol_allT_allE(it,:)>0); % find all iEs with

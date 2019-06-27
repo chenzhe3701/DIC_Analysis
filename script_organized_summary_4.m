@@ -1,4 +1,8 @@
 % script for analyzing twin-grain boundary intersection
+%
+% chenzhe, 2019-06-13 note.
+% Summary on twin variant selection: counts_of_variants vs. SF.
+% Variant_size_as_gs_pct vs. Variant/SF
 
 clear;
 addChenFunction;

@@ -1,4 +1,10 @@
 % script for analyzing twin-grain boundary intersection
+%
+% 2019-06-13 note
+% Check [strain] distribution at [dist_to_gb]
+% criterion: involved_twinned, involved_not_twinned, not_involved
+% This might not be a good way to summarize.  
+% Also, this only look at the current strain level
 
 clear;
 addChenFunction;

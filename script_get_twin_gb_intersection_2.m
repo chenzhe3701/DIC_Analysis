@@ -211,14 +211,14 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
         branchNumbered(branchPoints) = 0;   % Note, this is new comparing to my old codes
         
         % Here get fragments_N from trueTwimMapL, by one_pass_label again
-        fragments_N = one_pass_label_8(trueTwinMapL);   % [~,fragments_N] = city_block(branchNumbered);
+        fragments_N = one_pass_label_8(trueTwinMapL);
         fragments_N(trueTwinMapL==0) = 0;
         % Now at this point, [branch_tn] = short skeleton, numbered by the TS#.
         % [branch_N] = short skeleton, numbered by sorting.
         % [fragments_N] = twin fragments, numbered by sorting
         
-        uniqueFragment_N = unique(fragments_N(:));     % uniqueBranch_N = unique(branchNumbered(:));
-        uniqueFragment_N(uniqueFragment_N==0) = [];
+        uniqueBranch_N = unique(fragments_N(:));
+        uniqueBranch_N(uniqueBranch_N==0) = [];
         % for each twin skeleton, need to have a minimum length along the trace direction
         activeTS = sum(struCell{iE}(iS).cTrueTwin,1);
         
@@ -231,10 +231,10 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
             myplotm(fragments_N, 'tf', uniqueBoundary_local, 'pn', 1, 'r', 1); 
             hold on;
         end
-        for ii = 1:length(uniqueFragment_N)
-            fn = uniqueFragment_N(ii);
+        for ii = 1:length(uniqueBranch_N)
+            bn = uniqueBranch_N(ii);
             fragMap = fragments_N;          % choice-1: branch_N
-            fragMap(fragments_N~=fn) = 0;   % choice-1: branch_N
+            fragMap(fragments_N~=bn) = 0;   % choice-1: branch_N
             % check length use x_local and y_local
             xrange = range(x_local(fragMap>0));
             yrange = range(y_local(fragMap>0));
@@ -253,16 +253,10 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
                 peaks = houghpeaks(H, 1);
                 peakRho = Rho(peaks(1));
                 peakTheta = Theta(peaks(2));
-   
+                
                 lines = houghlines(uniqueBoundary_local, Theta, Rho, peaks, 'FillGap',999999);   % Note that the lines can be empty
                 
-                % This calculates the trace dir
-                frag_skl = double( bwskel(imbinarize(fragMap)));
-                model = fitlm(x_local(frag_skl==1), y_local(frag_skl==1));
-                branchND = atand(-1/model.Coefficients.Estimate(2));
-                dAngle = abs(theta_target  - branchND);
-                
-                if (~isempty(lines) && (dAngle<15))
+                if ~isempty(lines)
                     xy = [lines(1).point1; lines(1).point2];
                     
                     % method-1: calculate the distance map from the fragment. Then check the two end points of the houghline.

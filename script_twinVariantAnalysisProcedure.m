@@ -150,12 +150,34 @@ for iE = iE_start:iE_stop
     exxLocal = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
     % (Figure-1)
     if ismember(iE,iE_select)
+        exxLocal(ID_local~=ID_current)=nan;
         myplot(x_local, y_local, exxLocal, (boundaryTFLocal));
-        myplot(x_local, y_local, clusterNumMapLocal, (boundaryTFLocal));
+        title('\epsilon_x_x','fontweight','normal');
+        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        
+        clusterNumMapLocal_a = clusterNumMapLocal;
+        clusterNumMapLocal_a(ID_local~=ID_current)=nan;
+        clusterNumMapLocal_a(clusterNumMapLocal_a==0)=nan;
+        [f,a,c] = myplot(x_local, y_local, clusterNumMapLocal_a, (boundaryTFLocal));
+        caxis([0 2]);
+        set(c,'Ticks',[0 1 2]);
+        title('Cluster ID','fontweight','normal');
+        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        colormap(parula(3));
+        set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
     end
     clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.00025);   % choices can be 0.0025 or 0.00025, whichever ok to keep more small and long traces  ------------------------------------------------- 
     if ismember(iE,iE_select)
-        myplot(x_local, y_local, clusterNumMapLocal, boundaryTFLocal);
+        clusterNumMapLocal_a = clusterNumMapLocal;
+        clusterNumMapLocal_a(ID_local~=ID_current)=nan;
+        clusterNumMapLocal_a(clusterNumMapLocal_a==0)=nan;
+        [f,a,c] = myplot(x_local, y_local, clusterNumMapLocal_a, (boundaryTFLocal));
+        caxis([0 2]);
+        set(c,'Ticks',[0 1 2]);
+        title('Cluster ID','fontweight','normal');
+        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        colormap(parula(3));
+        set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
     end
     
     % Because we have just cleaned clusterNumMap again, we need to update the clusterNumMapCell, which is different from the real code, which just load existing cleaned data
@@ -222,9 +244,10 @@ for iE_entry = iE_start:iE_stop
                 iC = iC_list(iEC);
                 
                 %if(true) % This can control the actual selected strain level for anlaysis -------------------------------------------------------
-                if (iE==iE_select)&&(iC==iC_select)&&(debugTF)   
+                if (iE==iE_select)&&(iC==iC_select)&&(debugTF)  
                     ssAllowed = ones(ntwin,1);
                     script_label_twin_trace;    % -------------------------------------------------------------> this is the script to plot everything   
+                    error('abc');
                 end
                 
                 % run this for real analysis.  Below: each cell contains cells of tMap at an iEs
@@ -237,7 +260,7 @@ for iE_entry = iE_start:iE_stop
     end % end of iC_outer
 end % end of iE_outer
 
-% for each strain level, update twinMapLocal{iE} with tMapCell
+%% for each strain level, update twinMapLocal{iE} with tMapCell
 for iE = iE_start:iE_stop
     for jj = 1:size(twinMapCell_cluster,2)
         if (iE<=size(twinMapCell_cluster,1))&&(jj<=size(twinMapCell_cluster,2)) && (~isempty(twinMapCell_cluster{iE,jj}))
@@ -259,201 +282,205 @@ end
 disp(iS);
 
 
-%% (2) Then need to demonstrate how to find twin boundary intersection
-iE = iE_select;   %iS = find(arrayfun(@(x) x.gID == 694,struCell{iE}));    % 378, 694  --------------------------------
-close all;
-% Can initialize field
-struCell{iE}(iS).tGb = cell(1,ntwin);
-struCell{iE}(iS).tGbPts = cell(1,ntwin);
-for ii = 1:ntwin
-    struCell{iE}(iS).tGbPts{ii} = {[]};
-end
-
-% If there are twins active: if sum(struCell{iE}(iS).cTrueTwin(:))>0
-if sum(struCell{iE}(iS).cTrueTwin(:))>0
-    
-    uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
-    uniqueBoundary_local = imdilate(uniqueBoundary_local,ones(3));
-    uniqueBoundary_local(ID_local~=ID_current)=0;
-    
-    trueTwinMapL = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
-    trueTwinMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
-
-    trueTwinMapT = double( bwskel(imbinarize(trueTwinMapL),'MinBranchLength', 0 * round(min(size(trueTwinMapL))*0.2)) );
-    skl_tn = trueTwinMapT .* trueTwinMapL;
-    branchPoints = bwmorph(skl_tn, 'branchpoints');
-    branchPoints = imdilate(branchPoints, ones(3));
-    branch_tn = skl_tn;
-    branch_tn(branchPoints>0) = 0;
-    
-    branch_N = one_pass_label_8(branch_tn);    % here should use 8-connectivity to label
-    branch_N(~branch_tn) = 0;
-    branch_N(branchPoints) = 0;   % Note, this is new comparing to my old codes
-%     % Potential improvement, thin map for each individual twin, then combine the skeleton, but turned out to be a very bad method
-%     branch_N = zeros(size(trueTwinMapL));
-%     for it = nss+1 : nss+ntwin
-%         branch_N = branch_N + it * double( bwskel((trueTwinMapL==it),'MinBranchLength',0 * round(min(size(trueTwinMapL))*0.2)) );
-%     end    
-%     branch_N = one_pass_label_8(branch_N);
-    if debugTF
-        myplot(branch_N, boundaryTFLocal); caxis([0, max(branch_N(:))]);
-    end
-        
-    [~,fragments_N] = city_block(branch_N);
-    fragments_N(trueTwinMapL==0) = 0;
-    % Now at this point, [branch_tn] = short skeleton, numbered by the TS#.
-    % [branch_N] = short skeleton, numbered by sorting.
-    % [fragments_N] = twin fragments, numbered by sorting
-    if debugTF
-        myplot(fragments_N, boundaryTFLocal); caxis([0, max(branch_N(:))]);
-    end
-    
-    uniqueBranch_N = unique(branch_N(:));
-    uniqueBranch_N(uniqueBranch_N==0) = [];
-    % for each twin skeleton, need to have a minimum length along the trace direction
-    activeTS = sum(struCell{iE}(iS).cTrueTwin,1);
-    
-    dist_cr = 10;    % ------------------------------- This is a quite arbitrarily selected criterion  ---- -
-    npts_cr = 5;    % # of points within a certain distance to a gb ponint, then this frag can be considered as touching gb
-    
-    if debugTF
-        myplot(fragments_N,boundaryTFLocal); hold on;
-    end
-    for ii = 1:length(uniqueBranch_N)
-        bn = uniqueBranch_N(ii);
-        fragMap = fragments_N;          % choice-1: branch_N
-        fragMap(fragments_N~=bn) = 0;   % choice-1: branch_N
-        % check length use x_local and y_local
-        xrange = range(x_local(fragMap>0));
-        yrange = range(y_local(fragMap>0));
-        span = sqrt(xrange^2+yrange^2);
-        spanEnough = span > min(size(y_local,1),size(y_local,2))*(y_local(2)-y_local(1))*0.10;    % min(height,width) * scale * pct
-        
-        if spanEnough
-            tsNum = mode(trueTwinMapL(fragMap>0));    % most frequent element, is the ts number of this branch  % choice-1: branch_N
-            
-            iTwin = tsNum - nss;
-            
-            theta_target = traceND(iTwin);
-            [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
-            % block other peaks, if any
-            H(:,abs(Theta-theta_target)>2) = 0;
-            peaks = houghpeaks(H, 1);
-            peakRho = Rho(peaks(1));
-            peakTheta = Theta(peaks(2));
-            
-            lines = houghlines(uniqueBoundary_local, Theta, Rho, peaks, 'FillGap',999999);   % Note that the lines can be empty
-            
-            if ~isempty(lines)
-                xy = [lines(1).point1; lines(1).point2];
-
-                % method-2: for each end point of houghline, calculate a distMap, and check if there is enough twin points within certain distance
-                for jj = 1:2
-                    distMap = zeros(size(fragMap));
-                    distMap(xy(jj,2),xy(jj,1)) = 1;
-                    distMap = bwdist(distMap);
-                    % criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr.
-                    if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr
-                        if debugTF
-                            plot3(xy(:,1),xy(:,2),[100;100],'LineWidth',1,'Color','g');
-                            % Plot beginnings and ends of lines
-                            plot3(xy(jj,1),xy(jj,2),[100;100],'o','LineWidth',2,'Color','r');
-                        end
-                        % This is a contact point. Record the position, and the twin system
-                        gbNum = uniqueBoundary_local(xy(jj,2),xy(jj,1));  % get gbNum
-                        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-                        
-                        % convert xy to absolute coordinate using x_local, y_local
-                        xcoord = x_local(xy(jj,2),xy(jj,1));
-                        ycoord = y_local(xy(jj,2),xy(jj,1));
-                        
-                        if isempty(ind)
-                            % append
-                            struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
-                            iGb = length(struCell{iE}(iS).tGb{iTwin});
-                            struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
-                        else
-                            % add
-                            iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-                            struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
-                        end
-                    end
-                end
-                
-            end
-        end
-    end
-    
-    %% do this for a specific fragment
-    if 0
-        myplot(fragments_N==38,boundaryTFLocal); hold on;
-        ii = 37;
-        
-        bn = uniqueBranch_N(ii);
-        fragMap = fragments_N;          % choice-1: branch_N
-        fragMap(fragments_N~=bn) = 0;   % choice-1: branch_N
-        % check length use x_local and y_local
-        xrange = range(x_local(fragMap>0));
-        yrange = range(y_local(fragMap>0));
-        span = sqrt(xrange^2+yrange^2);
-        spanEnough = span > min(size(y_local,1),size(y_local,2))*(y_local(2)-y_local(1))*0.10;    % min(height,width) * scale * pct
-        
-        if spanEnough
-            tsNum = mode(trueTwinMapL(fragMap>0));    % most frequent element, is the ts number of this branch  % choice-1: branch_N
-            
-            iTwin = tsNum - nss;
-            
-            theta_target = traceND(iTwin);
-            [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
-            % block other peaks, if any
-            H(:,abs(Theta-theta_target)>2) = 0;
-            peaks = houghpeaks(H, 1);
-            peakRho = Rho(peaks(1));
-            peakTheta = Theta(peaks(2));
-            
-            lines = houghlines(uniqueBoundary_local, Theta, Rho, peaks, 'FillGap',999999);   % Note that the lines can be empty
-            
-            if ~isempty(lines)
-                xy = [lines(1).point1; lines(1).point2];
-
-                % method-2: for each end point of houghline, calculate a distMap, and check if there is enough twin points within certain distance
-                for jj = 1:2
-                    distMap = zeros(size(fragMap));
-                    distMap(xy(jj,2),xy(jj,1)) = 1;
-                    distMap = bwdist(distMap);
-                    % criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr.
-                    if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr
-                        if debugTF
-                            plot3(xy(:,1),xy(:,2),[100;100],'LineWidth',1,'Color','r');
-                            % Plot beginnings and ends of lines
-                            plot3(xy(jj,1),xy(jj,2),[100;100],'o','LineWidth',2,'Color','g');
-                        end
-                        % This is a contact point. Record the position, and the twin system
-                        gbNum = uniqueBoundary_local(xy(jj,2),xy(jj,1));  % get gbNum
-                        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-                        
-                        % convert xy to absolute coordinate using x_local, y_local
-                        xcoord = x_local(xy(jj,2),xy(jj,1));
-                        ycoord = y_local(xy(jj,2),xy(jj,1));
-                        
-                        if isempty(ind)
-                            % append
-                            struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
-                            iGb = length(struCell{iE}(iS).tGb{iTwin});
-                            struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
-                        else
-                            % add
-                            iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-                            struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
-                        end
-                    end
-                end
-                
-            end
-        end
-    end
-    
-end
+%% Update: I think now there is no need to demonstrate here, as it is already demonstrated in script_label_twin_trace().  The following used a different method, but no use, no change.
+% %% (2) Then need to demonstrate how to find twin boundary intersection.  
+% iE = iE_select;   %iS = find(arrayfun(@(x) x.gID == 694,struCell{iE}));    % 378, 694  --------------------------------
+% close all;
+% % Can initialize field
+% struCell{iE}(iS).tGb = cell(1,ntwin);
+% struCell{iE}(iS).tGbPts = cell(1,ntwin);
+% for ii = 1:ntwin
+%     struCell{iE}(iS).tGbPts{ii} = {[]};
+% end
+% 
+% % If there are twins active: if sum(struCell{iE}(iS).cTrueTwin(:))>0
+% if sum(struCell{iE}(iS).cTrueTwin(:))>0
+%     
+%     uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
+%     uniqueBoundary_local = imdilate(uniqueBoundary_local,ones(3));
+%     uniqueBoundary_local(ID_local~=ID_current)=0;
+%     
+%     trueTwinMapL = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+%     trueTwinMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
+% 
+%     trueTwinMapT = double( bwskel(imbinarize(trueTwinMapL),'MinBranchLength', 0 * round(min(size(trueTwinMapL))*0.2)) );
+%     % new code to remove small branches from skeleton
+%     [trueTwinMapT, branchPoints] = clean_skl(trueTwinMapT, 0.05*min(size(trueTwinMapL)) );
+%     
+%     skl_tn = trueTwinMapT .* trueTwinMapL;
+%     % branchPoints = bwmorph(skl_tn, 'branchpoints');
+%     branchPoints = imdilate(branchPoints, ones(3));
+%     branch_tn = skl_tn;
+%     branch_tn(branchPoints>0) = 0;
+%     
+%     branch_N = one_pass_label_8(branch_tn);    % here should use 8-connectivity to label
+%     branch_N(~branch_tn) = 0;
+%     branch_N(branchPoints) = 0;   % Note, this is new comparing to my old codes
+% %     % Potential improvement, thin map for each individual twin, then combine the skeleton, but turned out to be a very bad method
+% %     branch_N = zeros(size(trueTwinMapL));
+% %     for it = nss+1 : nss+ntwin
+% %         branch_N = branch_N + it * double( bwskel((trueTwinMapL==it),'MinBranchLength',0 * round(min(size(trueTwinMapL))*0.2)) );
+% %     end    
+% %     branch_N = one_pass_label_8(branch_N);
+%     if debugTF
+%         myplot(branch_N, boundaryTFLocal); caxis([0, max(branch_N(:))]);
+%     end
+%         
+%     [~,fragments_N] = city_block(branch_N);
+%     fragments_N(trueTwinMapL==0) = 0;
+%     % Now at this point, [branch_tn] = short skeleton, numbered by the TS#.
+%     % [branch_N] = short skeleton, numbered by sorting.
+%     % [fragments_N] = twin fragments, numbered by sorting
+%     if debugTF
+%         myplot(fragments_N, boundaryTFLocal); caxis([0, max(branch_N(:))]);
+%     end
+%     
+%     uniqueBranch_N = unique(branch_N(:));
+%     uniqueBranch_N(uniqueBranch_N==0) = [];
+%     % for each twin skeleton, need to have a minimum length along the trace direction
+%     activeTS = sum(struCell{iE}(iS).cTrueTwin,1);
+%     
+%     dist_cr = 10;    % ------------------------------- This is a quite arbitrarily selected criterion  ---- -
+%     npts_cr = 5;    % # of points within a certain distance to a gb ponint, then this frag can be considered as touching gb
+%     
+%     if debugTF
+%         myplot(fragments_N,boundaryTFLocal); hold on;
+%     end
+%     for ii = 1:length(uniqueBranch_N)
+%         bn = uniqueBranch_N(ii);
+%         fragMap = fragments_N;          % choice-1: branch_N
+%         fragMap(fragments_N~=bn) = 0;   % choice-1: branch_N
+%         % check length use x_local and y_local
+%         xrange = range(x_local(fragMap>0));
+%         yrange = range(y_local(fragMap>0));
+%         span = sqrt(xrange^2+yrange^2);
+%         spanEnough = span > min(size(y_local,1),size(y_local,2))*(y_local(2)-y_local(1))*0.10;    % min(height,width) * scale * pct
+%         
+%         if spanEnough
+%             tsNum = mode(trueTwinMapL(fragMap>0));    % most frequent element, is the ts number of this branch  % choice-1: branch_N
+%             
+%             iTwin = tsNum - nss;
+%             
+%             theta_target = traceND(iTwin);
+%             [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
+%             % block other peaks, if any
+%             H(:,abs(Theta-theta_target)>2) = 0;
+%             peaks = houghpeaks(H, 1);
+%             peakRho = Rho(peaks(1));
+%             peakTheta = Theta(peaks(2));
+%             
+%             lines = houghlines(uniqueBoundary_local, Theta, Rho, peaks, 'FillGap',999999);   % Note that the lines can be empty
+%             
+%             if ~isempty(lines)
+%                 xy = [lines(1).point1; lines(1).point2];
+% 
+%                 % method-2: for each end point of houghline, calculate a distMap, and check if there is enough twin points within certain distance
+%                 for jj = 1:2
+%                     distMap = zeros(size(fragMap));
+%                     distMap(xy(jj,2),xy(jj,1)) = 1;
+%                     distMap = bwdist(distMap);
+%                     % criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr.
+%                     if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr
+%                         if debugTF
+%                             plot3(xy(:,1),xy(:,2),[100;100],'LineWidth',1,'Color','g');
+%                             % Plot beginnings and ends of lines
+%                             plot3(xy(jj,1),xy(jj,2),[100;100],'o','LineWidth',2,'Color','r');
+%                         end
+%                         % This is a contact point. Record the position, and the twin system
+%                         gbNum = uniqueBoundary_local(xy(jj,2),xy(jj,1));  % get gbNum
+%                         ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+%                         
+%                         % convert xy to absolute coordinate using x_local, y_local
+%                         xcoord = x_local(xy(jj,2),xy(jj,1));
+%                         ycoord = y_local(xy(jj,2),xy(jj,1));
+%                         
+%                         if isempty(ind)
+%                             % append
+%                             struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
+%                             iGb = length(struCell{iE}(iS).tGb{iTwin});
+%                             struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
+%                         else
+%                             % add
+%                             iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+%                             struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
+%                         end
+%                     end
+%                 end
+%                 
+%             end
+%         end
+%     end
+%     
+%     %% do this for a specific fragment
+%     if 0
+%         myplot(fragments_N==38,boundaryTFLocal); hold on;
+%         ii = 37;
+%         
+%         bn = uniqueBranch_N(ii);
+%         fragMap = fragments_N;          % choice-1: branch_N
+%         fragMap(fragments_N~=bn) = 0;   % choice-1: branch_N
+%         % check length use x_local and y_local
+%         xrange = range(x_local(fragMap>0));
+%         yrange = range(y_local(fragMap>0));
+%         span = sqrt(xrange^2+yrange^2);
+%         spanEnough = span > min(size(y_local,1),size(y_local,2))*(y_local(2)-y_local(1))*0.10;    % min(height,width) * scale * pct
+%         
+%         if spanEnough
+%             tsNum = mode(trueTwinMapL(fragMap>0));    % most frequent element, is the ts number of this branch  % choice-1: branch_N
+%             
+%             iTwin = tsNum - nss;
+%             
+%             theta_target = traceND(iTwin);
+%             [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
+%             % block other peaks, if any
+%             H(:,abs(Theta-theta_target)>2) = 0;
+%             peaks = houghpeaks(H, 1);
+%             peakRho = Rho(peaks(1));
+%             peakTheta = Theta(peaks(2));
+%             
+%             lines = houghlines(uniqueBoundary_local, Theta, Rho, peaks, 'FillGap',999999);   % Note that the lines can be empty
+%             
+%             if ~isempty(lines)
+%                 xy = [lines(1).point1; lines(1).point2];
+% 
+%                 % method-2: for each end point of houghline, calculate a distMap, and check if there is enough twin points within certain distance
+%                 for jj = 1:2
+%                     distMap = zeros(size(fragMap));
+%                     distMap(xy(jj,2),xy(jj,1)) = 1;
+%                     distMap = bwdist(distMap);
+%                     % criterion for twin touch grain boundar: this fragment has > npts_cr ponints within distance dist_cr.
+%                     if sum(sum( (distMap<dist_cr)&(fragMap>0) )) > npts_cr
+%                         if debugTF
+%                             plot3(xy(:,1),xy(:,2),[100;100],'LineWidth',1,'Color','r');
+%                             % Plot beginnings and ends of lines
+%                             plot3(xy(jj,1),xy(jj,2),[100;100],'o','LineWidth',2,'Color','g');
+%                         end
+%                         % This is a contact point. Record the position, and the twin system
+%                         gbNum = uniqueBoundary_local(xy(jj,2),xy(jj,1));  % get gbNum
+%                         ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+%                         
+%                         % convert xy to absolute coordinate using x_local, y_local
+%                         xcoord = x_local(xy(jj,2),xy(jj,1));
+%                         ycoord = y_local(xy(jj,2),xy(jj,1));
+%                         
+%                         if isempty(ind)
+%                             % append
+%                             struCell{iE}(iS).tGb{iTwin} = [struCell{iE}(iS).tGb{iTwin}, gbNum];   % append the gbNum of the gb touched by this twin
+%                             iGb = length(struCell{iE}(iS).tGb{iTwin});
+%                             struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [xcoord, ycoord];  % assign point coord (1x2 vector) to the cell value
+%                         else
+%                             % add
+%                             iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+%                             struCell{iE}(iS).tGbPts{iTwin}{iGb} =  [struCell{iE}(iS).tGbPts{iTwin}{iGb}; [xcoord, ycoord]];    % append the point coord (1x2 vector) as new rows
+%                         end
+%                     end
+%                 end
+%                 
+%             end
+%         end
+%     end
+%     
+% end
 
 
 

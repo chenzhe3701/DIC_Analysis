@@ -1,4 +1,9 @@
 % script for analyzing twin-grain boundary intersection
+%
+% chenzhe, 2019-06-24 note
+% Summarize twin growth rate as a function of SF/strainLevel/grainDiameter
+% but here rate = differential twin size / differential strain, seems very imprecise  
+% So this does not seem to be a good summary.
 
 clear;
 addChenFunction;
@@ -103,7 +108,8 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
 
 % load previous twin_gb interaction result
 load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
-%% (6) Summarize, does twin growth rate depend on something: 
+%% (6) Summarize, does twin growth rate depend on something:  
+%% (here rate = differential twin size / differential strain)
 % 
 
 close all;

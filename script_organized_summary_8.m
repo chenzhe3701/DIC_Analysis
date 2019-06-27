@@ -1,4 +1,9 @@
 % script for analyzing twin-grain boundary intersection
+%
+% chenzhe, 2019-06-26 note
+% Similar to a ref paper, look at the displacement tensor components of
+% twins in the neighbor grain's coordinate.
+% And do some summary.
 
 clear;
 addChenFunction;
@@ -104,9 +109,9 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
 % load previous twin_gb interaction result
 load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-%% (8) For each twin, look at its contacting neighbor, look at the strain components of twin in the neighbor grain 
-% 
-
+%% (8) For each twin, look at its contacting neighbor, look at the strain components of twin in the neighbor grain
+%
+plotTF = 0;
 warning off;
 [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
 ss = crystal_to_cart_ss(ssa,c_a);
@@ -126,10 +131,12 @@ gamma = 0.1289; % twin shear for Mg
 
 
 % For iE = 2:5, for each grain, find accumulated active TS, and each TS's related neighbor
-for iE = 4
-    T = cell2table(cell(0,8));
-    T.Properties.VariableNames={'ID','ts','sf','gb','activeTF','dp','db','dt'};
-    for iS = 1:length(struCell{iE})
+for iE = 5
+    T = cell2table(cell(0,16));
+    T.Properties.VariableNames={'ID','ts','sf','tAF','gb',  'twinned_TF','twinned_nb_TF','twin_twin_gb_TF','db','dp',  'dt','basal_SF','prism_SF','twin_SF','miso', 'mPrime'};
+    iS = 1;
+    %%
+    while iS<length(struCell{iE})
         ID_current = struCell{iE}(iS).gID;
         
         ind = find(gID==ID_current);
@@ -140,10 +147,13 @@ for iE = 4
             g_1 = euler_to_transformation(euler_1,[-90,180,0],[0,0,0]); % setting-2
         end
         
-        all_neighbor = gNeighbors(ind,1:gNNeighbors(ind));   % [var] all neighbors, regardless of touching twin or not
+        % [1] [var] all neighbors, regardless of touching twin or not
+        all_neighbor = gNeighbors(ind,1:gNNeighbors(ind));
+        all_neighbor_copy = all_neighbor;  % copy for temporary use
         
-        % get accumulative tGB from iE=2 to iE=current iE. Note that this 'unique' operation is not generally applicable
-        tGb = [];   all_tGb = [];
+        % [2.1] get accumulative tGB from iE=2 to iE=current iE. Note that this 'unique' operation is not generally applicable
+        tGb = [];
+        all_tGb = [];
         for ii = 1:6
             tGb{ii} = [];
         end
@@ -155,15 +165,44 @@ for iE = 4
         end
         all_tGb = unique(all_tGb);  % [var] find all grain boudnaryies of this matrix
         
-        all_twin_neighbor = [];     % [var] find all twin-related neighbors
-        for igb = 1:length(all_tGb)
-            uniqueGB = all_tGb(igb);
-            % find nb grain id
-            gPair = [floor(uniqueGB/10000), mod(uniqueGB,10000)];
-            ID_neighbor = gPair(~ismember(gPair, ID_current));
-            all_twin_neighbor = [all_twin_neighbor, ID_neighbor];
+        %         % [2.2] [var] then find all twin-related neighbors
+        %         all_twin_neighbor = [];
+        %         for igb = 1:length(all_tGb)
+        %             uniqueGB = all_tGb(igb);
+        %             % find nb grain id
+        %             gPair = [floor(uniqueGB/10000), mod(uniqueGB,10000)];
+        %             ID_neighbor = gPair(~ismember(gPair, ID_current));
+        %             all_twin_neighbor = [all_twin_neighbor, ID_neighbor];
+        %         end
+        
+        if ~isempty(all_tGb)
+            activeTS = find(cellfun(@(x) ~isempty(x),tGb));
+        end
+                    
+        if plotTF==1
+            % ////// find out local data for local map, ID_local, e_local, uniqueGB_local, ... for potential plot
+            ind_local = ismember(ID, [ID_current;all_neighbor(:)]); %ismember(ID, [ID_current,ID_neighbor]);
+            % Make it one data point wider on each side
+            indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+            indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+            indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+            indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+            
+            ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+            x_local = X(indR_min:indR_max, indC_min:indC_max);
+            y_local = Y(indR_min:indR_max, indC_min:indC_max);
+            uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
+            % map_local = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+            map_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
+            
+            % if this grain has twin, and we want to plot
+            h_f = myplot(x_local, y_local, map_local, uniqueBoundary_local);
+            hold on;
+            label_map_with_text(x_local, y_local, ID_local, h_f, 'target_ID',ID_current, 'color','r', 'text',['TS=', num2str(activeTS)]);
+
         end
         
+        % [3] for each twin, analyze the potentially related neighbor/ or just analyze the twin related neighbor
         for it = 1:6
             sf = struCell{iE}(iS).tSF(it);
             gbs_considered = tGb{it};    % the unique boundaries the twin intersect, may be empty
@@ -172,17 +211,25 @@ for iE = 4
             if isempty(gbs_considered)
                 % reconstruct a 'gb_considered'
                 gbs_considered = [10000*all_neighbor(all_neighbor>ID_current) + ID_current, 10000*ID_current + all_neighbor(all_neighbor<ID_current)];
-                gbs_considered = [10000*all_twin_neighbor(all_twin_neighbor>ID_current) + ID_current, 10000*ID_current + all_twin_neighbor(all_twin_neighbor<ID_current)];
+                % gbs_considered = [10000*all_twin_neighbor(all_twin_neighbor>ID_current) + ID_current, 10000*ID_current + all_twin_neighbor(all_twin_neighbor<ID_current)];
                 twinned_TF = false;
             end
             
-            % if twinned, considering the impinging grain boundary, if not, considering all /(all twin related) neighbors 
+            % The assumption is that, we always find a twin intersecting a grain boundary.  But here we can provide a double check
+            if ~isempty(all_tGb) && (ismember(it,activeTS) && (twinned_TF==false))
+                disp('This does not match the assumption that a twin always have at least one intersecting grain boundary');
+            end
+            
+            tAF = struCell{iE}(iS).tVol(it)/struCell{iE}(iS).gVol;  % twin area fraction of grain size
+            
+            % [3] if twinned, considering the impinging grain boundary, if not, considering all /(all twin related) neighbors
             for igb = 1:length(gbs_considered)
                 uniqueGB = gbs_considered(igb);
                 % find nb grain id
                 gPair = [floor(uniqueGB/10000), mod(uniqueGB,10000)];
-                ID_neighbor = gPair(~ismember(gPair, ID_current));
+                ID_neighbor = gPair(~ismember(gPair, ID_current));  % [var] ID of the grain on the other side of this twin-boundary
                 
+                % find nb euler angle, rotation matrix
                 ind = find(gID==ID_neighbor);
                 euler_2 = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
                 if (1==eulerAligned)
@@ -192,26 +239,92 @@ for iE = 4
                 end
                 g = g_2 * g_1'; % from grain_1 to grain_2
                 
-                iss = it + nss * 0;   % for Mg
+                % calculate displacement gradient, ...
+                iss = it + nss;   % for Mg
                 n = ss(1,:,iss);
                 b = ss(2,:,iss);
                 dispGrad = gamma * b' * n;   % displacement gradient, in crystal coordinate
                 F = eye(3) + dispGrad;
                 epsilon = (F'*F-eye(3))/2;              % in crystal coordinate
                 
-                % (1) expressed in neighbor
+                % Displacement gradient expressed in neighbor, 'displacement gradient matrix' for 'dgm'
                 dgm = g * dispGrad * g';   % disGrad expressed in grain_2 coordinate
                 epsilonn = ((eye(3)+dgm)'*(eye(3)+dgm)-eye(3))/2;
                 dp = abs(dgm(2))+abs(dgm(4));   % an invariant representing the shear on prismatic
                 db = sqrt(dgm(7)^2+dgm(8)^2);   % an invariant representing the shear on basal
                 dt = sqrt(dgm(3)^2+dgm(6)^2);   % an invariant representing the shear by twinning/<c+a> slip
+                % If consider symmetry here, just checking
+                %                 [~,gsym] = hcp_symmetry;
+                %                 for isym = 1:size(gsym,3)
+                %                     dgm_sym = gsym(:,:,isym) * dgm * gsym(:,:,isym)'
+                %                     dp = abs(dgm(2))+abs(dgm(4))
+                %                     db = sqrt(dgm(7)^2+dgm(8)^2)
+                %                     dt = sqrt(dgm(3)^2+dgm(6)^2)
+                %                 end
                 
-                % --> insert codes here to debug
                 
-                T = [T; {ID_current, it+nss, sf, uniqueGB, twinned_TF, dp, db, dt}];
+                % ////// find how what is happening actually in neighbor? What is the active system in this neighbor?
+                iS_nb = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+                twinned_nb_TF = false;
+                twin_twin_gb_TF = false;
+                
+                % ////// Calculate Basal/Twin schmid factor in this neighbor grain
+                [abs_schmid_factor, sorted_schmid_factor, burgersXY] = trace_analysis_TiMgAl(euler_2, [0 0 0], [0 0 0], [-1 0 0; 0 0 0; 0 0 0], sampleMaterial, 'twin');
+                basal_SF = max(abs_schmid_factor(1:3,2));
+                prism_SF = max(abs_schmid_factor(4:6,2));
+                [twin_SF, thatTS] = max(abs_schmid_factor(19:24,2));
+                
+                % ////// Need to calculate something else: misorentation, mPrime, etc ...   
+                [miso, ~] = calculate_misorientation_euler_d(euler_1, euler_2, 'HCP');
+                [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler_1, euler_2, [-1 0 0; 0 0 0; 0 0 0], [0 1 0], sampleMaterial, 'twin');
+                mPrime = mPrimeMatrixAbs(19:24,1:3);    % of interest
+                mPrime = max(mPrime(it,:)); % max of this twin w.r.t a basal slip   
+                
+                if ~isempty(iS_nb)
+                    % (1) If twinned?
+                    activeTS_nb = sum(struCell{iE}(iS_nb).cTrueTwin,1);
+                    if any(activeTS_nb)
+                        twinned_nb_TF = true;
+                    end
+                    % (2) if the twin intersect this boundary?
+                    all_tGb_nb = [];
+                    for ie = 2:iE
+                        for ii=1:6
+                            all_tGb_nb = [all_tGb_nb, struCell{ie}(iS_nb).tGb{ii}];
+                        end
+                    end
+                    all_tGb_nb = unique(all_tGb_nb);  % [var] find all grain boudnaryies of the neighbor grain
+                    if ismember(uniqueGB,all_tGb_nb)
+                        % twins in neighbor intersect this grain boundary
+                        twin_twin_gb_TF = true;
+                    end
+                end
+                
+                if twinned_TF || true
+                    T = [T; {ID_current, it+nss, sf, tAF, uniqueGB, twinned_TF, twinned_nb_TF, twin_twin_gb_TF, db, dp, dt, basal_SF, prism_SF, twin_SF, miso, mPrime}];
+                end
+                
+                if ~isempty(all_tGb) && twinned_TF && plotTF
+                    % we can plot the local data, to examine
+                    textString = ['pr=',num2str(dp,3), newline,'ba=',num2str(db,3), newline,'tw=', num2str(dt,3)];
+                    label_map_with_text(x_local, y_local, ID_local, h_f, 'target_ID', ID_neighbor, 'color', 'k', 'text', textString);
+                    all_neighbor_copy(all_neighbor_copy==ID_neighbor) = [];
+                end
+                
             end
             
         end
+        
+        if ~isempty(all_tGb) && plotTF
+            label_map_with_text(x_local, y_local, ID_local, h_f, 'target_ID', all_neighbor_copy(:), 'color', 'y', 'text', []);
+        end
+        
+        % This is for manual debug purpose. Use while loop.  If have an example to plot, pause the program.
+        iS = iS+1
+        if ~isempty(all_tGb) && plotTF
+            break;
+        end
+        
         
     end
 end
@@ -219,48 +332,38 @@ end
 
 warning on;
 
-%%
-ind = T.sf>0.3;
+%% Compare [dp/db/dt] between [twinned] vs. [not-twinned], using histogram  
+close all;
+ind = T.sf>0.15;
 t = T(ind,:);
-grpstats(t,'activeTF')
+grpstats(t,'twinned_TF')
 
+ind = t.twinned_TF == 1;
+t1 = t(ind,:);
+t2 = t(~ind,:);
+figure; hold on;
+histogram(t1.dt); 
+histogram(t2.dt);
+legend('twinned','not twinned');
+title('twin and <c+a>')
 
 %%
-% --> recorded codes for debug
+ind = t.twinned_TF==true;
+figure; hold on;
+histogram(t.db(ind));
+histogram(t.db(~ind));
 
-%                 norm(epsilonn(:))
-%                 abs(dgm(2))+abs(dgm(4))
-% %                 dgm(2)^2+dgm(4)^2
-% %                 abs(dgm(7))+abs(dgm(8))
-%                 dgm(7)^2+dgm(8)^2
-% %                 abs(dgm(3))+abs(dgm(6))
-%                 dgm(3)^2+dgm(6)^2
-%
-%                 % (1.2) equivalent - 1
-%                 disp('-------------------- 1');
-%                 gg = euler_to_transformation([60,0,0],[0 0 0],[0 0 0]);
-%                 dgm_1 = gg * dgm * gg'
-%                 epsilon_1 = ((eye(3)+dgm_1)'*(eye(3)+dgm_1)-eye(3))/2
-%
-%                 norm(epsilon_1(:))
-%                 abs(dgm_1(2))+abs(dgm_1(4))
-% %                 dgm_1(2)^2+dgm_1(4)^2
-% %                 abs(dgm_1(7))+abs(dgm_1(8))
-%                 dgm_1(7)^2+dgm_1(8)^2
-% %                 abs(dgm_1(3))+abs(dgm_1(6))
-%                 dgm_1(3)^2+dgm_1(6)^2
-%
-%
-%                 % (1.3) equivalent - 2
-%                 disp('-------------------- 2');
-%                 gg = euler_to_transformation([120,0,0],[0 0 0],[0 0 0]);
-%                 dgm_2 = gg * dgm * gg'
-%                 epsilon_2 = ((eye(3)+dgm_2)'*(eye(3)+dgm_2)-eye(3))/2
-%
-%                 norm(epsilon_2(:))
-%                 abs(dgm_2(2))+abs(dgm_2(4))
-% %                 dgm_2(2)^2+dgm_2(4)^2
-% %                 abs(dgm_2(7))+abs(dgm_2(8))
-%                 dgm_2(7)^2+dgm_2(8)^2
-% %                 abs(dgm_2(3))+abs(dgm_2(6))
-%                 dgm_2(3)^2+dgm_2(6)^2
+
+%% [analyze] For the twinned grains, Twin_Area_Fraction vs DispGrad_dp/db/dt  
+close all;
+ind = T.twinned_TF==1;
+t = T(ind,:);
+figure;
+plot(t.dt, t.tAF, '.');
+xlabel('dt');
+ylabel('twin area fraction');
+
+
+
+
+
