@@ -2,6 +2,9 @@
 
 % useful scripts:
 
+%% date time string
+timeStr = datestr(now,'yyyymmdd_HHMM');
+
 %% (1) get unique boundary
 [~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
 uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
@@ -95,6 +98,51 @@ for iss = (nss+1):(nss+ntwin)   % for Mg
     cPred(iss,2) = N(iss,:) * stressTensor * M(iss,:)';     % Schmid factor
     cPred(iss,3:5) = [epsilon(1), epsilon(2), epsilon(4)];  % strain exx, exy, eyy.  Note that 'conjugated' twin system, i.e., 19 and 22, almost always show similar components!!!
 end
+
+
+%% Make bar plot
+sf_t = -0.5 + 1 * rand(100,1);
+sf_nt = -0.5 + 1 * rand(100,1);
+sf = [sf_t; sf_nt];
+% Use stacked bar plot
+edges = -0.5:0.05:0.5;
+[N_t,~] = histcounts(sf_t, edges);
+[N_nt,~] = histcounts(sf_nt, edges);
+[N,~] = histcounts(sf, edges);
+
+figure; hold on;
+bar(edges(1:end-1) +0.025 , [N_nt(:),N_t(:)], 1, 'stacked');
+legend({'Not twinned', 'Twinned'},'Location','northwest');
+set(gca,'fontsize',16, 'XTick',-0.5:0.1:0.5);
+xlabel('Schmid Factor');
+ylabel('Counts');
+
+% Use 'histogram' rather than 'bar' to plot
+% figure; hold on;
+% histogram(sf_nt,edges_sf);
+% histogram(sf_t,edges_sf);
+% legend({'Not-twinned', 'Twinned'},'Location','northwest');
+% set(gca,'fontsize',14, 'XTick',-0.5:0.1:0.5);
+% xlabel('Schmid Factor');
+% ylabel('Counts');
+% title(['iE = ',num2str(iE_select)],'fontweight','normal');
+
+%% make boxplot
+sf((sf>0.29)&(sf<0.40))=0
+
+gv = discretize(sf, edges);  % grouping variable: grain diameter 
+nGroups = length(edges)-1;
+clear labels;
+for ii = 1:length(edges)-1
+    labels{ii} = [num2str(edges(ii)),'-',num2str(edges(ii+1))];
+end
+
+figure;
+% sometimes, a group does not have anything. This make sure we have all group variables.   
+boxplot([sf; nan*ones(nGroups,1)], [gv; (1:nGroups)']);
+
+xlabel('grouping variable'); ylabel('data');
+set(gca,'ylim',[-0.55,0.55],'xticklabels',labels,'xticklabelrotation',45);
 
 
 

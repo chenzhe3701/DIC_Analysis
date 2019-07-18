@@ -1,4 +1,4 @@
-% chenzhe, 2019-09-17
+% chenzhe, 2018-09-17
 % write a function to calculate effective strain
 % main purpose is to record the method/equation
 %

@@ -201,7 +201,7 @@ legend('Not twinned','Twinned','Pct grains twinned','location','northeast');
 set(gca,'fontsize',16,'ylim',[0 1]);
 title(['iE = ',num2str(iE_select)],'fontweight','normal');
 
-%% (1.3) Use [box plot] to show the distribution of [SF] vs. [Grian_diameter] for [twinned, and non-twinned] grains
+%% (1.3) Use [box plot] to show the distribution of [SF] vs. [Grian_diameter] for [twinned, and non-twinned] grains. 
 gv_t = discretize(gd_t, edges_gd);  % grouping variable: grain diameter 
 gv_nt = discretize(gd_nt, edges_gd);
 
@@ -210,7 +210,7 @@ for ii = 1:length(edges_gd)-1
 end
 
 figure;
-Ndiff = length(edges_gd)-1 - numel(unique(gv_t));   % sometimes, a group does not have anything  
+Ndiff = length(edges_gd)-1 - numel(unique(gv_t));   % sometimes, a group does not have anything.  --> Note, this is wrong !!!  
 boxplot([sf_t;nan*ones(Ndiff,1)], [gv_t;max(gv_t)+(1:Ndiff)']);
 title(['Twinned, iE=',num2str(iE)],'fontweight','normal');
 xlabel('Grain diameter (um)'); ylabel('Schmid Factor (m)');
