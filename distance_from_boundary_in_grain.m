@@ -1,4 +1,5 @@
-function distMap = distance_from_boundary_in_grain(ID, gbList, gList, roundTF)
+% function distMap = distance_from_boundary_in_grain(ID, gbList, gList, roundTF)
+function distMap = distance_from_boundary_in_grain(ID, bgList, roundTF)
 % Cauculate the (euclidean) distance map on the ID map, from
 % unique_boundaries in gbList, in grains in gList
 % Chenzhe, 2019-02-06
@@ -17,14 +18,21 @@ function distMap = distance_from_boundary_in_grain(ID, gbList, gList, roundTF)
 % gList = [3];
 
 if ~exist('roundTF','var')
-    disp('distance round to integer');
+    % disp('distance round to integer');
     roundTF = 1;
 end
 
-if length(gbList)~=length(gList)
-   error('gbList and gList must be of the same length'); 
-end
+% if length(gbList)~=length(gList)
+%    error('gbList and gList must be of the same length'); 
+% end
 
+if ~isempty(bgList)
+    gList = bgList(:,2);
+    gbList = bgList(:,1);
+else
+    gList = [];
+    gbList = [];
+end
 list = sortrows([gList(:),gbList(:)]);
 
 
@@ -39,7 +47,7 @@ switch method
         % slow method
         while ~isempty(list)
 %         for ii = 1:length(gList)
-            ID_current = list(1,1); disp(ID_current)
+            ID_current = list(1,1); % disp(ID_current);
             ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
             % Make it one data point wider on each side
             indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);

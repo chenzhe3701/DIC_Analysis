@@ -1,3 +1,4 @@
 /*.mat
 *.tif
 /all_temp_result/*
+/temp_results/*

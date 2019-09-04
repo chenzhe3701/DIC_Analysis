@@ -2,6 +2,13 @@
 
 % useful scripts:
 
+%% waitbar
+h = waitbar(0,'rotating data...');
+if rem(ii,10000)==1
+    waitbar(ii/nN, h);
+end
+close(h);
+
 %% date time string
 timeStr = datestr(now,'yyyymmdd_HHMM');
 
@@ -144,7 +151,13 @@ boxplot([sf; nan*ones(nGroups,1)], [gv; (1:nGroups)']);
 xlabel('grouping variable'); ylabel('data');
 set(gca,'ylim',[-0.55,0.55],'xticklabels',labels,'xticklabelrotation',45);
 
+%% make empty table
+variableNames = {'iE','ID','gDia'};
+T = cell2table(cell(0,length(variableNames)));
+T.Properties.VariableNames = variableNames;
 
+%% 
+disableDefaultInteractivity(gca);
 
 
 

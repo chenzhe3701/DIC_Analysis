@@ -1,23 +1,14 @@
-% chenzhe, 2019-07-07, script to check a hypothesis:
-% (1) For non-twinned grains, higher basal SF grains should have higher effective strain
-%
-
-
 clear;
 addChenFunction;
 
-% grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
 dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
-% dicFiles = dir([dicPath,'\*.mat']);
-% dicFiles = struct2cell(dicFiles);
-% dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
 [fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -26,9 +17,8 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\','select the results where twin identification was based on trace dir and strain');
-
-[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\20190222_1246_twin_at_boundary_result.mat','select the results for twin-grain boundary intersection');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
+[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -46,6 +36,7 @@ f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 debugTF = 0;
+
 %% [data] strain data. Convert into v7.3 for partial loading
 %%
 clear strainFile;
@@ -90,9 +81,9 @@ for iE = iE_start-1:iE_stop
     end
     strainFile{iE} = matfile([strainFileName,'_v73.mat']);
 end
+
 %% (0) load data, using SF threshold values to assign active twin system, and make maps
 % Load cluster number maps (cleaned).
-
 clusterNumberMapCell = cell(1,length(STOP)-1);
 for iE = []                                         %iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -106,29 +97,14 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
 
 % load previous twin_gb interaction result
 load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
+%% 
+% 
+% 
+% *How should twinning be affected by different microstructural parameters?*
+% 
+% *(1) The effect of Schmid factor:  (from script_organized_summary_11)*
 
-
-%%
-% Note: hypothesis is that: if not twinned, high basal SF -> high strain  
-% Test hypothesis?
-
-[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
-ss = crystal_to_cart_ss(ssa,c_a);
-
-% create a basal schmid factor map
-grain_basal_SF = []; 
-for ii = 1:length(gID)
-   ID_current = gID(ii);
-   ind = find(ID_current==gID);
-   [abs_schmid_factor, ~, ~] = trace_analysis_TiMgAl([gPhi1(ind),gPhi(ind),gPhi2(ind)], [0 0 0], [0 0 0], stressTensor, 'Mg', 'twin');
-   grain_basal_SF(ii) = max(abs_schmid_factor(1:3,2));
-end
-basal_SF_map = assign_field_to_cell(ID, gID, grain_basal_SF);
-save('temp_results\temp_basal_SF_map.mat','basal_SF_map')
-%%  Q1: for the non-twinned grains, does higher strain <-> higher basal SF? 
-
-for iE = 3
-
+iE = 4;
 eEff = effective_strain(strainFile{iE}.exx, strainFile{iE}.exy, strainFile{iE}.eyy);
 
 % Table_1, for grain summaries
@@ -141,16 +117,11 @@ variableNames2 = {'iE','ID','ts','variant','twin_SF','v1_TF','vPct'};
 T2 = cell2table(cell(0,length(variableNames2)));
 T2.Properties.VariableNames = variableNames2;
 
-% Table_3, for mPrime
-variableNames3 = {'iE','ID','ts','ID_neighbor','mPrime'};
-T3 = cell2table(cell(0,length(variableNames3)));
-T3.Properties.VariableNames = variableNames3;
-mPrimeMap = zeros(size(uniqueBoundary));
-mPrimeMap(uniqueBoundary>0) = -1;
-
 ID_twinned = [];
+hW = waitbar(0,'do for each grain ...');
+NW = length(struCell{iE});
 for iS = 1:length(struCell{iE})
-    ID_current = struCell{iE}(iS).gID
+    ID_current = struCell{iE}(iS).gID;
     
     ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
     % Make it one data point wider on each side
@@ -180,11 +151,11 @@ for iS = 1:length(struCell{iE})
     else
         activeTS_pre = logical(sum(struCell{iE-1}(iS).cTrueTwin,1));
     end
-    newActiveTS = (activeTS - activeTS_pre)>0;      % --> ---------------------------------> we may choose between all activeSS or newActiveSS 
+    newActiveTS = (activeTS - activeTS_pre)>0;      % --> ---------------------------------> we may choose between all activeSS or newActiveSS
     tSFs = struCell{iE}(iS).tSF;
     [~,SF_order]=ismember(tSFs,sort(tSFs,'descend'));   % find index of ranking of element in array
     
-    % determine if this grain is twinned. If twinned, twin_SF = max of active twin ss.  If not twinned, twin_SF = max of twin ss.  
+    % determine if this grain is twinned. If twinned, twin_SF = max of active twin ss.  If not twinned, twin_SF = max of twin ss.
     if any(activeTS)
         twin_SF = max(struCell{iE}(iS).tSF(sum(struCell{iE}(iS).cTrueTwin,1)>0));
         T = [T; {iE, ID_current, es(1),es(2),es(3),es(4),es(5),es(6),es(7),es(8), basal_SF, twin_SF, true}];
@@ -201,52 +172,29 @@ for iS = 1:length(struCell{iE})
             T2 = [T2; {iE, ID_current, struCell{iE}(iS).tLabel(ii), SF_order(ii), tSFs(ii), activeTS(idx)>0, struCell{iE}(iS).tVol(ii)/struCell{iE}(iS).gVol}];
         end
     end
-    
-    
-    % % %
-    % find all twinned grains
-    all_twinned_grains = unique(tb_gNum);
-    all_involved_grains = unique([floor(tb_gbNum/10000); mod(tb_gbNum,10000)]);
-    
-    if any(activeTS)
-        for iTwin = 1:length(activeTS)
-            tgbs = struCell{iE}(iS).tGb{iTwin};    % find all twin gbs related to this twin variant  
-            for jj=1:length(tgbs)
-                tgb_current = tgbs(jj);
-                pairs = [floor(tgb_current/10000), mod(tgb_current,10000)];
-                ID_neighbor = pairs(~ismember(pairs,ID_current));   % find neighbor ID 
-                
-                % Is neighbor twinned ever?
-                if ~ismember(ID_neighbor, all_twinned_grains)
-                    % find euler angle of neighbor grain
-                    ind = find(ID_neighbor==gID);
-                    euler_neighbor = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
-                    [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler_current, euler_neighbor, stressTensor, [1 0 0], sampleMaterial, 'twin');
-                    mPrime = mPrimeMatrixAbs(19:24,1:3);
-                    mPrime = max(mPrime(iTwin,:));      % max of this twin w.r.t a basal slip in neighbor  
-                    mPrimeMap(uniqueBoundary==tgb_current) = mPrime;
-                    
-                    T3 = [T3; {iE, ID_current, struCell{iE}(iS).tLabel(ii), ID_neighbor, mPrime}];
-                    % Can also find local strain in neighbor from gb. 
-                end
-            end
-        end
+    if rem(iS,10)==1
+        waitbar(iS/NW, hW);
     end
-    
-    
 end
+close(hW);
 
+%% 
+% *(1.1) In grains that are not twinned, we expect higher strain in grains 
+% with higher basal Schmid factor.  This is because WE43-T5 has a weak texture, 
+% which favors basal slip.*
 
 %% [*] [Plot] selected strain (e.g., median strain vs. basal_SF)
-ind = (T.twinnedTF==1);                 % ---------------------------> Select which (twinned or non-twinned) grain
-vx = T.twin_SF(ind);                    % ---------------------------> Select which SF here
+ind = (T.twinnedTF==0);                 % ---------------------------> Select which (twinned or non-twinned) grain
+vx = T.basal_SF(ind);                    % ---------------------------> Select which SF here
 vy = T.emean(ind);                      % ---------------------------> Select strain here
-ylabel_str = 'Mean Strain of Grain';    % ---------------------------> change name 
+ylabel_str = 'Mean Strain of Grain';    % ---------------------------> change name
+title_str = ['Non-twinned grain, iE=',num2str(iE)];
 
-figure;
+figure;disableDefaultInteractivity(gca);
 plot(vx, vy, '.');
 set(gca,'ylim',[0 0.1])
 xlabel('Schmid Factor'); ylabel(ylabel_str);
+title(title_str,'fontweight','normal');
 
 % [*] Summarize by [boxplot].
 edges = 0:0.05:0.5;
@@ -257,20 +205,25 @@ for ii = 1:length(edges)-1
     labels{ii} = [num2str(edges(ii)),'-',num2str(edges(ii+1))];
 end
 
-figure;
-boxplot([vy; nan*ones(nGroups,1)], [gv; (1:nGroups)']);     % sometimes, a group does not have anything. This make sure we have all group variables.   
-xlabel('Schmid Factor'); ylabel(ylabel_str);  
+figure;disableDefaultInteractivity(gca);
+boxplot([vy; nan*ones(nGroups,1)], [gv; (1:nGroups)']);     % sometimes, a group does not have anything. This make sure we have all group variables.
+xlabel('Schmid Factor'); ylabel(ylabel_str);
 set(gca,'xticklabels',labels,'xticklabelrotation',45);
-% set(gca,'ylim',[0 0.04])
-
+set(gca,'ylim',[0 0.12]);
+title(title_str,'fontweight','normal');
+%% 
+% *(1.2) For grains that are twinned:*
+% 
+% *(a) The twin variant area as a fraction of grain size tend to increase 
+% with increasing twin variant Schmid factor. *
 
 %% [*] [boxplot] to show twin_area_fraction vs twin_SF
 edges = 0:0.05:0.5;
 vx = T2.twin_SF;                   % ---------------------------> Select which SF here
 vy = T2.vPct;                      % ---------------------------> Select strain here
-ylabel_str = 'Twin Area Fraction in Grain';    % ---------------------------> change name 
+ylabel_str = 'Twin Variant Area Fraction in Grain';    % ---------------------------> change name
 
-figure;
+figure;disableDefaultInteractivity(gca);
 plot(vx, vy, '.');
 xlabel('Schmid Factor'); ylabel(ylabel_str);
 % set(gca,'ylim',[0 0.1])
@@ -281,49 +234,141 @@ clear labels;
 for ii = 1:length(edges)-1
     labels{ii} = [num2str(edges(ii)),'-',num2str(edges(ii+1))];
 end
-figure;
+figure;disableDefaultInteractivity(gca);
 boxplot([vy; nan*ones(nGroups, 1)], [gv; (1:nGroups)']);
 xlabel('Schmid Factor'); ylabel(ylabel_str)
 set(gca,'xticklabels',labels,'xticklabelrotation',45);
-%% we can test if the Pearson's correlation coefficient is 'significantly different from 0'
 
+%% 
+% **
+% 
+% *(b) Distribution of twin variant Schmid factor.  (Based on script_organized_summary_1)*
 
-% create 2 [Maps] of strain, twinned and non-twinned
-m_ind_twinned = ismember(ID,ID_twinned);
-m_ind_not_twinned = ~m_ind_twinned;
+variableNames = {'ID','iE','iTwin','twinnedTF','tSF'};
+T3 = cell2table(cell(0,length(variableNames)));
+T3.Properties.VariableNames = variableNames;
 
-eMap_twinned = eEff;
-eMap_twinned(m_ind_not_twinned) = nan;
+variableNames = {'ID','iE','gDia','twinnedTF','tSF','tAF'};
+T4 = cell2table(cell(0,length(variableNames)));
+T4.Properties.VariableNames = variableNames;
 
-eMap_not_twinned = eEff;
-eMap_not_twinned(m_ind_twinned) = nan;
+um_per_dp = 5*360/4096;    % micron per data point, ~0.43
 
-% myplot(eMap_twinned);
-% myplot(eMap_not_twinned);
+h = waitbar(0,'processing data...');
+NW = length(struCell{iE});
+for iS = 1:length(struCell{iE})
+    ID_current = struCell{iE}(iS).gID;
+    % Find if variant is twinned
+    twinnedTF = [];
+    for ie = iE_start:iE
+        twinnedTF(ie-iE_start+1,:) = sum(struCell{ie}(iS).cTrueTwin,1);
+    end
+    twinnedTF = logical(sum(twinnedTF,1));
+    for iTwin = 1:6
+        T3 = [T3;{ID_current, iE, iTwin, twinnedTF(iTwin), struCell{iE}(iS).tSF(iTwin)}];
+    end
+    
+    gd = sqrt(4*struCell{iE}(iS).gVol/pi) * um_per_dp;
+    vol_t = sum(struCell{iE}(iS).tVol);
+    vol_g = struCell{iE}(iS).gVol;
+    if any(twinnedTF)
+        T4 = [T4;{ID_current, iE, gd, true, max(struCell{iE}(iS).tSF(:).*twinnedTF(:)), vol_t/vol_g}];
+    else
+        T4 = [T4;{ID_current, iE, gd, false, max(struCell{iE}(iS).tSF(:).*(~twinnedTF(:))), vol_t/vol_g}];
+    end
+    if rem(iS,10)==1
+        waitbar(iS/NW, h);
+    end
+end
+close(h);
 
+%% 
+% *The counts of active twin variants increases with the increase of twin 
+% variant Schmid factor.*
 
+edges = -0.5:0.05:0.5;
+ind = T3.twinnedTF == 1;
+[N_t,~] = histcounts(T3.tSF(ind), edges);
+[N_nt,~] = histcounts(T3.tSF(~ind), edges);
 
-%%
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(['temp_results\script_11_data_iE_',num2str(iE),'_',timeStr,'.mat'],'T','T2','T3', 'ID_twinned','eMap_twinned','eMap_not_twinned')
+figure; hold on; disableDefaultInteractivity(gca);
+bar(edges(1:end-1)+0.025, [N_nt(:), N_t(:)], 1, 'stacked');
+set(gca,'fontsize',12, 'XTick',-0.5:0.1:0.5,'ylim',[0 1600]);
+xlabel('Schmid Factor');
+ylabel('Counts');
 
+yyaxis right;
+set(gca, 'ycolor', 'k');
+ylabel('Pct Variant Twinned');
+plot(-0.475:0.05:0.475, N_t./(N_t+N_nt),'-ko','linewidth',1.5);
 
+title(['iE = ',num2str(iE)],'fontweight','normal');
+legend({'Variant not twinned', 'Variant twinned','Pct Variant Twinned'},'Location','northwest');
 
+%% 
+% *The counts of twinned grains slightly increase with increasing grain 
+% diameter.  But this might be an artifact, because small grains are difficult 
+% to label? *
 
+all_dia = sort(T4.gDia);
+inds = floor(linspace(1,length(all_dia),9));
+edges_gd = all_dia(inds);
+
+edges_gd =[0,60:20:180,400];
+
+ind = T4.twinnedTF==1;
+[N_t,~] = histcounts(T4.gDia(ind), edges_gd);
+[N_nt,~] = histcounts(T4.gDia(~ind), edges_gd);
+
+d_int = (edges_gd(3)-edges_gd(2))/2;
+xpos = [edges_gd(2)-d_int, edges_gd(2:end-1)+d_int];
+xstr = [];
+for ii=1:length(edges_gd)-1
+    xstr{ii} = [num2str(edges_gd(ii)),'-',num2str(edges_gd(ii+1))];
 end
 
+figure;disableDefaultInteractivity(gca);
+bar(xpos, [N_nt(:),N_t(:)], 1, 'stacked');
+xlabel('Grain diameter (um)');
+ylabel('Counts');
+set(gca,'ylim',[0 360]);
 
-%% check mPrimeMap
-map = mPrimeMap;
-for ii=1:2
-    map = imdilate(map,ones(3));
-    map(trueTwinMapCell{iE}>0) = 1;
-end
-myplot(map)
-myplot(strainFile{iE}.exx,boundaryTFB)
+yyaxis right;
+set(gca,'ycolor','k','xTickLabels',xstr,'xTickLabelRotation',45);
+plot(xpos, N_t./(N_t+N_nt),'-ko','linewidth',1.5);
+ylabel('Pct grains twinned');
+legend('Not twinned','Twinned','Pct grains twinned','location','northeast');
+set(gca,'fontsize',12,'ylim',[0 1]);
+title(['iE = ',num2str(iE)],'fontweight','normal');
 
 
+%% 
+% *Now we use a histogram of counts of grain diameter as a background, to 
+% show how twinned area fraction changes w.r.t grain diameter.*
+% 
+% *The twinned area fraction in each grain seems to be decreasing with increasing 
+% grain diameter.  This might also be an artifcat, as smaller grains might have 
+% twinned areas labeled larger than it should be, due to relatively large area 
+% of noise.*
 
+ind = T4.twinnedTF==1;
+[N_t,~] = histcounts(T4.gDia(ind), edges_gd);
 
+gDia_t = T4.gDia(ind);  % (1) Use this as the grouping criterion
+tAF_t = T4.tAF(ind);    % (2) This is the data to summarize the distribution, by box, in each group
+gv = discretize(gDia_t, edges_gd);  % grouping variable: grain diameter 
+nGroups = length(edges_gd) - 1; 
 
+figure; hold on; disableDefaultInteractivity(gca);
+bar(xpos, N_t(:));
+xlabel('Grain diameter (um)');
+ylabel('Counts of Grains');
 
+yyaxis right;
+set(gca,'ycolor','k','xTickLabels',xstr,'xTickLabelRotation',45);
+boxplot([tAF_t;nan*ones(nGroups,1)], [gv; (1:nGroups)'], 'position', xpos,'color','k');  % make sure every group number has a 'NaN' element 
+ylabel('Twin Area Fraction');
+title(['iE = ',num2str(iE)],'fontweight','normal');
+
+%% 
+%

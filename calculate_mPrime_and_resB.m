@@ -14,6 +14,20 @@
 % phi1Sys, phiSys, phi2Sys, phiError, stressTensor, gbNormal)
 %
 % rewrite, 2019-04-02
+%
+% 2019-08-01.  I looked at the code again.
+% (1) I previously used a 'weightd' Burgers vector.  Maybe it's not a good
+% idea, because slip can be multiples times of unit Burgers vector.  Maybe
+% the most important thing is, assume both (cartesian) unit length of slip,
+% how big the 'residual' part (difference) need to be.
+% (2) The direction. Slip is two direction, so maybe we calculate the resB
+% using both of the two directions, and choose the minimum difference.
+% Similarly, without considering two directions, in mPrime calculation,
+% cosine can be negative.  But we might need to only consider the positive.
+% ---> new.  However, if both are twinning, [maybe] we should only consider
+% the true direction ??? 
+% So, maybe just use the result 'mPrimeMatrixAbs' and 'resBurgersMatrixAbs'.
+
 
 function [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = ...
     calculate_mPrime_and_resB(euler_1, euler_2, stressTensor, gbNormal, material, twinTF)
@@ -81,9 +95,16 @@ avgSFMatrix = (sfG1Matrix + sfG2Matrix)/2;
 for iSSG1 = 1:nSS
     for iSSG2 = 1:nSS
         mPrimeMatrix(iSSG1,iSSG2) = abs(dot(slipPlaneG1(iSSG1,:),slipPlaneG2(iSSG2,:))) * dot(slipDirectionG1(iSSG1,:),slipDirectionG2(iSSG2,:));
-        resBurgersMatrix(iSSG1,iSSG2) = norm( slipDirectionG1W(iSSG1,:)-slipDirectionG2W(iSSG2,:) );
-        resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm( slipDirectionG1W(iSSG1,:)-slipDirectionG2W(iSSG2,:) ),  norm( slipDirectionG1W(iSSG1,:)+slipDirectionG2W(iSSG2,:) ) );
+        resBurgersMatrix(iSSG1,iSSG2) = norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) );
+        resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) ),  norm( slipDirectionG1(iSSG1,:)+slipDirectionG2(iSSG2,:) ) );
     end
 end
 mPrimeMatrixAbs(1:24,1:24) = abs(mPrimeMatrix(1:24,1:24));
+
+% chenzhe, 2019-08-01.
+% Maybe, for twin, don't consider two directions, but let's see. 
+resBurgersMatrixAbs(nss+1:nss+ntwin, nss+1:nss+ntwin) = resBurgersMatrix(nss+1:nss+ntwin, nss+1:nss+ntwin);
+
+
+
 
