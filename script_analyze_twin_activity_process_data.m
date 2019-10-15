@@ -1,4 +1,4 @@
-% chenzhe, 2019-07-17
+% chenzhe, 2019-09-03
 % It is likely useful to manually label twin-gb intersection.  We need some ground truth data anyway.
 
 
@@ -45,8 +45,8 @@ f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 debugTF = 0;
-%% [data] strain data. Convert into v7.3 for partial loading
-%%
+
+% [data] strain data. Convert into v7.3 for partial loading
 clear strainFile;
 for iE = iE_start-1:iE_stop
     strainFileName = [dicPath,'\',f2,STOP{iE+B}];
@@ -89,7 +89,8 @@ for iE = iE_start-1:iE_stop
     end
     strainFile{iE} = matfile([strainFileName,'_v73.mat']);
 end
-%% (0) load data, using SF threshold values to assign active twin system, and make maps
+
+% (0) load data, using SF threshold values to assign active twin system, and make maps
 % Load cluster number maps (cleaned).
 
 clusterNumberMapCell = cell(1,length(STOP)-1);
@@ -107,27 +108,48 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
 load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
 %% Find triple points
+%%
 [boundary,~, ~, tripleTF, ~, indTriple, tripleIDs] = find_one_boundary_from_ID_matrix(ID);
 xTriple = X(indTriple);
 yTriple = Y(indTriple);
-
-
 %% Select an iS to start
+%%
 plotTF = 0;
 pauseTF = 0;
 umPerX = 360/4096;
 umPerDp = 360/4096*5;
-calculateQuants = 0;    % after assigning twin-gb to different categories, calculate quants, which is slow.
+calculateQuants = 1;    % after assigning twin-gb to different categories, calculate quants, which is slow.
+
+% calculate quantiles of strain in each grain, in a mantle with distance in [mm, MM] data point range to grain boundary
+mm = 0;
+MM = 150;
+
+% calculate quantiles of strain in all grains, at each distance which is an integer within [1 NN]
+NN = 250;
+x_dist = (1:NN)';
+qs_target = [0.0014, 0.0227, 0.1587, 0.5, 0.8414, 0.9772, 0.9987];
 
 for iE = 2:5
     variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF',...
         'incoming','iiE_each_twin','iiE_each_twin_at_this_boundary','intersection_to_triple','iiE_twins_at_this_boundary_Nb',...
         'mPrime','rank_mPrime','ssn_neighbor','SF_neighbor',...
         'resB','rank_resB','ssn_neighbor_r','SF_neighbor_r',...
-        'initiating'};
+        'initiating', 'eMedian','eMean','eMedian_neighbor','eMean_neighbor', 'max_basal_SF','max_twin_SF','max_basal_SF_neighbor','max_twin_SF_neighbor'};
     T = cell2table(cell(0,length(variableNames)));
     T.Properties.VariableNames = variableNames;
     T_template = T;
+    
+    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
+    
+    qList_not_involved = [];
+    qList_slip_twin_a = [];
+    qList_slip_twin_b = [];
+    qList_co_found = [];
+    qList_twin_twin_a = [];
+    qList_twin_twin_b = [];
+    qList_slip_growth_a = [];
+    qList_slip_growth_b = [];
+    qList_co_growth = [];
     
     % summary of [bNum, gNum] pairs list, for different categories of activities
     % (1) not involved, (2) slip-induced-twin, slip side, (3) slip-induced-twin, twin side,
@@ -148,64 +170,68 @@ for iE = 2:5
     warning('off','MATLAB:table:RowsAddedExistingVars');
     continueTF = true;
     dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
-    dToTriple_th_to_label = 3;  % label if distance of intersection to triple point is smaller than this value
+    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
     
-    %%
+    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
+    hN = length(struCell{iE});
     while (continueTF)&&(iS<=length(struCell{iE}))
+        waitbar(iS/hN, hW);
         
-        % If grain of interest is twinned
-        if sum(struCell{iE}(iS).cTrueTwin(:))>0  % ismember(struCell{iE}(iS).gID, twinned_grain_list)
+        close all;
+        ID_current = struCell{iE}(iS).gID;
+        ind = find(gID==ID_current);
+        
+        euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
+        if (1==eulerAligned)
+            % g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
+            [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [0,0,0], [0,0,0], stressTensor, sampleMaterial, 'twin');
+        else
+            % g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
+            [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [-90,180,0], [0,0,0], stressTensor, sampleMaterial, 'twin'); % setting-2
+        end
+        [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+        traceDir = abs_schmid_factor(nss+1:nss+ntwin,3);
+        
+        nNeighbors = gNNeighbors(ind);
+        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+        
+        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
+        
+        % Make it one data point wider on each side
+        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+        
+        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+        X_local = X(indR_min:indR_max, indC_min:indC_max);
+        Y_local = Y(indR_min:indR_max, indC_min:indC_max);
+        uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
+        boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+        trueTwinMapLocal = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+        exx_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
+        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
+        
+        % find out grain size, in um
+        gDia = sqrt(4*(struCell{iE}(iS).gVol* (umPerDp)^2)/pi);
+        % Find active system, if any, using cTrueTwin/tGb field
+        % activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
+        activeTS = cellfun(@(x) ~isempty(x), struCell{iE}(iS).tGb);
+        tSF = struCell{iE}(iS).tSF;
+        
+        % If grain of interest is twinned (here it means: got a twin-gb intersection labeled)
+        if any(cellfun(@(x) ~isempty(x), struCell{iE}(iS).tGb)) % sum(struCell{iE}(iS).cTrueTwin(:))>0
             %%
-            close all;
-            ID_current = struCell{iE}(iS).gID;
-            ind = find(gID==ID_current);
-            
-            euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
-            if (1==eulerAligned)
-                % g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
-                [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [0,0,0], [0,0,0], stressTensor, sampleMaterial, 'twin');
-            else
-                % g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
-                [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [-90,180,0], [0,0,0], stressTensor, sampleMaterial, 'twin'); % setting-2
-            end
-            [ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
-            traceDir = abs_schmid_factor(nss+1:nss+ntwin,3);
-            
-            nNeighbors = gNNeighbors(ind);
-            ID_neighbors = gNeighbors(ind, 1:nNeighbors);
-            
-            ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
-            
-            % Make it one data point wider on each side
-            indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
-            indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
-            indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
-            indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
-            
-            ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-            X_local = X(indR_min:indR_max, indC_min:indC_max);
-            Y_local = Y(indR_min:indR_max, indC_min:indC_max);
-            uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
-            boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
-            trueTwinMapLocal = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
-            e_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
-            
             if plotTF==1
                 %         [handleFig0,a1,~] = myplot(X_local, Y_local, e_local, boundaryTF_local);
                 %         disableDefaultInteractivity(a1);
                 %         [handleFig,aa,~] = myplot(X_local, Y_local, trueTwinMapLocal, boundaryTF_local);
                 %         caxis([18 24]);
-                [handleFig,aa,~] = myplot(X_local, Y_local, e_local, boundaryTF_local);  % boundaryTF_local_2 = find_boundary_from_ID_matrix(trueTwinMapLocal>0)|(boundaryTF_local);
+                [handleFig,aa,~] = myplot(X_local, Y_local, exx_local, boundaryTF_local);  % boundaryTF_local_2 = find_boundary_from_ID_matrix(trueTwinMapLocal>0)|(boundaryTF_local);
                 label_map_with_ID(X_local, Y_local, ID_local, handleFig, ID_current);
                 disableDefaultInteractivity(aa);
                 hold on;
             end
-            
-            % find out grain size
-            gDia = sqrt(4*(struCell{iE}(iS).gVol* (umPerDp)^2)/pi);
-            % Find active system, if any, using cTrueTwin
-            activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
-            tSF = struCell{iE}(iS).tSF;
             
             mPrime_table = [];
             resB_table = [];
@@ -214,74 +240,86 @@ for iE = 2:5
             % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
             for iNb = 1:nNeighbors
                 ID_neighbor = ID_neighbors(iNb);
-                
-                % (1.1) Calculate this_uniqueGB number.
-                if ID_current > ID_neighbor
-                    gb = ID_current * 10000 + ID_neighbor;
-                else
-                    gb = ID_neighbor * 10000 + ID_current;
-                end
-                
-                ind_of_indTriple = sum(ismember(tripleIDs,ID_current) + ismember(tripleIDs,ID_neighbor),2)==2;
-                xTriple_local = X(indTriple(ind_of_indTriple));
-                yTriple_local = Y(indTriple(ind_of_indTriple));
-                
-                % Find [iE, iTwin, dToTriple] on the grain_of_interest side, then on the neighboring side
-                [iE_iTwin_dT_list, valid_grain_a] = find_activity_at_boundary_from_struCell(struCell, iE, ID_current, gb, [xTriple_local, yTriple_local]);
-                iE_iTwin_dT_list(:,3) = iE_iTwin_dT_list(:,3) * umPerX;   % --> because unit is 'x/y coordinate' rather than 'data point/index', do not need to use the factor of 5.
-                iiE_each_twin = find_initial_iE_of_twin_in_grain(struCell, ID_current);
-                % repeat for the neighbor
-                [iE_iTwin_dT_list_Nb, valid_grain_b] = find_activity_at_boundary_from_struCell(struCell, iE, ID_neighbor, gb, [xTriple_local, yTriple_local]);
-                iE_iTwin_dT_list_Nb(:,3) = iE_iTwin_dT_list_Nb(:,3) * umPerX;
-                iiE_of_each_twin_Nb = find_initial_iE_of_twin_in_grain(struCell, ID_neighbor);
-                
-                if (valid_grain_a)&&(valid_grain_b)
-                    % (1.2) Find which of the active twin systems in the grain are 'incoming' to this grain boundary
-                    % In addition, we need to find out if this twin first appear at this grain boundary.
-                    incoming_TS = zeros(1,6);           % IF the twin system is active on the grain of interest side of the boundary
-                    iiE_each_iTwin_at_this_boundary = inf * ones(1,6);    % the first iE that this twin shown at this gb
-                    an_initiating_boundary_of_twin = zeros(1,6);    % IF the twin was at this boundary at the iE that it just activated, 'an' initiating rather than 'the' initiating
-                    intersection_to_triple = nan*zeros(6,1);    % Distance of intersection to triple point
-                    twin_at_triple = zeros(6,1);        % In fact no need to label.  Just compare intersection_to_triple to a distance should be enough.  % Does this twin only intersect gb close to triple point
+                iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+                if ~isempty(iS_neighbor)
+                    gDia_neighbor = sqrt(4*(struCell{iE}(iS_neighbor).gVol* (360/4096*5)^2)/pi);
+                    % activeTS_Nb = sum(struCell{iE}(iS_neighbor).cTrueTwin,1)>0;
+                    activeTS_Nb = cellfun(@(x) ~isempty(x), struCell{iE}(iS_neighbor).tGb);
                     
-                    for iTwin = 1:6
-                        ind = (iE_iTwin_dT_list(:,2)==iTwin)&(iE_iTwin_dT_list(:,3)>dToTriple_th); % This considers TriplePoint, eliminating intersections too close to triple points
-                        if any(ind)
-                            incoming_TS(iTwin) = 1;
-                            iiE_each_iTwin_at_this_boundary(iTwin) = min(iE_iTwin_dT_list(ind,1));
-                            if iiE_each_iTwin_at_this_boundary(iTwin) == iiE_each_twin(iTwin)
-                                an_initiating_boundary_of_twin(iTwin) = 1;
-                            end
-                            
-                            dmax = max(iE_iTwin_dT_list(ind,3),[],1);                  % the largest among distance_to_the_closest_triple_point
-                            intersection_to_triple(iTwin) = dmax;
-                            
-                            % If this is still very small, say less than [3 micron] to triple point
-                            if dmax < dToTriple_th_to_label
-                                twin_at_triple(iTwin) = 1;
-                                indr = find(dmax == iE_iTwin_dT_list(:,3));
-                                text(iE_iTwin_dT_list(indr,4), iE_iTwin_dT_list(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
+                    
+                    % (1.1) Calculate this_uniqueGB number.
+                    if ID_current > ID_neighbor
+                        gb = ID_current * 10000 + ID_neighbor;
+                    else
+                        gb = ID_neighbor * 10000 + ID_current;
+                    end
+                    
+                    % strain calculation in area of interest.
+                    distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
+                    ind = (distMap_local>mm)&(distMap_local<MM);
+                    quantiles_grain =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean
+                    
+                    distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_neighbor]);
+                    ind = (distMap_local>mm)&(distMap_local<MM);
+                    quantiles_neighbor =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean of
+                    
+                    
+                    ind_of_indTriple = sum(ismember(tripleIDs,ID_current) + ismember(tripleIDs,ID_neighbor),2)==2;
+                    xTriple_local = X(indTriple(ind_of_indTriple));
+                    yTriple_local = Y(indTriple(ind_of_indTriple));
+                    
+                    % Find [iE, iTwin, dToTriple] on the grain_of_interest side, then on the neighboring side
+                    [iE_iTwin_dT_list, valid_grain_a] = find_activity_at_boundary_from_struCell(struCell, iE, ID_current, gb, [xTriple_local, yTriple_local]);
+                    iE_iTwin_dT_list(:,3) = iE_iTwin_dT_list(:,3) * umPerX;   % --> because unit is 'x/y coordinate' rather than 'data point/index', do not need to use the factor of 5.
+                    iiE_each_twin = find_initial_iE_of_twin_in_grain(struCell, ID_current);
+                    % repeat for the neighbor
+                    [iE_iTwin_dT_list_Nb, valid_grain_b] = find_activity_at_boundary_from_struCell(struCell, iE, ID_neighbor, gb, [xTriple_local, yTriple_local]);
+                    iE_iTwin_dT_list_Nb(:,3) = iE_iTwin_dT_list_Nb(:,3) * umPerX;
+                    iiE_of_each_twin_Nb = find_initial_iE_of_twin_in_grain(struCell, ID_neighbor);
+                    
+                    if (valid_grain_a)&&(valid_grain_b)
+                        % (1.2) Find which of the active twin systems in the grain are 'incoming' to this grain boundary
+                        % In addition, we need to find out if this twin first appear at this grain boundary.
+                        incoming_TS = zeros(1,6);           % IF the twin system is active on the grain of interest side of the boundary
+                        iiE_each_iTwin_at_this_boundary = inf * ones(1,6);    % the first iE that this twin shown at this gb
+                        an_initiating_boundary_of_twin = zeros(1,6);    % IF the twin was at this boundary at the iE that it just activated, 'an' initiating rather than 'the' initiating
+                        intersection_to_triple = nan*zeros(6,1);    % Distance of intersection to triple point
+                        twin_at_triple = zeros(6,1);        % In fact no need to label.  Just compare intersection_to_triple to a distance should be enough.  % Does this twin only intersect gb close to triple point
+                        
+                        for iTwin = 1:6
+                            ind = (iE_iTwin_dT_list(:,2)==iTwin)&(iE_iTwin_dT_list(:,3)>dToTriple_th); % This considers TriplePoint, eliminating intersections too close to triple points
+                            if any(ind)
+                                incoming_TS(iTwin) = 1;
+                                iiE_each_iTwin_at_this_boundary(iTwin) = min(iE_iTwin_dT_list(ind,1));
+                                if iiE_each_iTwin_at_this_boundary(iTwin) == iiE_each_twin(iTwin)
+                                    an_initiating_boundary_of_twin(iTwin) = 1;
+                                end
+                                
+                                dmax = max(iE_iTwin_dT_list(ind,3),[],1);                  % the largest among distance_to_the_closest_triple_point
+                                intersection_to_triple(iTwin) = dmax;
+                                
+                                % If this is still very small, say less than [3 micron] to triple point
+                                if dmax < dToTriple_th_to_label
+                                    twin_at_triple(iTwin) = 1;
+                                    if plotTF
+                                        indr = find(dmax == iE_iTwin_dT_list(:,3));
+                                        text(iE_iTwin_dT_list(indr,4), iE_iTwin_dT_list(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
+                                    end
+                                end
                             end
                         end
-                    end
-                    
-                    if sum(incoming_TS)==0
-                        have_incoming_twin_at_boundary = 0;
-                    else
-                        have_incoming_twin_at_boundary = 1;
-                    end
-                    
-                    
-                    % ---------------> What if neighbor intersect close to a triple point?  Need to add some considerations?      ---------------------------???????????
-                    % (1.3) Similarly, find if this neighbor grain (ID_neighbor) is twinned.
-                    % If twinned, and twin intersect this_uniqueGB, consider only these intersecting twins
-                    % else, consider only basal in this_neighbor
-                    iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
-                    if ~isempty(iS_neighbor)
-                        gDia_neighbor = sqrt(4*(struCell{iE}(iS_neighbor).gVol* (360/4096*5)^2)/pi);
-                        activeTS_Nb = sum(struCell{iE}(iS_neighbor).cTrueTwin,1)>0;
                         
-                        % repeat for the neighbor.  The only difference is that, do not care if it is 'an' initiating boundary.  Just care if it is twinned
+                        if sum(incoming_TS)==0
+                            have_incoming_twin_at_boundary = 0;
+                        else
+                            have_incoming_twin_at_boundary = 1;
+                        end
+                        
+                        
+                        % (1.3) Similarly, find if this neighbor grain (ID_neighbor) is twinned.
+                        % If twinned, and twin intersect this_uniqueGB, consider only these intersecting twins
+                        % else, consider only basal in this_neighbor
+                        % Repeat for the neighbor.  The only difference is that, do not care if it is 'an' initiating boundary.  Just care if it is twinned
                         outgoing_TS = zeros(1,6);           % IF the twin system is active on the grain of interest side of the boundary
                         iiE_each_twin_at_this_boundary_Nb = inf * ones(1,6);    % the first iE that this twin shown at this gb
                         intersection_to_triple_Nb = nan*zeros(6,1);    % Distance of intersection to triple point
@@ -297,8 +335,10 @@ for iE = 2:5
                                 intersection_to_triple_Nb(iTwin) = dmax;
                                 if dmax < dToTriple_th_to_label
                                     twin_at_triple_Nb(iTwin) = 1;
-                                    indr = find(dmax == iE_iTwin_dT_list_Nb(:,3));
-                                    text(iE_iTwin_dT_list_Nb(indr,4), iE_iTwin_dT_list_Nb(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
+                                    if plotTF==1
+                                        indr = find(dmax == iE_iTwin_dT_list_Nb(:,3));
+                                        text(iE_iTwin_dT_list_Nb(indr,4), iE_iTwin_dT_list_Nb(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
+                                    end
                                 end
                             end
                         end
@@ -319,6 +359,8 @@ for iE = 2:5
                         euler_Nb = [gPhi1(ind_Nb),gPhi(ind_Nb),gPhi2(ind_Nb)];
                         [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler, euler_Nb, stressTensor, [1 0 0], sampleMaterial, 'twin');
                         
+                        [max_basal_SF, ~] = max(schmidFactorG1(1:3));
+                        [max_twin_SF, ~] = max(schmidFactorG1(19:24));
                         [max_basal_SF_Nb, ~] = max(schmidFactorG2(1:3));
                         [max_twin_SF_Nb, ~] = max(schmidFactorG2(19:24));
                         
@@ -355,9 +397,9 @@ for iE = 2:5
                         end
                         
                         resBurgersMatrixAbs = round(resBurgersMatrixAbs,4);
-                         
+                        
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ss_n);
-                        resB_local(:,potential_ss==0) = inf; % [detail] artificially make it 'inf' to avoid being found.   
+                        resB_local(:,potential_ss==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin, ind_in_outgoing_n] = min(resB_local,[],2);
                         ssn_each_twin_r = outgoing_ss_n(ind_in_outgoing_n);
                         SF_each_twin_r = SFs_Nb(ind_in_outgoing_n);
@@ -383,6 +425,67 @@ for iE = 2:5
                                 text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank + mPrime,4)], 'color','b','fontsize',16);
                             end
                         end
+                        
+                        % Assign activity type, and calculate strain of interest
+                        % need to determine iE_g and iE_n
+                        ir = iE_iTwin_dT_list(:,3) > dToTriple_th;
+                        iE_g = min(iE_iTwin_dT_list(ir,1));
+                        ir = iE_iTwin_dT_list_Nb(:,3) > dToTriple_th;
+                        iE_n = min(iE_iTwin_dT_list_Nb(ir,1));
+                        if isempty(iE_g)
+                            iE_g = inf;
+                        end
+                        if isempty(iE_n)
+                            iE_n = inf;
+                        end
+                        % above: need to artificially make it 'inf' in case it is empty
+                        
+                        if (iE_g>iE)%||(isempty(iE_g))
+                            if (iE_n>iE)%||(isempty(iE_n))
+                                % not involved
+                                bg_not_involved = [bg_not_involved; gb, ID_current];
+                                qList_not_involved = [qList_not_involved; quantiles_grain];
+                            elseif (iE_n==iE)
+                                % slip induced twin, slip side
+                                bg_slip_twin_a = [bg_slip_twin_a; gb, ID_current];
+                                qList_slip_twin_a = [qList_slip_twin_a; quantiles_grain];
+                            elseif (iE_n<iE)
+                                % slip induced twin growth, slip side
+                                bg_slip_growth_a = [bg_slip_growth_a; gb, ID_current];
+                                qList_slip_growth_a = [qList_slip_growth_a; quantiles_grain];
+                            end
+                        elseif (iE_g==iE)
+                            % just twinned this grain
+                            if (iE_n>iE)%||(isempty(iE_n))
+                                % slip induced twin, twin side
+                                bg_slip_twin_b = [bg_slip_twin_b; gb, ID_current];
+                                qList_slip_twin_b = [qList_slip_twin_b; quantiles_grain];
+                            elseif (iE_n==iE)
+                                % co-found twin
+                                bg_co_found = [bg_co_found; gb, ID_current];
+                                qList_co_found = [qList_co_found; quantiles_grain];
+                            elseif (iE_n<iE)
+                                % twin induced twin, new twin side
+                                bg_twin_twin_b = [bg_twin_twin_b; gb, ID_current];
+                                qList_twin_twin_b = [qList_twin_twin_b; quantiles_grain];
+                            end
+                        elseif (iE_g<iE)
+                            % twinned this grain
+                            if (iE_n>iE)%||(isempty(iE_n))
+                                % slip induced twin growth, twin side
+                                bg_slip_growth_b = [bg_slip_growth_b; gb, ID_current];
+                                qList_slip_growth_b = [qList_slip_growth_b; quantiles_grain];
+                            elseif (iE_n==iE)
+                                % twin induced twin, old twin side
+                                bg_twin_twin_a = [bg_twin_twin_a; gb, ID_current];
+                                qList_twin_twin_a = [qList_twin_twin_a; quantiles_grain];
+                            elseif (iE_n<iE)
+                                % co-growth
+                                bg_co_growth = [bg_co_growth; gb, ID_current];
+                                qList_co_growth = [qList_co_growth; quantiles_grain];
+                            end
+                        end
+                        
                         
                         % Extend table for summary.  -- can assign in local table using name?
                         for iTwin=1:6
@@ -416,78 +519,43 @@ for iE = 2:5
                             T_local.SF_neighbor_r(ir) = SF_each_twin_r(iTwin);
                             
                             T_local.initiating(ir) = false;
+                            
+                            T_local.eMedian(ir) = quantiles_grain(4);
+                            T_local.eMean(ir) = quantiles_grain(8);
+                            T_local.eMedian_neighbor(ir) = quantiles_neighbor(4);
+                            T_local.eMean_neighbor(ir) = quantiles_neighbor(8);
+                            T_local.max_basal_SF(ir) = max_basal_SF;
+                            T_local.max_twin_SF(ir) = max_twin_SF;
+                            T_local.max_basal_SF_neighbor(ir) = max_basal_SF_Nb;
+                            T_local.max_twin_SF_neighbor(ir) = max_twin_SF_Nb;
                         end
-                        
-                        % need to determine iE_g and iE_n
-                        ir = iE_iTwin_dT_list(:,3) > dToTriple_th;
-                        iE_g = min(iE_iTwin_dT_list(ir,1));
-                        ir = iE_iTwin_dT_list_Nb(:,3) > dToTriple_th;
-                        iE_n = min(iE_iTwin_dT_list_Nb(ir,1));
-                        if isempty(iE_g)
-                            iE_g = inf;
-                        end
-                        if isempty(iE_n)
-                            iE_n = inf;
-                        end
-                        % above: need to artificially make it 'inf' in case it is empty
-                        
-                        if (iE_g>iE)||(isempty(iE_g))
-                            if (iE_n>iE)||(isempty(iE_n))
-                                % not involved
-                                bg_not_involved = [bg_not_involved; gb, ID_current];
-                            elseif (iE_n==iE)
-                                % slip induced twin, slip side
-                                bg_slip_twin_a = [bg_slip_twin_a; gb, ID_current];
-                            elseif (iE_n<iE)
-                                % slip induced twin growth, slip side
-                                bg_slip_growth_a = [bg_slip_growth_a; gb, ID_current];
-                            end
-                        elseif (iE_g==iE)
-                            % just twinned this grain
-                            if (iE_n>iE)||(isempty(iE_n))
-                                % slip induced twin, twin side
-                                bg_slip_twin_b = [bg_slip_twin_b; gb, ID_current];
-                            elseif (iE_n==iE)
-                                % co-found twin
-                                bg_co_found = [bg_co_found; gb, ID_current];
-                            elseif (iE_n<iE)
-                                % twin induced twin, new twin side
-                                bg_twin_twin_b = [bg_twin_twin_b; gb, ID_current];
-                            end
-                        elseif (iE_g<iE)
-                            % twinned this grain
-                            if (iE_n>iE)||(isempty(iE_n))
-                                % slip induced twin growth, twin side
-                                bg_slip_growth_b = [bg_slip_growth_b; gb, ID_current];
-                            elseif (iE_n==iE)
-                                % twin induced twin, old twin side
-                                bg_twin_twin_a = [bg_twin_twin_a; gb, ID_current];
-                            elseif (iE_n<iE)
-                                % co-growth
-                                bg_co_growth = [bg_co_growth; gb, ID_current];
-                            end
-                        end
+                        clear quantiles_grain;
+                    else
+                        disp('not valid_grain_a and valid_grain_b')
                     end
+                    % end of (valid_grain_a)&&(valid_grain_b)
                     
                 end
+                % end of ~isempty(iS_neighbor)
+                
             end
+            % end of for iNb = 1:nNeighbors
             
             % 'incoming_TS' just means intersecting.  Each twin can intersect several gbs.
             % We want to find the one with the (highest m') to represent the initiating point.
-            % But there are potential pairs of slip/twin we can choose from.  The basic one is to s
+            % But there are potential pairs of slip/twin we can choose from, e.g., with a threshold for Schmid factor, and grain size, etc  
             for iTwin = 1:6
-                rows = find((T_local.TS==iTwin)&(T_local.iiE_each_twin==T_local.iiE_each_twin_at_this_boundary));
                 rows = find((T_local.TS==iTwin)&(T_local.iiE_each_twin==T_local.iiE_each_twin_at_this_boundary)&(T_local.gDia>80)&(T_local.gDia_neighbor>80));
                 if ~isempty(rows)
                     [~,ind] = max(T_local.mPrime(rows,:));
                     T_local.initiating(rows(ind)) = 1;
-                    disp(['Twin ',num2str(iTwin),' first appear, initiatiated from neighbor ID:',num2str(T_local.ID_neighbor(rows(ind)))]);
+                    % disp(['Twin ',num2str(iTwin),' first appear, initiatiated from neighbor ID:',num2str(T_local.ID_neighbor(rows(ind)))]);
                 end
             end
             ind = (T_local.initiating==1);
             label_map_with_ID(X_local,Y_local,ID_local,gcf,T_local.ID_neighbor(ind),'m');
             T = [T;T_local];
-            %%
+            
             if plotTF==1
                 % (3) Draw previously labeled lines
                 for iTwin = 1:6
@@ -518,22 +586,28 @@ for iE = 2:5
                 saveas(gcf,['temp_results\iE_',num2str(iE),'_ID_',num2str(ID_current),'.tiff']);
             end
             
-            
         else
             % If grain of interest is not twinned, this means (iE_g > iE)
-            ID_current = struCell{iE}(iS).gID;
-            ind = find(gID==ID_current);
-            nNeighbors = gNNeighbors(ind);
-            ID_neighbors = gNeighbors(ind, 1:nNeighbors);
             
             for iNb = 1:nNeighbors
                 ID_neighbor = ID_neighbors(iNb);
+                
                 % (1.1) Calculate this_uniqueGB number.
                 if ID_current > ID_neighbor
                     gb = ID_current * 10000 + ID_neighbor;
                 else
                     gb = ID_neighbor * 10000 + ID_current;
                 end
+                
+                % strain calculation in area of interest.
+                distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
+                ind = (distMap_local>mm)&(distMap_local<MM);
+                quantiles_grain =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean
+                
+                distMap_local = distance_from_boundary_in_grain(ID_neighbor, [gb,ID_current]);
+                ind = (distMap_local>mm)&(distMap_local<MM);
+                quantiles_neighbor =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean of
+                
                 ind_of_indTriple = sum(ismember(tripleIDs,ID_current) + ismember(tripleIDs,ID_neighbor),2)==2;
                 xTriple_local = X(indTriple(ind_of_indTriple));
                 yTriple_local = Y(indTriple(ind_of_indTriple));
@@ -550,103 +624,32 @@ for iE = 2:5
                         iE_n = inf;
                     end
                     
-                    if (iE_n>iE)
+                    if (iE_n>iE)%||(isempty(iE_n))
                         % not involved
                         bg_not_involved = [bg_not_involved; gb, ID_current];
+                        qList_not_involved = [qList_not_involved; quantiles_grain];
                     elseif (iE_n==iE)
                         % slip induced twin, slip side
                         bg_slip_twin_a = [bg_slip_twin_a; gb, ID_current];
+                        qList_slip_twin_a = [qList_slip_twin_a; quantiles_grain];
                     elseif (iE_n<iE)
                         % slip induced twin growth, slip side
                         bg_slip_growth_a = [bg_slip_growth_a; gb, ID_current];
+                        qList_slip_growth_a = [qList_slip_growth_a; quantiles_grain];
                     end
+                    clear quantiles_grain;
                 end
             end
         end
         
-        disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
+        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
         iS = iS + 1;
     end
-    
+    close(hW);
     warning on;
     
-    %% Then process the quants.  This is slow.
+    %% Then process the quants. This is slow.
     if calculateQuants==1
-        eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
-        
-        qs_not_involved = [];
-        qs_slip_twin_a = [];
-        qs_slip_twin_b = [];
-        qs_co_found = [];
-        qs_twin_twin_a = [];
-        qs_twin_twin_b = [];
-        qs_slip_growth_a = [];
-        qs_slip_growth_b = [];
-        qs_co_growth = [];
-        
-        NN = 250;
-        x_dist = (1:NN)';
-        qs_target = [0.0014, 0.0227, 0.1587, 0.5, 0.8414, 0.9772, 0.9987];
-        
-        hW = waitbar(0, 'do for each grain');
-        hN = length(struCell{iE});
-        for iS = 1:length(struCell{iE})
-            waitbar(iS/hN, hW);
-            ID_current = struCell{iE}(iS).gID;
-            ind = find(gID==ID_current);
-            nNeighbors = gNNeighbors(ind);
-            ID_neighbors = gNeighbors(ind, 1:nNeighbors);
-            
-            ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
-            % Make it one data point wider on each side
-            indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
-            indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
-            indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
-            indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
-            
-            ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-            eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);
-            
-            for iNb = 1:nNeighbors
-                ID_neighbor = ID_neighbors(iNb);
-                
-                if ID_current < ID_neighbor
-                    gb = 10000*ID_neighbor + ID_current;
-                else
-                    gb = 10000*ID_current + ID_neighbor;
-                end
-                
-                mm = 0;
-                MM = 150;
-                distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
-                ind = (distMap_local>mm)&(distMap_local<MM);
-                
-                if ~isempty(bg_not_involved) && ismember([gb,ID_current],bg_not_involved,'rows')
-                    qs_not_involved = [qs_not_involved; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_slip_twin_a) && ismember([gb,ID_current],bg_slip_twin_a,'rows')
-                    qs_slip_twin_a = [qs_slip_twin_a; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_slip_growth_a) && ismember([gb,ID_current],bg_slip_growth_a,'rows')
-                    qs_slip_growth_a = [qs_slip_growth_a; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                    
-                elseif ~isempty(bg_slip_twin_b) && ismember([gb,ID_current],bg_slip_twin_b,'rows')
-                    qs_slip_twin_b = [qs_slip_twin_b; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_co_found) && ismember([gb,ID_current],bg_co_found,'rows')
-                    qs_co_found = [qs_co_found; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_twin_twin_b) && ismember([gb,ID_current],bg_twin_twin_b,'rows')
-                    qs_twin_twin_b = [qs_twin_twin_b; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                    
-                elseif ~isempty(bg_slip_growth_b) && ismember([gb,ID_current],bg_slip_growth_b,'rows')
-                    qs_slip_growth_b = [qs_slip_growth_b; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_twin_twin_a) && ismember([gb,ID_current],bg_twin_twin_a,'rows')
-                    qs_twin_twin_a = [qs_twin_twin_a; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                elseif ~isempty(bg_co_growth) && ismember([gb,ID_current],bg_co_growth,'rows')
-                    qs_co_growth = [qs_co_growth; quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];
-                end
-                
-            end
-        end
-        close(hW);
-        
         %% Generate distance maps and calculate statistics for data points that belong to each category
         distMap_not_involved = distance_from_boundary_in_grain(ID, bg_not_involved);
         distMap_slip_twin_a = distance_from_boundary_in_grain(ID, bg_slip_twin_a);
@@ -684,30 +687,24 @@ for iE = 2:5
         save(['temp_results/',timeStr,'_quants_wrt_gb_',num2str(iE),'.mat'], 'struCell','T', 'x_dist',...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
             'q_not_involved','q_slip_twin_a','q_slip_twin_b','q_co_found','q_twin_twin_a','q_twin_twin_b','q_slip_growth_a','q_slip_growth_b','q_co_growth',...
-            'qs_not_involved','qs_slip_twin_a','qs_slip_twin_b','qs_co_found','qs_twin_twin_a','qs_twin_twin_b','qs_slip_growth_a','qs_slip_growth_b','qs_co_growth',...
+            'qList_not_involved','qList_slip_twin_a','qList_slip_twin_b','qList_co_found','qList_twin_twin_a','qList_twin_twin_b','qList_slip_growth_a','qList_slip_growth_b','qList_co_growth',...
             'distMap_not_involved','distMap_slip_twin_a','distMap_slip_twin_b','distMap_co_found','distMap_twin_twin_a','distMap_twin_twin_b','distMap_slip_growth_a','distMap_slip_growth_b','distMap_co_growth');
         
     else
         timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_twin_gb_summary_table_',num2str(iE),'.mat'], 'struCell','T', ...
-            'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth');
+        save(['temp_results/',timeStr,'_twin_gb_summary_table_',num2str(iE),'.mat'], 'struCell','T', 'x_dist', ...
+            'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
+            'qList_not_involved','qList_slip_twin_a','qList_slip_twin_b','qList_co_found','qList_twin_twin_a','qList_twin_twin_b','qList_slip_growth_a','qList_slip_growth_b','qList_co_growth');
     end
     
 end
-
-
-
-
-
 %% Summary. To determine twin activation, effect of (1) m' rank, (2) m', (3) resB, (4) resB rank
-% Objects to compare: twinned variants in twinned grains
-% (1) All twin boundaries
-% (2) Boundaries with intersecting twins
-% (3) Boundaries where twins are considered to be initiated from
-% Properties to compare:
-% (1) m', (2) m' rank, (3) resB, (4) resB rank
-
+% Objects to compare: twinned variants in twinned grains (1) All twin boundaries 
+% (2) Boundaries with intersecting twins (3) Boundaries where twins are considered 
+% to be initiated from Properties to compare: (1) m', (2) m' rank, (3) resB, (4) 
+% resB rank
 %% (1) m'
+%%
 close all;
 % (1) all boundaries, distribution of m'
 figure;
@@ -725,7 +722,7 @@ xlabel('m''');
 ylabel('Counts');
 title('only intersecting twins');
 
-% (3) boundaries with initiating twins (triple points, grain size considered)  
+% (3) boundaries with initiating twins (triple points, grain size considered)
 ind = (T.incoming==1)&(T.initiating==1);
 t = T(ind,:);
 figure;
@@ -733,9 +730,18 @@ histogram(t.mPrime, 0:0.1:1);
 xlabel('m''');
 ylabel('Counts');
 title('initiating twins');
-ylim = get(gca,'ylim');
+
+% (4) If only look at those paired with basal slip
+ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_neighbor,[1,2,3]));
+t = T(ind,:);
+figure;
+histogram(t.mPrime, 0:0.1:1);
+xlabel('m''');
+ylabel('Counts');
+title('initiating twins, neighbor is basal');
 
 %% (2) m' rank
+%%
 close all;
 % (1) all boundaries, distribution of m'
 figure;
@@ -763,7 +769,7 @@ ylabel('Counts');
 title('initiating twins');
 ylim = get(gca,'ylim');
 
-% (5) divide by grain size
+% (4) divide by grain size
 ind = (T.incoming==1)&(T.initiating==1)&(T.gDia>100)&(T.gDia_neighbor>100);
 t = T(ind,:);
 figure;
@@ -773,8 +779,17 @@ ylabel('Counts');
 title('initiating twins not at triple points');
 set(gca,'ylim',ylim);
 
-
+% (5) If only look at those paired with basal slip
+ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_neighbor,[1,2,3]));
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('initiating twins not at triple points, neighbor is basal');
+set(gca,'ylim',ylim);
 %% (3) resB
+%%
 close all;
 % (1) all boundaries, distribution of m'
 figure;
@@ -801,8 +816,8 @@ xlabel('resB');
 ylabel('Counts');
 title('initiating twins');
 ylim = get(gca,'ylim');
-
 %% (4) resB_rank
+%%
 close all;
 % (1) all boundaries, distribution of m'
 figure;
@@ -829,9 +844,9 @@ xlabel('resB rank');
 ylabel('Counts');
 title('initiating twins');
 ylim = get(gca,'ylim');
-
 %% This shows the relationship between m' rank and resB rank.
-close all; 
+%%
+close all;
 colormap parula
 edges = 0.5:6.5;
 N = zeros(6,6);
@@ -844,11 +859,4 @@ bar(1:6, N, 'stacked');
 xlabel('resB rank');
 ylabel('Counts');
 legend({'mPrime rank = 1','mPrime rank = 2','mPrime rank = 3','mPrime rank = 4','mPrime rank = 5','mPrime rank = 6'},'location','bestoutside');
-
 %% (5) m' vs neighbor_SF
-
-
-
-
-
-

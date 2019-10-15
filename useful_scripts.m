@@ -33,7 +33,7 @@ uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
 map_local = trueTwinMapCell{3}(indR_min:indR_max, indC_min:indC_max);
 map_local = twinMapCell{3}(indR_min:indR_max, indC_min:indC_max);
 %% get IS from grain ID
-iS = find(arrayfun(@(x) x.gID == 164,struCell{iE}));
+iS = find(arrayfun(@(x) x.gID == 192,struCell{iE}));
 
 %% calculate traceSF and traceND
 % (1) Calculate theoretical trace direction.
