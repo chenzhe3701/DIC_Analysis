@@ -134,7 +134,8 @@ for iE = 2:5
         'incoming','iiE_each_twin','iiE_each_twin_at_this_boundary','intersection_to_triple','iiE_twins_at_this_boundary_Nb',...
         'mPrime','rank_mPrime','ssn_neighbor','SF_neighbor',...
         'resB','rank_resB','ssn_neighbor_r','SF_neighbor_r',...
-        'initiating', 'eMedian','eMean','eMedian_neighbor','eMean_neighbor', 'max_basal_SF','max_twin_SF','max_basal_SF_neighbor','max_twin_SF_neighbor'};
+        'initiating', 'eMedian','eMean','eMedian_neighbor','eMean_neighbor', 'max_basal_SF','max_twin_SF','max_basal_SF_neighbor','max_twin_SF_neighbor',...
+        'ez_ba','ez_pr','ez_py','ez_pyII','ez_etw'};
     T = cell2table(cell(0,length(variableNames)));
     T.Properties.VariableNames = variableNames;
     T_template = T;
@@ -209,7 +210,6 @@ for iE = 2:5
         Y_local = Y(indR_min:indR_max, indC_min:indC_max);
         uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
         boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
-        trueTwinMapLocal = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
         exx_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
         eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
         
@@ -259,8 +259,7 @@ for iE = 2:5
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
                     ind = (distMap_local>mm)&(distMap_local<MM);
                     quantiles_grain =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean
-                    edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
-                    
+                     
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_neighbor]);
                     ind = (distMap_local>mm)&(distMap_local<MM);
                     quantiles_neighbor =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean of
@@ -278,6 +277,9 @@ for iE = 2:5
                     iE_iTwin_dT_list_Nb(:,3) = iE_iTwin_dT_list_Nb(:,3) * umPerX;
                     iiE_of_each_twin_Nb = find_initial_iE_of_twin_in_grain(struCell, ID_neighbor);
                     
+                    exz_iTwin_jMode = calculate_exz(euler_1, euler_2,sampleMaterial);
+                    ez = exz_iTwin_jMode./max(exz_iTwin_jMode,[],1);    % because it is normalized to 1, it might be reasonable to use the value (rather than rank) to represent the easiness.
+                
                     if (valid_grain_a)&&(valid_grain_b)
                         % (1.2) Find which of the active twin systems in the grain are 'incoming' to this grain boundary
                         % In addition, we need to find out if this twin first appear at this grain boundary.
@@ -375,9 +377,9 @@ for iE = 2:5
                         SFs_Nb = schmidFactorG2(outgoing_ss_n);
                         
                         
-                        % [[[[--> maybe it's better to find potential basal. e.g., all those with sf > 0.3, or normalized > 0.8
+                        % [[[[--> maybe it's better to find potential basal. e.g., all those with sf > [0.2], or normalized > 0.8
                         % [max_sf, ind_max_sf] = max(SFs_Nb);
-                        potential_ss = (SFs_Nb>0.25) | (SFs_Nb./max(SFs_Nb)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        potential_ss = (SFs_Nb>0.2) | (SFs_Nb./max(SFs_Nb)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
                         
                         mPrimeMatrixAbs = round(mPrimeMatrixAbs,4);     % [important detail] round to reduce ranking error, otherwise small diff can cause rank difference, e.g., same value ranked no. 1,2,3,4
                         
@@ -529,6 +531,12 @@ for iE = 2:5
                             T_local.max_twin_SF(ir) = max_twin_SF;
                             T_local.max_basal_SF_neighbor(ir) = max_basal_SF_Nb;
                             T_local.max_twin_SF_neighbor(ir) = max_twin_SF_Nb;
+                            
+                            T_local.exz_ba(ir) = ez(iTwin, 1);
+                            T_local.exz_pr(ir) = ez(iTwin, 2);
+                            T_local.exz_py(ir) = ez(iTwin, 3);
+                            T_local.exz_pyII(ir) = ez(iTwin, 4);
+                            T_local.exz_etw(ir) = ez(iTwin, 5);
                         end
                         clear quantiles_grain;
                     else

@@ -120,8 +120,7 @@ ylabel('basal SF');
 %% 
 save('temp_results\saved_data.mat','placeHolder','-v7.3')
 %%
-edmat_r5_2 = edmat;
-save('temp_results\saved_data.mat','edmat_r5_2','-append','-v7.3')
+save('temp_results\saved_data.mat','edmat_2','-append','-v7.3')
 %%
 D = matfile('temp_results\saved_data.mat')
 %% note, check, use -v7.3 file with outlier_removed=1.
