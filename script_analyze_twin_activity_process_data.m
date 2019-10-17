@@ -140,6 +140,7 @@ for iE = 2:5
     T_template = T;
     
     eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
+    edmat = [];
     
     qList_not_involved = [];
     qList_slip_twin_a = [];
@@ -258,11 +259,11 @@ for iE = 2:5
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
                     ind = (distMap_local>mm)&(distMap_local<MM);
                     quantiles_grain =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean
+                    edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
                     
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_neighbor]);
                     ind = (distMap_local>mm)&(distMap_local<MM);
                     quantiles_neighbor =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean of
-                    
                     
                     ind_of_indTriple = sum(ismember(tripleIDs,ID_current) + ismember(tripleIDs,ID_neighbor),2)==2;
                     xTriple_local = X(indTriple(ind_of_indTriple));
@@ -603,6 +604,7 @@ for iE = 2:5
                 distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
                 ind = (distMap_local>mm)&(distMap_local<MM);
                 quantiles_grain =  [quantile(eMap_local(ind), qs_target), nanmean(eMap_local(ind))];   % median and mean
+                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
                 
                 distMap_local = distance_from_boundary_in_grain(ID_neighbor, [gb,ID_current]);
                 ind = (distMap_local>mm)&(distMap_local<MM);

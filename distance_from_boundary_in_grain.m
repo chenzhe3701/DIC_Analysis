@@ -1,4 +1,9 @@
 % function distMap = distance_from_boundary_in_grain(ID, gbList, gList, roundTF)
+%
+% chenzhe, 2019-10-16
+% Note, this code treats all the same typed gb in the same grain equal.
+% But maybe each gb should be treated individually?
+
 function distMap = distance_from_boundary_in_grain(ID, bgList, roundTF)
 % Cauculate the (euclidean) distance map on the ID map, from
 % unique_boundaries in gbList, in grains in gList

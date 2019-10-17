@@ -203,9 +203,9 @@ for iE = 5
         end
         
         % [3] for each twin, analyze the potentially related neighbor/ or just analyze the twin related neighbor
-        for it = 1:6
-            sf = struCell{iE}(iS).tSF(it);
-            gbs_considered = tGb{it};    % the unique boundaries the twin intersect, may be empty
+        for iTwin = 1:6
+            sf = struCell{iE}(iS).tSF(iTwin);
+            gbs_considered = tGb{iTwin};    % the unique boundaries the twin intersect, may be empty
             twinned_TF = true;
             
             if isempty(gbs_considered)
@@ -216,11 +216,11 @@ for iE = 5
             end
             
             % The assumption is that, we always find a twin intersecting a grain boundary.  But here we can provide a double check
-            if ~isempty(all_tGb) && (ismember(it,activeTS) && (twinned_TF==false))
+            if ~isempty(all_tGb) && (ismember(iTwin,activeTS) && (twinned_TF==false))
                 disp('This does not match the assumption that a twin always have at least one intersecting grain boundary');
             end
             
-            tAF = struCell{iE}(iS).tVol(it)/struCell{iE}(iS).gVol;  % twin area fraction of grain size
+            tAF = struCell{iE}(iS).tVol(iTwin)/struCell{iE}(iS).gVol;  % twin area fraction of grain size
             
             % [3] if twinned, considering the impinging grain boundary, if not, considering all /(all twin related) neighbors
             for igb = 1:length(gbs_considered)
@@ -240,7 +240,7 @@ for iE = 5
                 g = g_2 * g_1'; % from grain_1 to grain_2
                 
                 % calculate displacement gradient, ...
-                iss = it + nss;   % for Mg
+                iss = iTwin + nss;   % for Mg
                 n = ss(1,:,iss);
                 b = ss(2,:,iss);
                 dispGrad = gamma * b' * n;   % displacement gradient, in crystal coordinate
@@ -262,6 +262,9 @@ for iE = 5
                 %                     dt = sqrt(dgm(3)^2+dgm(6)^2)
                 %                 end
                 
+                % For this neighbor, there is a matrix describing how the eij of 6 twin systesm can be expressed in the 24 systems (5 modes) in this neighbor.
+                exz_iTwin_jMode = calculate_exz(euler_1, euler_2,sampleMaterial);
+                ez = exz_iTwin_jMode./max(exz_iTwin_jMode,[],1);    % because it is normalized to 1, it might be reasonable to use the value (rather than rank) to represent the easiness. 
                 
                 % ////// find how what is happening actually in neighbor? What is the active system in this neighbor?
                 iS_nb = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
@@ -278,7 +281,7 @@ for iE = 5
                 [miso, ~] = calculate_misorientation_euler_d(euler_1, euler_2, 'HCP');
                 [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler_1, euler_2, [-1 0 0; 0 0 0; 0 0 0], [0 1 0], sampleMaterial, 'twin');
                 mPrime = mPrimeMatrixAbs(19:24,1:3);    % of interest
-                mPrime = max(mPrime(it,:)); % max of this twin w.r.t a basal slip   
+                mPrime = max(mPrime(iTwin,:)); % max of this twin w.r.t a basal slip   
                 
                 if ~isempty(iS_nb)
                     % (1) If twinned?
@@ -301,12 +304,13 @@ for iE = 5
                 end
                 
                 if twinned_TF || true
-                    T = [T; {ID_current, it+nss, sf, tAF, uniqueGB, twinned_TF, twinned_nb_TF, twin_twin_gb_TF, db, dp, dt, basal_SF, prism_SF, twin_SF, miso, mPrime}];
+                    T = [T; {ID_current, iTwin+nss, sf, tAF, uniqueGB, twinned_TF, twinned_nb_TF, twin_twin_gb_TF, db, dp, dt, basal_SF, prism_SF, twin_SF, miso, mPrime}];
                 end
                 
                 if ~isempty(all_tGb) && twinned_TF && plotTF
                     % we can plot the local data, to examine
                     textString = ['pr=',num2str(dp,3), newline,'ba=',num2str(db,3), newline,'tw=', num2str(dt,3)];
+                    textString = ['ba =',num2str(ez(iTwin,1)), newline,'pr =',num2str(ez(iTwin,2)), newline,'tw =', num2str(ez(iTwin,5))];  % new code after 24 symmetry
                     label_map_with_text(x_local, y_local, ID_local, h_f, 'target_ID', ID_neighbor, 'color', 'k', 'text', textString);
                     all_neighbor_copy(all_neighbor_copy==ID_neighbor) = [];
                 end
