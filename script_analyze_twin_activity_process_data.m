@@ -130,12 +130,12 @@ x_dist = (1:NN)';
 qs_target = [0.0014, 0.0227, 0.1587, 0.5, 0.8414, 0.9772, 0.9987];
 
 for iE = 2:5
-    variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF',...
+    variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF','gb_length',...
         'incoming','iiE_each_twin','iiE_each_twin_at_this_boundary','intersection_to_triple','iiE_twins_at_this_boundary_Nb',...
         'mPrime','rank_mPrime','ssn_neighbor','SF_neighbor',...
         'resB','rank_resB','ssn_neighbor_r','SF_neighbor_r',...
         'initiating', 'eMedian','eMean','eMedian_neighbor','eMean_neighbor', 'max_basal_SF','max_twin_SF','max_basal_SF_neighbor','max_twin_SF_neighbor',...
-        'ez_ba','ez_pr','ez_py','ez_pyII','ez_etw'};
+        'exz_ba','exz_pr','exz_py','exz_pyII','exz_etw'};
     T = cell2table(cell(0,length(variableNames)));
     T.Properties.VariableNames = variableNames;
     T_template = T;
@@ -242,6 +242,10 @@ for iE = 2:5
             for iNb = 1:nNeighbors
                 ID_neighbor = ID_neighbors(iNb);
                 iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+                
+                ind = find(gID==ID_neighbor);
+                euler_nb = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
+                
                 if ~isempty(iS_neighbor)
                     gDia_neighbor = sqrt(4*(struCell{iE}(iS_neighbor).gVol* (360/4096*5)^2)/pi);
                     % activeTS_Nb = sum(struCell{iE}(iS_neighbor).cTrueTwin,1)>0;
@@ -254,6 +258,7 @@ for iE = 2:5
                     else
                         gb = ID_neighbor * 10000 + ID_current;
                     end
+                    gb_length = sum(uniqueBoundary_local(:)==gb);
                     
                     % strain calculation in area of interest.
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
@@ -277,7 +282,7 @@ for iE = 2:5
                     iE_iTwin_dT_list_Nb(:,3) = iE_iTwin_dT_list_Nb(:,3) * umPerX;
                     iiE_of_each_twin_Nb = find_initial_iE_of_twin_in_grain(struCell, ID_neighbor);
                     
-                    exz_iTwin_jMode = calculate_exz(euler_1, euler_2,sampleMaterial);
+                    exz_iTwin_jMode = calculate_exz(euler, euler_nb,sampleMaterial);
                     ez = exz_iTwin_jMode./max(exz_iTwin_jMode,[],1);    % because it is normalized to 1, it might be reasonable to use the value (rather than rank) to represent the easiness.
                 
                     if (valid_grain_a)&&(valid_grain_b)
@@ -504,6 +509,7 @@ for iE = 2:5
                             T_local.gDia_neighbor(ir) = gDia_neighbor;
                             T_local.TS(ir) = iTwin;
                             T_local.TSF(ir) = tSF(iTwin);
+                            T_local.gb_length(ir) = gb_length;
                             
                             T_local.incoming(ir) = incoming_TS(iTwin);
                             T_local.iiE_each_twin(ir) = iiE_each_twin(iTwin);
@@ -658,215 +664,220 @@ for iE = 2:5
     close(hW);
     warning on;
     
-    %% Then process the quants. This is slow.
-    if calculateQuants==1
-        %% Generate distance maps and calculate statistics for data points that belong to each category
-        distMap_not_involved = distance_from_boundary_in_grain(ID, bg_not_involved);
-        distMap_slip_twin_a = distance_from_boundary_in_grain(ID, bg_slip_twin_a);
-        distMap_slip_twin_b = distance_from_boundary_in_grain(ID, bg_slip_twin_b);
-        distMap_co_found = distance_from_boundary_in_grain(ID, bg_co_found);
-        distMap_twin_twin_a = distance_from_boundary_in_grain(ID, bg_twin_twin_a);
-        distMap_twin_twin_b = distance_from_boundary_in_grain(ID, bg_twin_twin_b);
-        distMap_slip_growth_a = distance_from_boundary_in_grain(ID, bg_slip_growth_a);
-        distMap_slip_growth_b = distance_from_boundary_in_grain(ID, bg_slip_growth_b);
-        distMap_co_growth = distance_from_boundary_in_grain(ID, bg_co_growth);
-        
-        q_not_involved = (cell2mat(...
-            arrayfun(@(x) [quantile(eMap(distMap_not_involved(:)==x), qs_target), nanmean(eMap(distMap_not_involved(:)==x))],...
-            x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 1');
-        q_slip_twin_a = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_slip_twin_a(:)==x), qs_target), nanmean(eMap(distMap_slip_twin_a(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 2');
-        q_slip_twin_b = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_slip_twin_b(:)==x), qs_target), nanmean(eMap(distMap_slip_twin_b(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 3');
-        q_co_found = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_co_found(:)==x), qs_target), nanmean(eMap(distMap_co_found(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 4');
-        q_twin_twin_a = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_twin_twin_a(:)==x), qs_target), nanmean(eMap(distMap_twin_twin_a(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 5');
-        q_twin_twin_b = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_twin_twin_b(:)==x), qs_target), nanmean(eMap(distMap_twin_twin_b(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 6');
-        q_slip_growth_a = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_slip_growth_a(:)==x), qs_target), nanmean(eMap(distMap_slip_growth_a(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 7');
-        q_slip_growth_b = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_slip_growth_b(:)==x), qs_target), nanmean(eMap(distMap_slip_growth_b(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 8');
-        q_co_growth = (cell2mat(arrayfun(@(x) [quantile(eMap(distMap_co_growth(:)==x), qs_target), nanmean(eMap(distMap_co_growth(:)==x))], x_dist, 'uniformoutput',0)))';
-        disp('sets of quants calculated: 9');
-        
-        %% And save results
+    %% Save
         timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_quants_wrt_gb_',num2str(iE),'.mat'], 'struCell','T', 'x_dist',...
+        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T', 'x_dist', ...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
-            'q_not_involved','q_slip_twin_a','q_slip_twin_b','q_co_found','q_twin_twin_a','q_twin_twin_b','q_slip_growth_a','q_slip_growth_b','q_co_growth',...
             'qList_not_involved','qList_slip_twin_a','qList_slip_twin_b','qList_co_found','qList_twin_twin_a','qList_twin_twin_b','qList_slip_growth_a','qList_slip_growth_b','qList_co_growth',...
-            'distMap_not_involved','distMap_slip_twin_a','distMap_slip_twin_b','distMap_co_found','distMap_twin_twin_a','distMap_twin_twin_b','distMap_slip_growth_a','distMap_slip_growth_b','distMap_co_growth');
+            '-v7.3');
+        copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
+    
+end
+
+
+%% To study The effect of high strain on twin growth/activation:*
+% For each grain and grain boundary, we calculate the mean of the effective 
+% strain of all data points at the same distance (d) to the grain boundary,
+% for all distances d=1,2,3,...,250 
+% And then for each category, we take all the grain and grain boundaries,
+% and take the mean of all the mean effective strains @ each distances to
+% grain boundary
+% So, we get a curve that represents the strain distribution w.r.t to
+% distance to gb, for each category
+%% Method-1. Loop each grain, each neighbor (unique gb), calculate distance map. Then summarize e distribution.
+
+% calculate edmat: strain distribution matrix
+% [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
+
+for iE = 2:5
+    
+    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
+    edmat = [];
+    
+    iS = 1;
+    warning('off','MATLAB:table:RowsAddedExistingVars');
+    continueTF = true;
+    dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
+    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
+    
+    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
+    hN = length(struCell{iE});
+    while (continueTF)&&(iS<=length(struCell{iE}))
+        waitbar(iS/hN, hW);
         
-    else
-        timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_twin_gb_summary_table_',num2str(iE),'.mat'], 'struCell','T', 'x_dist', ...
-            'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
-            'qList_not_involved','qList_slip_twin_a','qList_slip_twin_b','qList_co_found','qList_twin_twin_a','qList_twin_twin_b','qList_slip_growth_a','qList_slip_growth_b','qList_co_growth');
+        close all;
+        ID_current = struCell{iE}(iS).gID
+        ind = find(gID==ID_current);
+        
+        nNeighbors = gNNeighbors(ind);
+        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+        
+        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
+        
+        % Make it one data point wider on each side
+        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+        
+        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+
+        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
+        
+        % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
+        for iNb = 1:nNeighbors
+            ID_neighbor = ID_neighbors(iNb);
+            iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+            if ~isempty(iS_neighbor)
+                
+                % (1.1) Calculate this_uniqueGB number.
+                if ID_current > ID_neighbor
+                    gb = ID_current * 10000 + ID_neighbor;
+                else
+                    gb = ID_neighbor * 10000 + ID_current;
+                end
+                
+                % strain calculation in area of interest.
+                distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
+                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
+                
+            end
+            % end of ~isempty(iS_neighbor)
+            
+        end
+
+        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
+        iS = iS + 1;
+    end
+    close(hW);
+    warning on;
+    
+    switch iE
+        case 2
+            edmat_2 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_2','-append','-v7.3');
+        case 3
+            edmat_3 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_3','-append','-v7.3');
+        case 4
+            edmat_4 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_4','-append','-v7.3');
+        case 5
+            edmat_5 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_5','-append','-v7.3');
     end
     
 end
-%% Summary. To determine twin activation, effect of (1) m' rank, (2) m', (3) resB, (4) resB rank
-% Objects to compare: twinned variants in twinned grains (1) All twin boundaries 
-% (2) Boundaries with intersecting twins (3) Boundaries where twins are considered 
-% to be initiated from Properties to compare: (1) m', (2) m' rank, (3) resB, (4) 
-% resB rank
-%% (1) m'
-%%
-close all;
-% (1) all boundaries, distribution of m'
-figure;
-histogram(T.mPrime, 0:0.1:1);
-xlabel('m''');
-ylabel('Counts');
-title('all boundaries, all twins');
+%% Method-2. 
+% First calculate a distMap. Each data point is affected only by the nearest unique gb.
+% Then, Loop each grain, each neighbor (unique gb), crop the distance map. Then summarize e distribution.
 
-% (2) boundaries with intersecting twins
-ind = (T.incoming==1);
-t = T(ind,:);
-figure;
-histogram(t.mPrime, 0:0.1:1);
-xlabel('m''');
-ylabel('Counts');
-title('only intersecting twins');
+% calculate edmat: strain distribution matrix
+% [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
 
-% (3) boundaries with initiating twins (triple points, grain size considered)
-ind = (T.incoming==1)&(T.initiating==1);
-t = T(ind,:);
-figure;
-histogram(t.mPrime, 0:0.1:1);
-xlabel('m''');
-ylabel('Counts');
-title('initiating twins');
+[~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
+uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
 
-% (4) If only look at those paired with basal slip
-ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_neighbor,[1,2,3]));
-t = T(ind,:);
-figure;
-histogram(t.mPrime, 0:0.1:1);
-xlabel('m''');
-ylabel('Counts');
-title('initiating twins, neighbor is basal');
+[distMap, gbLabel] = city_block(uniqueBoundary);
 
-%% (2) m' rank
-%%
-close all;
-% (1) all boundaries, distribution of m'
-figure;
-histogram(T.rank_mPrime, 0.5:6.5);
-xlabel('m'' rank');
-ylabel('Counts');
-title('all boundaries, all twins');
+for iE = 2:5
+    
+    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
+    edmat = [];
+    
+    iS = 1;
+    warning('off','MATLAB:table:RowsAddedExistingVars');
+    continueTF = true;
+    dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
+    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
+    
+    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
+    hN = length(struCell{iE});
+    while (continueTF)&&(iS<=length(struCell{iE}))
+        waitbar(iS/hN, hW);
+        
+        close all;
+        ID_current = struCell{iE}(iS).gID
+        ind = find(gID==ID_current);
+        
+        nNeighbors = gNNeighbors(ind);
+        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+        
+        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
+        
+        % Make it one data point wider on each side
+        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+        
+        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
 
-% (2) boundaries with intersecting twins
-ind = (T.incoming==1);
-t = T(ind,:);
-figure;
-histogram(t.rank_mPrime, 0.5:6.5);
-xlabel('m'' rank');
-ylabel('Counts');
-title('only intersecting twins');
+        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
+        gbLabel_local = gbLabel(indR_min:indR_max, indC_min:indC_max);
+        
+        % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
+        for iNb = 1:nNeighbors
+            ID_neighbor = ID_neighbors(iNb);
+            iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+            if ~isempty(iS_neighbor)
+                
+                % (1.1) Calculate this_uniqueGB number.
+                if ID_current > ID_neighbor
+                    gb = ID_current * 10000 + ID_neighbor;
+                else
+                    gb = ID_neighbor * 10000 + ID_current;
+                end
+                
+                % strain calculation in area of interest.
+                distMap_local = distMap(indR_min:indR_max, indC_min:indC_max);
+                mask = (gbLabel_local==gb)&(ID_local==ID_current);
+                distMap_local(~mask) = nan;
+                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
+                
+            end
+            % end of ~isempty(iS_neighbor)
+            
+        end
 
-% (3) boundaries with initiating twins
-ind = (T.incoming==1)&(T.initiating==1);
-t = T(ind,:);
-figure;
-histogram(t.rank_mPrime, 0.5:6.5);
-xlabel('m'' rank');
-ylabel('Counts');
-title('initiating twins');
-ylim = get(gca,'ylim');
-
-% (4) divide by grain size
-ind = (T.incoming==1)&(T.initiating==1)&(T.gDia>100)&(T.gDia_neighbor>100);
-t = T(ind,:);
-figure;
-histogram(t.rank_mPrime, 0.5:6.5);
-xlabel('m'' rank');
-ylabel('Counts');
-title('initiating twins not at triple points');
-set(gca,'ylim',ylim);
-
-% (5) If only look at those paired with basal slip
-ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_neighbor,[1,2,3]));
-t = T(ind,:);
-figure;
-histogram(t.rank_mPrime, 0.5:6.5);
-xlabel('m'' rank');
-ylabel('Counts');
-title('initiating twins not at triple points, neighbor is basal');
-set(gca,'ylim',ylim);
-%% (3) resB
-%%
-close all;
-% (1) all boundaries, distribution of m'
-figure;
-histogram(T.resB, 0:0.1:1);
-xlabel('resB');
-ylabel('Counts');
-title('all boundaries, all twins');
-
-% (2) boundaries with intersecting twins
-ind = (T.incoming==1);
-t = T(ind,:);
-figure;
-histogram(t.resB, 0:0.1:1);
-xlabel('resB');
-ylabel('Counts');
-title('only intersecting twins');
-
-% (3) boundaries with initiating twins
-ind = (T.incoming==1)&(T.initiating==1);
-t = T(ind,:);
-figure;
-histogram(t.resB, 0:0.1:1);
-xlabel('resB');
-ylabel('Counts');
-title('initiating twins');
-ylim = get(gca,'ylim');
-%% (4) resB_rank
-%%
-close all;
-% (1) all boundaries, distribution of m'
-figure;
-histogram(T.rank_resB, 0.5:6.5);
-xlabel('resB rank');
-ylabel('Counts');
-title('all boundaries, all twins');
-
-% (2) boundaries with intersecting twins
-ind = (T.incoming==1);
-t = T(ind,:);
-figure;
-histogram(t.rank_resB, 0.5:6.5);
-xlabel('resB rank');
-ylabel('Counts');
-title('only intersecting twins');
-
-% (3) boundaries with initiating twins
-ind = (T.incoming==1)&(T.initiating==1);
-t = T(ind,:);
-figure;
-histogram(t.rank_resB, 0.5:6.5);
-xlabel('resB rank');
-ylabel('Counts');
-title('initiating twins');
-ylim = get(gca,'ylim');
-%% This shows the relationship between m' rank and resB rank.
-%%
-close all;
-colormap parula
-edges = 0.5:6.5;
-N = zeros(6,6);
-for ii = 1:6
-    ind = (T.rank_mPrime == ii);
-    [N(:,ii),~] = histcounts(T.rank_resB(ind), edges);
+        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
+        iS = iS + 1;
+    end
+    close(hW);
+    warning on;
+    
+    switch iE
+        case 2
+            edmatII_2 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_2','-append','-v7.3');
+        case 3
+            edmatII_3 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_3','-append','-v7.3');
+        case 4
+            edmatII_4 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_4','-append','-v7.3');
+        case 5
+            edmatII_5 = edmat;
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_5','-append','-v7.3');
+    end
+    
 end
-figure;
-bar(1:6, N, 'stacked');
-xlabel('resB rank');
-ylabel('Counts');
-legend({'mPrime rank = 1','mPrime rank = 2','mPrime rank = 3','mPrime rank = 4','mPrime rank = 5','mPrime rank = 6'},'location','bestoutside');
-%% (5) m' vs neighbor_SF
+
+
+
+%% next, go to code for summary.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
