@@ -27,7 +27,8 @@
 % ---> new.  However, if both are twinning, [maybe] we should only consider
 % the true direction ??? 
 % So, maybe just use the result 'mPrimeMatrixAbs' and 'resBurgersMatrixAbs'.
-
+%
+% % [important detail] round to reduce error in do ranking, chenzhe, 2019-10-19
 
 function [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = ...
     calculate_mPrime_and_resB(euler_1, euler_2, stressTensor, gbNormal, material, twinTF)
@@ -105,6 +106,9 @@ mPrimeMatrixAbs(1:24,1:24) = abs(mPrimeMatrix(1:24,1:24));
 % Maybe, for twin, don't consider two directions, but let's see. 
 resBurgersMatrixAbs(nss+1:nss+ntwin, nss+1:nss+ntwin) = resBurgersMatrix(nss+1:nss+ntwin, nss+1:nss+ntwin);
 
-
-
+% [important detail] round to reduce error in do ranking, chenzhe, 2019-10-19
+mPrimeMatrix = round(mPrimeMatrix,4);
+resBurgersMatrix = round(resBurgersMatrix,4);
+mPrimeMatrixAbs = round(mPrimeMatrixAbs,4);
+resBurgersMatrixAbs = round(resBurgersMatrixAbs,4);
 
