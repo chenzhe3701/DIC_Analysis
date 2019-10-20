@@ -118,16 +118,6 @@ plotTF = 0;
 pauseTF = 0;
 umPerX = 360/4096;
 umPerDp = 360/4096*5;
-calculateQuants = 1;    % after assigning twin-gb to different categories, calculate quants, which is slow.
-
-% calculate quantiles of strain in each grain, in a mantle with distance in [mm, MM] data point range to grain boundary
-mm = 0;
-MM = 150;
-
-% calculate quantiles of strain in all grains, at each distance which is an integer within [1 NN]
-NN = 250;
-x_dist = (1:NN)';
-qs_target = [0.0014, 0.0227, 0.1587, 0.5, 0.8414, 0.9772, 0.9987];
 
 for iE = 2:5
     variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF','gb_length',...
@@ -136,7 +126,7 @@ for iE = 2:5
         'resB','rank_resB','ssn_nb_r','SF_nb_r',...
         'mPrime_wrtB','rank_mPrime_wrtB','ssn_nb_wrtB','SF_nb_wrtB', 'resB_wrtB','rank_resB_wrtB','ssn_nb_r_wrtB','SF_nb_r_wrtB',...
         'mPrime_wrtT','rank_mPrime_wrtT','ssn_nb_wrtT','SF_nb_wrtT', 'resB_wrtT','rank_resB_wrtT','ssn_nb_r_wrtT','SF_nb_r_wrtT',...
-        'initiating', 'eMean_1','eMean_2','eMedian_1_nb','eMean_2_nb', 'max_basal_SF','max_twin_SF','max_basal_SF_nb','max_twin_SF_nb',...
+        'initiating', 'eMean_1','eMean_2','eMean_1_nb','eMean_2_nb', 'max_basal_SF','max_twin_SF','max_basal_SF_nb','max_twin_SF_nb',...
         'exz_ba','exz_pr','exz_py','exz_pyII','exz_etw', 'exzr_ba','exzr_pr','exzr_py','exzr_pyII','exzr_etw'};
     T = cell2table(cell(0,length(variableNames)));
     T.Properties.VariableNames = variableNames;
@@ -173,7 +163,7 @@ for iE = 2:5
         waitbar(iS/hN, hW);
         
         close all;
-        ID_current = struCell{iE}(iS).gID;
+        ID_current = struCell{iE}(iS).gID
         ind = find(gID==ID_current);
         
         euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
@@ -379,6 +369,10 @@ for iE = 2:5
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
                         SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
@@ -390,7 +384,6 @@ for iE = 2:5
                         SF_nb_for_each_twin = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin,~] = sort(resB_each_twin,'ascend');
                         [~,rank_resB_each_twin] = ismember(resB_each_twin, sorted_resB_each_twin);  % resB-rank
@@ -405,6 +398,10 @@ for iE = 2:5
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
                         SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
@@ -416,7 +413,6 @@ for iE = 2:5
                         SF_nb_for_each_twin_wrtB = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin_wrtB, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtB,~] = sort(resB_each_twin_wrtB,'ascend');
                         [~,rank_resB_each_twin_wrtB] = ismember(resB_each_twin_wrtB, sorted_resB_each_twin_wrtB);  % resB-rank
@@ -440,7 +436,6 @@ for iE = 2:5
                         SF_nb_for_each_twin_wrtT = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin_wrtT, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtT,~] = sort(resB_each_twin_wrtT,'ascend');
                         [~,rank_resB_each_twin_wrtT] = ismember(resB_each_twin_wrtT, sorted_resB_each_twin_wrtT);  % resB-rank
@@ -823,6 +818,10 @@ for iE = 2:5
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
                         SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.  
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
@@ -834,7 +833,6 @@ for iE = 2:5
                         SF_nb_for_each_twin = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin,~] = sort(resB_each_twin,'ascend');
                         [~,rank_resB_each_twin] = ismember(resB_each_twin, sorted_resB_each_twin);  % resB-rank
@@ -849,6 +847,10 @@ for iE = 2:5
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
                         SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
@@ -860,7 +862,6 @@ for iE = 2:5
                         SF_nb_for_each_twin_wrtB = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin_wrtB, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtB,~] = sort(resB_each_twin_wrtB,'ascend');
                         [~,rank_resB_each_twin_wrtB] = ismember(resB_each_twin_wrtB, sorted_resB_each_twin_wrtB);  % resB-rank
@@ -884,7 +885,6 @@ for iE = 2:5
                         SF_nb_for_each_twin_wrtT = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
                         resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
-                        resB_local(:,SF_nb_enough_TF==0) = inf; % [detail] artificially make it 'inf' to avoid being found.
                         [resB_each_twin_wrtT, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtT,~] = sort(resB_each_twin_wrtT,'ascend');
                         [~,rank_resB_each_twin_wrtT] = ismember(resB_each_twin_wrtT, sorted_resB_each_twin_wrtT);  % resB-rank
@@ -1058,9 +1058,8 @@ for iE = 2:5
     
     %% Save
         timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', 'x_dist', ...
+        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', ...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
-            'qList_not_involved','qList_slip_twin_a','qList_slip_twin_b','qList_co_found','qList_twin_twin_a','qList_twin_twin_b','qList_slip_growth_a','qList_slip_growth_b','qList_co_growth',...
             '-v7.3');
         copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
     
@@ -1080,7 +1079,7 @@ end
 
 % calculate edmat: strain distribution matrix
 % [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
-
+x_dist = 1:250;
 for iE = 2:5
     
     eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
@@ -1147,16 +1146,16 @@ for iE = 2:5
     switch iE
         case 2
             edmat_2 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_2','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_2','x_dist', '-append','-v7.3');
         case 3
             edmat_3 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_3','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_3','x_dist', '-append','-v7.3');
         case 4
             edmat_4 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_4','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_4','x_dist', '-append','-v7.3');
         case 5
             edmat_5 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_5','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_5','x_dist', '-append','-v7.3');
     end
     
 end
@@ -1241,16 +1240,16 @@ for iE = 2:5
     switch iE
         case 2
             edmatII_2 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_2','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_2','x_dist', '-append','-v7.3');
         case 3
             edmatII_3 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_3','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_3','x_dist', '-append','-v7.3');
         case 4
             edmatII_4 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_4','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_4','x_dist', '-append','-v7.3');
         case 5
             edmatII_5 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_5','-append','-v7.3');
+            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_5','x_dist', '-append','-v7.3');
     end
     
 end
