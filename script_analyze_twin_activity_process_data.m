@@ -368,7 +368,7 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
                         % [detail] sometimes all basal can have SF=0.
                         if sum(SF_nb_enough_TF)==0
                             SF_nb_enough_TF(:) = true;
@@ -397,7 +397,7 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
                         % [detail] sometimes all basal can have SF=0.
                         if sum(SF_nb_enough_TF)==0
                             SF_nb_enough_TF(:) = true;
@@ -424,7 +424,11 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
@@ -817,7 +821,7 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
                         % [detail] sometimes all basal can have SF=0.  
                         if sum(SF_nb_enough_TF)==0
                             SF_nb_enough_TF(:) = true;
@@ -846,7 +850,7 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
                         % [detail] sometimes all basal can have SF=0.
                         if sum(SF_nb_enough_TF)==0
                             SF_nb_enough_TF(:) = true;
@@ -873,7 +877,11 @@ for iE = 2:5
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
                         % In addition, not all ssn_nb are allowed to analyze its m' value
                         % Maybe it's better to find potential systems, e.g., all those with sf > [0.2], or normalized > 0.8
-                        SF_nb_enough_TF = (SFs_nb_0>0.2) | (SFs_nb_0./max(SFs_nb_0)>0.8);   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        SF_nb_enough_TF = (SFs_nb_0>0.2) | ((SFs_nb_0>0)&(SFs_nb_0./max(SFs_nb_0)>0.8));   % logical vector, indicating wheter the out-going ss is considered as able to be activated (e.g., SF high enough)
+                        % [detail] sometimes all basal can have SF=0.
+                        if sum(SF_nb_enough_TF)==0
+                            SF_nb_enough_TF(:) = true;
+                        end
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
