@@ -4,7 +4,8 @@
 close all;
 iE = 5;
 
-% (1) max basal SF of grain
+%% To study the effect of grain microstructure parameter, such as basal/twin_SF, grain size, etc.
+%% (1) Grain twinned (red) and not twinned (blue). X: max basal SF of grain. Y: counts.
 edges = 0:0.05:0.5;
 
 ind1 = (T.iE==iE)&(T.twinnedTF==0);
@@ -19,7 +20,7 @@ for ii=1:length(edges)-1
 end
 figure;disableDefaultInteractivity(gca);
 bar(xpos, [N_nt(:),N_t(:)], 1, 'stacked');
-xlabel('Schmid Factor');
+xlabel('Basal Schmid Factor');
 ylabel('Counts');
 
 yyaxis right;
@@ -28,9 +29,9 @@ plot(xpos, N_t./(N_t+N_nt),'-ko','linewidth',1.5);
 ylabel('Percent grains twinned');
 legend('Not twinned','Twinned','Pct grains twinned','location','north');
 set(gca,'fontsize',12,'ylim',[0 1]);
-title(['Basal SF, iE = ',num2str(iE)],'fontweight','normal');
+title(['Grains twinned & not twinned, iE = ',num2str(iE)],'fontweight','normal');
 
-% (2) basal SF, T2, for all variants
+%% (2) Variants twinned & not twinned. X: basal SF. Y: coutns.
 edges = 0:0.05:0.5;
 
 ind1 = (T2.iE==iE)&(T2.vActiveTF==0);
@@ -45,7 +46,7 @@ for ii=1:length(edges)-1
 end
 figure;disableDefaultInteractivity(gca);
 bar(xpos, [N_nt(:),N_t(:)], 1, 'stacked');
-xlabel('Schmid Factor');
+xlabel('Basal Schmid Factor');
 ylabel('Counts');
 
 yyaxis right;
@@ -54,9 +55,9 @@ plot(xpos, N_t./(N_t+N_nt),'-ko','linewidth',1.5);
 ylabel('Percent twinned');
 legend('Not twinned','Twinned','Pct grains twinned','location','north');
 set(gca,'fontsize',12,'ylim',[0 1]);
-title(['Basal SF, iE = ',num2str(iE)],'fontweight','normal');
+title(['Variants twinned & not twinned, iE = ',num2str(iE)],'fontweight','normal');
 
-% (3) max twin SF of grain
+%% (3) Grains twinned & non-twinned. X: max twin SF. Y: counts
 edges = -0.5:0.05:0.5;
 
 ind1 = (T.iE==iE)&(T.twinnedTF==0);
@@ -82,7 +83,7 @@ legend('Not twinned','Twinned','Pct grains twinned','location','north');
 set(gca,'fontsize',12,'ylim',[0 1]);
 title(['Twin SF, iE = ',num2str(iE)],'fontweight','normal');
 
-% (4) twin SF, T2, for all variants
+%% (4) twin SF, T2, for all variants
 edges = -0.5:0.05:0.5;
 
 ind1 = (T2.iE==iE)&(T2.vActiveTF==0);
@@ -117,330 +118,341 @@ plot(T.twin_SF(ind), T.basal_SF(ind),'.k');
 xlabel('twin SF');
 ylabel('basal SF');
 
-%% 
-placeHolder = [];
-save('temp_results\saved_data.mat','placeHolder','-v7.3')
-
-%%
-D = matfile('temp_results\saved_data.mat')
-%% Method-1. Loop each grain, each neighbor (unique gb), calculate distance map. Then summarize e distribution.
-
-% calculate edmat: strain distribution matrix
-% [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
-
-for iE = 2:5
-    
-    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
-    edmat = [];
-    
-    iS = 1;
-    warning('off','MATLAB:table:RowsAddedExistingVars');
-    continueTF = true;
-    dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
-    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
-    
-    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
-    hN = length(struCell{iE});
-    while (continueTF)&&(iS<=length(struCell{iE}))
-        waitbar(iS/hN, hW);
-        
-        close all;
-        ID_current = struCell{iE}(iS).gID
-        ind = find(gID==ID_current);
-        
-        nNeighbors = gNNeighbors(ind);
-        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
-        
-        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
-        
-        % Make it one data point wider on each side
-        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
-        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
-        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
-        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
-        
-        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-
-        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
-        
-        % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
-        for iNb = 1:nNeighbors
-            ID_neighbor = ID_neighbors(iNb);
-            iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
-            if ~isempty(iS_neighbor)
-                
-                % (1.1) Calculate this_uniqueGB number.
-                if ID_current > ID_neighbor
-                    gb = ID_current * 10000 + ID_neighbor;
-                else
-                    gb = ID_neighbor * 10000 + ID_current;
-                end
-                
-                % strain calculation in area of interest.
-                distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
-                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
-                
-            end
-            % end of ~isempty(iS_neighbor)
-            
-        end
-
-        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
-        iS = iS + 1;
-    end
-    close(hW);
-    warning on;
-    
-    switch iE
-        case 2
-            edmat_2 = edmat;
-            save('temp_results\saved_data.mat','edmat_2','-append','-v7.3');
-        case 3
-            edmat_3 = edmat;
-            save('temp_results\saved_data.mat','edmat_3','-append','-v7.3');
-        case 4
-            edmat_4 = edmat;
-            save('temp_results\saved_data.mat','edmat_4','-append','-v7.3');
-        case 5
-            edmat_5 = edmat;
-            save('temp_results\saved_data.mat','edmat_5','-append','-v7.3');
-    end
-    
-end
-%% Method-2. 
-% First calculate a distMap. Each data point is affected only by the nearest unique gb.
-% Then, Loop each grain, each neighbor (unique gb), crop the distance map. Then summarize e distribution.
-
-% calculate edmat: strain distribution matrix
-% [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
-
-[~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
-uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
-
-[distMap, gbLabel] = city_block(uniqueBoundary);
-
-for iE = 2:5
-    
-    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
-    edmat = [];
-    
-    iS = 1;
-    warning('off','MATLAB:table:RowsAddedExistingVars');
-    continueTF = true;
-    dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
-    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
-    
-    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
-    hN = length(struCell{iE});
-    while (continueTF)&&(iS<=length(struCell{iE}))
-        waitbar(iS/hN, hW);
-        
-        close all;
-        ID_current = struCell{iE}(iS).gID
-        ind = find(gID==ID_current);
-        
-        nNeighbors = gNNeighbors(ind);
-        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
-        
-        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
-        
-        % Make it one data point wider on each side
-        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
-        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
-        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
-        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
-        
-        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-
-        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
-        gbLabel_local = gbLabel(indR_min:indR_max, indC_min:indC_max);
-        
-        % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
-        for iNb = 1:nNeighbors
-            ID_neighbor = ID_neighbors(iNb);
-            iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
-            if ~isempty(iS_neighbor)
-                
-                % (1.1) Calculate this_uniqueGB number.
-                if ID_current > ID_neighbor
-                    gb = ID_current * 10000 + ID_neighbor;
-                else
-                    gb = ID_neighbor * 10000 + ID_current;
-                end
-                
-                % strain calculation in area of interest.
-                distMap_local = distMap(indR_min:indR_max, indC_min:indC_max);
-                mask = (gbLabel_local==gb)&(ID_local==ID_current);
-                distMap_local(~mask) = nan;
-                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
-                
-            end
-            % end of ~isempty(iS_neighbor)
-            
-        end
-
-        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
-        iS = iS + 1;
-    end
-    close(hW);
-    warning on;
-    
-    switch iE
-        case 2
-            edmatII_2 = edmat;
-            save('temp_results\saved_data.mat','edmatII_2','-append','-v7.3');
-        case 3
-            edmatII_3 = edmat;
-            save('temp_results\saved_data.mat','edmatII_3','-append','-v7.3');
-        case 4
-            edmatII_4 = edmat;
-            save('temp_results\saved_data.mat','edmatII_4','-append','-v7.3');
-        case 5
-            edmatII_5 = edmat;
-            save('temp_results\saved_data.mat','edmatII_5','-append','-v7.3');
-    end
-    
-end
 
 
-%%  The following: plot curve.
+
+
+
+%% To study the effect of m', m'-rank, etc.
+iE = 5;
+load(['D:\p\m\DIC_Analysis\temp_results\twin_gb_summary_',num2str(iE),'.mat'], 'T', 'T2', 'struCell');
+TT = [T;T2];
+
+%% (I) Effect of m'-factor.  Compared <active variants> vs. <all possible variants>  
+
+% The following generates and compares the probability mass distribution, This just means that the active variants has more with high m', and less with small m'.  
+
+% If we want to demonstrate m' has a decisive role, it is reasonable to exclude the low SF ones, at least on the stimulation side.
+% In the current study, we could first need to look at the basal
+
+close all;
+
+edges = [0:0.05:0.95, 1+1000*eps];
+xpos = 0.025:0.05:0.975;
+
+% (1) If look at all the active variants.  
+ind = T.incoming==1;    % ind = (T.iiE_each_twin_at_this_boundary == T.iiE_each_twin)&(T.iiE_each_twin<=iE);    
+t = T(ind,:);
+% figure; histogram(t.mPrime, 0:0.05:1);
+% xlabel('m'' wrt active ss/ts in neighbor');
+% ylabel('Counts');
+% title('for active variants at the initiating boundary','fontweight','normal');
+N = histcounts(t.mPrime, edges);
+
+
+% When the active mode in neighbor is basal
+ind1 = ind&(ismember(T.ssn_nb,[1,2,3]));
+t = T(ind1,:);
+N1 = histcounts(t.mPrime, edges);
+% When the active mode in neighbor is twin
+ind2 = ind&(ismember(T.ssn_nb,[19:24]));
+t = T(ind2,:);
+N2 = histcounts(t.mPrime, edges);
+figure; 
+bar(xpos, [N1(:),N2(:)], 1, 'stacked');
+legend({'Basal slip in neighbor','Twin in neighbor'},'location','north');
+set(gca,'fontsize',16);
+xlabel('m'' factor');
+ylabel('Counts');
+title('All active variants','fontweight','normal');
+
+pmf = (N1+N2)./sum([N1(:);N2(:)]);  % probability mass function
+pmf_1 = N1./sum(N1(:));  % probability mass function, for active variants interacting with neighbor's basal   
+pmf_2 = N2./sum(N2(:));  % probability mass function, for active variants interacting with neighbor's twin  
+% yyaxis right;
+% plot(xpos,pmf,'-ok')
+
+% The follwing are the baseline/background
+% (2) For: all the possible variants, in all the twinned grains, look at their m' wrt all neighbor grains' MOST POSSIBLE basal         
+N3 = histcounts(TT.mPrime_wrtB, edges);
+figure; 
+histogram(TT.mPrime_wrtB, 0:0.05:1);
+xlabel('m'' factor');
+ylabel('Counts');
+title('m'' between all possible variants and most possible basal slip in neighbor','fontweight','normal');
+pmf_b = N3./sum(N3);
+
+% (3) For: all the possible variants, in all the twinned grains, look at their m' wrt all neighbor grains' MOST POSSIBLE twin   
+N4 = histcounts(TT.mPrime_wrtT, edges);
+figure; 
+histogram(TT.mPrime_wrtT, 0:0.05:1);
+xlabel('m'' wrt basal in neighbor');
+ylabel('Counts');
+title('m'' between all possible variants and most possible twin in neighbor','fontweight','normal');
+pmf_t = N4./sum(N4);
+
+
+% (4) Relative strength, all active wrt both basal and twin, vs. all possible wrt basal slip in neighbor     
+figure; hold on;
+plot(xpos, pmf, '-ko','linewidth',1.5);
+plot(xpos, pmf_b, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf./pmf_b, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+xlabel('m'' factor');
+ylabel('Multiples of random');
+set(gca,'fontsize',16);
+legend({'Active variants, ','All possible variants, basal in neighbor','Ratio'},'location','north');
+title('relative strength, all vs. basal', 'fontweight','normal');
+
+% (5) relative strength, basal slip in neighbor
+figure; hold on;
+plot(xpos, pmf_1, '-ko','linewidth',1.5);
+plot(xpos, pmf_b, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf_1./pmf_b, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+xlabel('m'' factor');
+ylabel('Multiples of random');
+set(gca,'fontsize',16);
+legend({'Active variants','All possible variants','Ratio'},'location','north');
+title('Basal in neighbor', 'fontweight','normal');
+
+% (6) relative strength, twin in neighbor
+figure; hold on;
+plot(xpos, pmf_2, '-ko','linewidth',1.5);
+plot(xpos, pmf_t, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf_2./pmf_t, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+ylabel('Multiples of random');
+xlabel('m'' factor');
+set(gca,'fontsize',16);
+legend({'Active variants','All possible variants','Ratio'},'location','north');
+title('Twin in neighbor', 'fontweight','normal');
+
+%% (II) Effect of m'-rank
+close all;
+
+edges = [0.5:1:6.5];
+xpos = 1:6;
+
+% (1) If look at all the active variants.  
+ind = T.incoming==1;
+t = T(ind,:);
+% figure; histogram(t.rank_mPrime);
+% xlabel('m''-rank wrt active ss/ts in neighbor');
+% ylabel('Counts');
+% title('for active variants at the initiating boundary','fontweight','normal');
+N = histcounts(t.rank_mPrime, edges);
+
+% When the active mode in neighbor is basal
+ind1 = ind&(ismember(T.ssn_nb,[1,2,3]));
+t = T(ind1,:);
+N1 = histcounts(t.rank_mPrime, edges);
+% When the active mode in neighbor is twin
+ind2 = ind&(ismember(T.ssn_nb,[19:24]));
+t = T(ind2,:);
+N2 = histcounts(t.rank_mPrime, edges);
+figure; 
+bar(xpos, [N1(:),N2(:)], 1, 'stacked');
+legend({'Basal slip in neighbor','Twin in neighbor'},'location','northeast');
+set(gca,'fontsize',16);
+xlabel('m'' rank');
+ylabel('Counts');
+title('All active variants','fontweight','normal');
+
+pmf = (N1+N2)./sum([N1(:);N2(:)]);  % probability mass function
+pmf_1 = N1./sum(N1(:));  % probability mass function, for active variants interacting with neighbor's basal   
+pmf_2 = N2./sum(N2(:));  % probability mass function, for active variants interacting with neighbor's twin  
+% yyaxis right;
+% plot(xpos,pmf,'-ok')
+
+% The follwing are the baseline/background
+% (2) For: all the possible variants, in all the twinned grains, look at their m' wrt all neighbor grains' MOST POSSIBLE basal         
+N3 = histcounts(TT.rank_mPrime_wrtB, edges);
+figure; 
+histogram(TT.rank_mPrime_wrtB, 0.5:1:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('m'' between all possible variants and most possible basal slip in neighbor','fontweight','normal');
+pmf_b = N3./sum(N3);
+
+% (3) For: all the possible variants, in all the twinned grains, look at their m' wrt all neighbor grains' MOST POSSIBLE twin   
+N4 = histcounts(TT.rank_mPrime_wrtT, edges);
+figure; 
+histogram(TT.rank_mPrime_wrtT, 0.5:1:6.5);
+xlabel('m'' rank wrt basal in neighbor');
+ylabel('Counts');
+title('m'' rank between all possible variants and most possible twin in neighbor','fontweight','normal');
+pmf_t = N4./sum(N4);
+
+
+% (4) Relative strength, all active wrt both basal and twin, vs. all possible wrt basal slip in neighbor     
+figure; hold on;
+plot(xpos, pmf, '-ko','linewidth',1.5);
+plot(xpos, pmf_b, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf./pmf_b, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+xlabel('m'' rank');
+ylabel('Multiples of random');
+set(gca,'fontsize',16);
+legend({'Active variants, ','All possible variants, basal in neighbor','Ratio'},'location','north');
+title('relative strength, all vs. basal', 'fontweight','normal');
+
+% (5) relative strength, basal slip in neighbor
+figure; hold on;
+plot(xpos, pmf_1, '-ko','linewidth',1.5);
+plot(xpos, pmf_b, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf_1./pmf_b, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+xlabel('m'' rank');
+ylabel('Multiples of random');
+set(gca,'fontsize',16);
+legend({'Active variants','All possible variants','Ratio'},'location','north');
+title('Basal in neighbor', 'fontweight','normal');
+
+% (6) relative strength, twin in neighbor
+figure; hold on;
+plot(xpos, pmf_2, '-ko','linewidth',1.5);
+plot(xpos, pmf_t, '--kd','linewidth',1.5);
+ylabel('Probability distribution');
+yyaxis right;
+plot(xpos, pmf_2./pmf_t, '-ro','linewidth',1.5);
+set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
+ylabel('Multiples of random');
+xlabel('m'' factor');
+set(gca,'fontsize',16);
+legend({'Active variants','All possible variants','Ratio'},'location','north');
+title('Twin in neighbor', 'fontweight','normal');
+
+
+
+%% (1) all boundaries, distribution of m'-rank, is uniform, as shown before.  
+
+%% If look at the active variants
+% (2) m'-rank, boundaries with intersecting twins   
+ind = (T.incoming==1);
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('only intersecting twins');
+
+% Or, just look at variants at the boundaries, the strain level at which the variant was observed at the boundary equals the strain level at which the twin was observed in grain   
+% (3) boundaries with twins that initiated at this boundary
+ind = (T.iiE_each_twin_at_this_boundary == T.iiE_each_twin);
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('twins that initiated at this boundary');
+
+
+% (4) Or, just look at boundaries with twins that initiated at this boundary, and at this iE (which means newly activated at this iE)
+ind = (T.iiE_each_twin_at_this_boundary == T.iiE_each_twin)&(T.iiE_each_twin==iE);
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title(['twins that initiated at this boundary, at iE=',num2str(iE)]);
+
+% (5) boundaries with initiating twins (determined by my assumption, only one gb in a grain is selected as the 'initiating' boundary)
+ind = (T.initiating==1);
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('initiating twins');
+ylim = get(gca,'ylim');
+
+% (6) divide by grain size.  Does large grain show more distinct trend? -->
+% Looks like no obvious grain size effect, after manual labeling.   
+ind = (T.initiating==1)&(T.gDia>100)&(T.gDia_neighbor>100);
+t = T(ind,:);
+N1 = histcounts(t.rank_mPrime, 0.5:6.5);
+ind = (T.initiating==1)&((T.gDia<100)|(T.gDia_neighbor<100));
+t = T(ind,:);
+N2 = histcounts(t.rank_mPrime, 0.5:6.5);
+figure;
+bar(1:6,[N1(:),N2(:)], 1);
+xlabel('m'' rank');
+ylabel('Counts');
+legend({'g diameters > 100', 'g diameters < 100'});
+title('initiating twins, both grain diameter > 80um');
+set(gca,'ylim',ylim);
+
+% (7) If only look at those paired with basal slip
+ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_nb,[1,2,3]));
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('initiating twins not at triple points, neighbor is basal');
+
+% (8) If only look at those paired with basal slip, and basal is big
+ind = (T.incoming==1)&(T.initiating==1)&(ismember(T.ssn_nb,[1,2,3]))&(T.SF_nb>0.25);
+t = T(ind,:);
+figure;
+histogram(t.rank_mPrime, 0.5:6.5);
+xlabel('m'' rank');
+ylabel('Counts');
+title('initiating twins not at triple points, neighbor is basal');
+
+
+%%  * likely neighbor have large max_basal_SF_nb
 iE = 3;
-load(['D:\p\m\DIC_Analysis\temp_results\quants_wrt_gb_',num2str(iE),'.mat']);
-load('D:\p\m\DIC_Analysis\temp_results\saved_data.mat', ['edmatII_',num2str(iE)]);
+close all
+ind1 = (T.incoming==1)
+t = T(ind,:);
+figure;
+histogram(t.max_basal_SF_nb, 0:0.05:0.5);
 
-expr = ['edmatII_',num2str(iE),';'];
-edmat = evalin('base',expr);
+figure;
+histogram(TT.max_basal_SF_nb, 0:0.05:0.5);
 
-%% nanmean
-clear eline_not_involved eline_slip_twin_a eline_slip_twin_b eline_co_found eline_twin_twin_a eline_twin_twin_b eline_slip_growth_a eline_slip_growth_b eline_co_growth
-legend_str = [];
+%% the effect of strain distribution: seems not distinct
+close all
+ind1 = (T.incoming==1)
+t = T(ind,:);
+figure;
+histogram(t.eMean_2_nb, 0.005:0.00025: 0.03);
 
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_not_involved, 'rows');
-eline_not_involved = nanmean(edmat(ind,4:end),1);
-legend_str{1} = ['not-involved: ',num2str(sum(ind))];
+figure;
+histogram(TT.eMean_2_nb, 0.005:0.00025: 0.03);
 
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_twin_a, 'rows');
-eline_slip_twin_a = nanmean(edmat(ind,4:end),1);
-legend_str{2} = ['slip-twin slip-side: ',num2str(sum(ind))];
+%% the effect of exzr_ba etc.
+close all
+ind1 = (T.incoming==1)
+t = T(ind,:);
+figure;
+histogram(t.exzr_ba, 0:0.05:1);
 
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_twin_b, 'rows');
-eline_slip_twin_b = nanmean(edmat(ind,4:end),1);
-legend_str{3} = ['slip-twin new-twin-side: ',num2str(sum(ind))];
+figure;
+histogram(TT.exzr_ba, 0:0.05:1);
 
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_co_found, 'rows');
-eline_co_found = nanmean(edmat(ind,4:end),1);
-legend_str{4} = ['co-found: ',num2str(sum(ind))];
-try
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_twin_twin_a, 'rows');
-    eline_twin_twin_a = nanmean(edmat(ind,4:end),1);
-    legend_str{5} = ['twin-twin old-twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_twin_twin_b, 'rows');
-    eline_twin_twin_b = nanmean(edmat(ind,4:end),1);
-    legend_str{6} = ['twin-twin new-twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_growth_a, 'rows');
-    eline_slip_growth_a = nanmean(edmat(ind,4:end),1);
-    legend_str{7} = ['slip-growth slip-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_growth_b, 'rows');
-    eline_slip_growth_b = nanmean(edmat(ind,4:end),1);
-    legend_str{8} = ['slip-growth twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_co_growth, 'rows');
-    eline_co_growth = nanmean(edmat(ind,4:end),1);
-    legend_str{9} = ['co-growth: ',num2str(sum(ind))];
-end
-figure;disableDefaultInteractivity(gca); hold on;
-nPts = length(x_dist);    % or 150
-% ndp_to_plot = 150;
-plot(x_dist(1:nPts),eline_not_involved(1:nPts),'-','color',[0 0.6 0],'LineWidth',3);
-plot(x_dist(1:nPts),eline_slip_twin_a(1:nPts),'-b','LineWidth',3);
-plot(x_dist(1:nPts),eline_slip_twin_b(1:nPts),'--b','LineWidth',2);
-
-plot(x_dist(1:nPts),eline_co_found(1:nPts),'-k','LineWidth',2);
-try
-    plot(x_dist(1:nPts),eline_twin_twin_a(1:nPts),'-r','LineWidth',.5);
-    plot(x_dist(1:nPts),eline_twin_twin_b(1:nPts),'--r','LineWidth',2);
-    
-    plot(x_dist(1:nPts),eline_slip_growth_a(1:nPts),'-m','LineWidth',3);
-    plot(x_dist(1:nPts),eline_slip_growth_b(1:nPts),'--m','LineWidth',.5);
-    plot(x_dist(1:nPts),eline_co_growth(1:nPts),'-c','LineWidth',.5);
-end
-% legend({'non-involved','slip-twin slip-side','slip-twin new-twin-side', 'co-found','twin-twin old-twin-side','twin-twin new-twin-side', 'slip-growth slip-side','slip-growth twin-side','co-growth'});
-legend(legend_str);
-set(gca,'fontsize',12);
-xlabel('Distance to grain boundary');
-ylabel('Mean of Effective strain');
-
-title(['iE=',num2str(iE)],'fontweight','normal');
-
-%%  median
-clear eline_not_involved eline_slip_twin_a eline_slip_twin_b eline_co_found eline_twin_twin_a eline_twin_twin_b eline_slip_growth_a eline_slip_growth_b eline_co_growth
-
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_not_involved, 'rows');
-eline_not_involved = median(edmat(ind,4:end),1,'omitnan');
-legend_str{1} = ['not-involved: ',num2str(sum(ind))];
-
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_twin_a, 'rows');
-eline_slip_twin_a = median(edmat(ind,4:end),1,'omitnan');
-legend_str{2} = ['slip-twin slip-side: ',num2str(sum(ind))];
-
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_twin_b, 'rows');
-eline_slip_twin_b = median(edmat(ind,4:end),1,'omitnan');
-legend_str{3} = ['slip-twin new-twin-side: ',num2str(sum(ind))];
-
-[ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_co_found, 'rows');
-eline_co_found = median(edmat(ind,4:end),1,'omitnan');
-legend_str{4} = ['co-found: ',num2str(sum(ind))];
-try
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_twin_twin_a, 'rows');
-    eline_twin_twin_a = median(edmat(ind,4:end),1,'omitnan');
-    legend_str{5} = ['twin-twin old-twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_twin_twin_b, 'rows');
-    eline_twin_twin_b = median(edmat(ind,4:end),1,'omitnan');
-    legend_str{6} = ['twin-twin new-twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_growth_a, 'rows');
-    eline_slip_growth_a = median(edmat(ind,4:end),1,'omitnan');
-    legend_str{7} = ['slip-growth slip-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_slip_growth_b, 'rows');
-    eline_slip_growth_b = median(edmat(ind,4:end),1,'omitnan');
-    legend_str{8} = ['slip-growth twin-side: ',num2str(sum(ind))];
-    
-    [ind,~] = ismember([edmat(:,3),edmat(:,2)], bg_co_growth, 'rows');
-    eline_co_growth = median(edmat(ind,4:end),1,'omitnan');
-    legend_str{9} = ['co-growth: ',num2str(sum(ind))];
-end
-
-figure;disableDefaultInteractivity(gca); hold on;
-nPts = length(x_dist);    % or 150
-% ndp_to_plot = 150;
-plot(x_dist(1:nPts),eline_not_involved(1:nPts),'-','color',[0 0.6 0],'LineWidth',3);
-plot(x_dist(1:nPts),eline_slip_twin_a(1:nPts),'-b','LineWidth',3);
-plot(x_dist(1:nPts),eline_slip_twin_b(1:nPts),'--b','LineWidth',2);
-
-plot(x_dist(1:nPts),eline_co_found(1:nPts),'-k','LineWidth',2);
-try
-    plot(x_dist(1:nPts),eline_twin_twin_a(1:nPts),'-r','LineWidth',.5);
-    plot(x_dist(1:nPts),eline_twin_twin_b(1:nPts),'--r','LineWidth',2);
-    
-    plot(x_dist(1:nPts),eline_slip_growth_a(1:nPts),'-m','LineWidth',3);
-    plot(x_dist(1:nPts),eline_slip_growth_b(1:nPts),'--m','LineWidth',.5);
-    plot(x_dist(1:nPts),eline_co_growth(1:nPts),'-c','LineWidth',.5);
-end
-% legend({'non-involved','slip-twin slip-side','slip-twin new-twin-side', 'co-found','twin-twin old-twin-side','twin-twin new-twin-side', 'slip-growth slip-side','slip-growth twin-side','co-growth'});
-legend(legend_str);
-set(gca,'fontsize',12);
-xlabel('Distance to grain boundary');
-ylabel('Medium of Effective strain');
-
-title(['iE=',num2str(iE)],'fontweight','normal');
+%% the effect of exz_ba etc.
+close all
+ind1 = (T.incoming==1)
+t = T(ind,:);
+figure;
+histogram(t.exz_ba, 0:0.005:0.14);
 
 
-
+figure;
+histogram(TT.exz_ba, 0:0.005:0.14);
 
 
 
