@@ -28,7 +28,7 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
+% [confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -100,11 +100,13 @@ for iE = iE_start:iE_stop
 end
 
 % Load from the pre-labeled results: twinMapCell, sfMapCell, struCell.  (cToGbDistMapCell is omitted, as will no longer be used in this code)
-load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');
+% load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');
 
 % load previous twin_gb interaction result, for reference.
-load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
+% load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
+[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the new result of dividing twin into variants');
+load(fulfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
 %%
 % Assign each variant to each boundary.
 %
@@ -176,7 +178,7 @@ for iE = 4
                 ID_r = imrotate(ID_local, traceDir(iTwin), 'nearest', 'loose');
                 X_r = imrotate(X_local, traceDir(iTwin), 'nearest', 'loose');
                 Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
-                uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
+                uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'bilinear', 'loose');
                 trueTwinMap_r = imrotate(trueTwinMap_local, traceDir(iTwin), 'nearest', 'loose');
                 clusterNumMap_r = imrotate(clusterNumMap_local, traceDir(iTwin), 'nearest', 'loose');
                 vMap_r = (trueTwinMap_r==iTwin+nss);    % variant map.  
@@ -266,11 +268,20 @@ for iE = 4
                 ID_back = imrotate(ID_r,-traceDir(iTwin), 'nearest', 'loose');
                 ind_back = ismember(ID_back, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
                 
-                % Make it one data point wider on each side
-                indC_back_min = max(1, find(sum(ind_back, 1), 1, 'first')-1);
-                indC_back_max = min(size(ID_back,2), find(sum(ind_back, 1), 1, 'last')+1);
-                indR_back_min = max(1, find(sum(ind_back, 2), 1, 'first')-1);
-                indR_back_max = min(size(ID_back,1), find(sum(ind_back, 2), 1, 'last')+1);
+                % Need to crop a region of the original size.
+                img1_template = (ID_local==ID_current);
+                img2_signal = (ID_back==ID_current);
+                [yOffSet, xOffSet] = normxcorr2A_register(img1_template, img2_signal, [0 0 0 0], [0 0 0 0], 0);
+                indC_back_min = 1 + xOffSet;
+                indC_back_max = indC_back_min + indC_max - indC_min;
+                indR_back_min = 1 + yOffSet;
+                indR_back_max = indR_back_min + indR_max - indR_min;
+                        
+%                 % Make it one data point wider on each side
+%                 indC_back_min = max(1, find(sum(ind_back, 1), 1, 'first')-1);
+%                 indC_back_max = min(size(ID_back,2), find(sum(ind_back, 1), 1, 'last')+1);
+%                 indR_back_min = max(1, find(sum(ind_back, 2), 1, 'first')-1);
+%                 indR_back_max = min(size(ID_back,1), find(sum(ind_back, 2), 1, 'last')+1);
                 
                 csl(:,:,iTwin) = temp(indR_back_min:indR_back_max, indC_back_min:indC_back_max);
                         
