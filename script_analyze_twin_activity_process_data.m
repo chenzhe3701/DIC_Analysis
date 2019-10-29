@@ -25,9 +25,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
+% [confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
 
-[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
+% [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -102,10 +102,13 @@ end
 
 % Load from the pre-labeled results: twinMapCell, sfMapCell, struCell.  (cToGbDistMapCell is omitted, as will no longer be used in this code)
 % load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote');
-load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
+% load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');
 
 % load previous twin_gb interaction result, for reference.
-load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
+% load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
+
+[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the new result of dividing twin into variants');
+load(fullfile(newVariantFilePath,newVariantFile),'struCell');   %,'trueTwinMapCell');
 
 %% Find triple points
 %%
@@ -127,7 +130,8 @@ for iE = 2:5
         'mPrime_wrtB','rank_mPrime_wrtB','ssn_nb_wrtB','SF_nb_wrtB', 'resB_wrtB','rank_resB_wrtB','ssn_nb_r_wrtB','SF_nb_r_wrtB',...
         'mPrime_wrtT','rank_mPrime_wrtT','ssn_nb_wrtT','SF_nb_wrtT', 'resB_wrtT','rank_resB_wrtT','ssn_nb_r_wrtT','SF_nb_r_wrtT',...
         'initiating', 'eMean_1','eMean_2','eMean_1_nb','eMean_2_nb', 'max_basal_SF','max_twin_SF','max_basal_SF_nb','max_twin_SF_nb',...
-        'exz_ba','exz_pr','exz_py','exz_pyII','exz_etw', 'exzr_ba','exzr_pr','exzr_py','exzr_pyII','exzr_etw'};
+        'exz_ba','exz_pr','exz_py','exz_pyII','exz_etw', 'exzr_ba','exzr_pr','exzr_py','exzr_pyII','exzr_etw',...
+        'tGbVol','tGbVolPct','tGbStrength'};
     T = cell2table(cell(0,length(variableNames)));
     T.Properties.VariableNames = variableNames;
     T2 = T;
@@ -608,6 +612,18 @@ for iE = 2:5
                             T_local.exzr_py(ir) = exzr(iTwin, 3);
                             T_local.exzr_pyII(ir) = exzr(iTwin, 4);
                             T_local.exzr_etw(ir) = exzr(iTwin, 5);
+                            
+                            ind = find(struCell{iE}(iS).tGb{iTwin} == gb);
+                            if isempty(ind)
+                                tGbVol = 0;
+                            else
+                                tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+                            end
+                            
+                            % add to new colume
+                            T_local.tGbVol(ir) = tGbVol;
+                            T_local.tGbVolPct(ir) = tGbVol/(pi/4*(gDia/umPerDp)^2);
+                            T_local.tGbStrength(ir) = T_local.tGbVolPct(ir)/gb_length;
                         end
 
                     else
@@ -1026,6 +1042,18 @@ for iE = 2:5
                             T_local.exzr_py(ir) = exzr(iTwin, 3);
                             T_local.exzr_pyII(ir) = exzr(iTwin, 4);
                             T_local.exzr_etw(ir) = exzr(iTwin, 5);
+                            
+                            ind = find(struCell{iE}(iS).tGb{iTwin} == gb);
+                            if isempty(ind)
+                                tGbVol = 0;
+                            else
+                                tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+                            end
+                            
+                            % add to new colume
+                            T_local.tGbVol(ir) = tGbVol;
+                            T_local.tGbVolPct(ir) = tGbVol/(pi/4*(gDia/umPerDp)^2);
+                            T_local.tGbStrength(ir) = T_local.tGbVolPct(ir)/gb_length;
                         end
 
                     else
@@ -1072,7 +1100,6 @@ for iE = 2:5
         copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
     
 end
-
 
 %% To study The effect of high strain on twin growth/activation:*
 % For each grain and grain boundary, we calculate the mean of the effective 
@@ -1167,7 +1194,7 @@ for iE = 2:5
     end
     
 end
-%% Method-2. 
+%% Method-2.  This methods seems not as good as Method-1, so maybe just for debug, no need to run this part.
 % First calculate a distMap. Each data point is affected only by the nearest unique gb.
 % Then, Loop each grain, each neighbor (unique gb), crop the distance map. Then summarize e distribution.
 
@@ -1263,8 +1290,54 @@ for iE = 2:5
 end
 
 
+%% Added something to the code, but run here to increase speed, no need to calculate everything again.  If run from beginning, no need to run again.
+for iE = 2:5
+    load(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2');
+    for ir = 1:size(T,1)
+        ID_current = T.ID(ir)
+        ID_neighbor = T.ID_neighbor(ir);
+        gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
+        iTwin = T.TS(ir);
+        
+        iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
+        
+        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+        if isempty(ind)
+            tGbVol = 0;
+        else
+            tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+        end
+        
+        % add to new colume
+        T.tGbVol(ir) = tGbVol;
+        T.tGbVolPct(ir) = tGbVol/(pi/4*(T.gDia(ir)/umPerDp)^2);
+        T.tGbStrength(ir) = T.tGbVolPct(ir)/T.gb_length(ir);
+    end
+    for ir = 1:size(T2,1)
+        ID_current = T2.ID(ir)
+        ID_neighbor = T2.ID_neighbor(ir);
+        gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
+        iTwin = T2.TS(ir);
+        
+        iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
+        
+        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+        if isempty(ind)
+            tGbVol = 0;
+        else
+            tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+        end
+        
+        % add to new colume
+        T2.tGbVol(ir) = tGbVol;
+        T2.tGbVolPct(ir) = tGbVol/(pi/4*(T2.gDia(ir)/umPerDp)^2);
+        T2.tGbStrength(ir) = T2.tGbVolPct(ir)/T2.gb_length(ir);
+    end
+    
+    save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2','-append');
+end
 
-%% next, go to code for summary.
+%% next, need to go to the code for summary.
 
 
 
