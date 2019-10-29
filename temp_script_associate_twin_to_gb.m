@@ -106,11 +106,11 @@ end
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
 [newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the new result of dividing twin into variants');
-load(fulfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
+load(fullfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
 %%
 % Assign each variant to each boundary.
 %
-% Algorithm:
+% Algorithm: === Need to go back and rewrite the details in algorithm.
 % (1) crop [X,Y,uniqueGB,trueTwinVariant]_local map.
 %
 % (2) For each variant, rotate the maps so that the theoretical trace
@@ -128,11 +128,13 @@ load(fulfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
 % 
 % (5) Go back, and check each row's data points' two associated gbLabels.
 
-toIdentify = 1;
-iCluster = 1;
-for iE = 4
-    
-    for iS = 23 %1:length(struCell{iE})
+for iE = 2:5    
+    for iS = 1:length(struCell{iE}) % 23
+        struCell{iE}(iS).tGbVol = cell(1,6);    % initiate.  Each .tGb{iTwin}(iGb) has an corresponding twin volume.
+        for iTwin = 1:6
+            struCell{iE}(iS).tGbVol{iTwin} = zeros(size(struCell{iE}(iS).tGb{iTwin}));
+        end
+        struCell{iE}(iS).gbNumLength = [];
         ID_current = struCell{iE}(iS).gID
         ind = find(gID==ID_current);
         
@@ -164,27 +166,35 @@ for iE = 4
         Y_local = Y(indR_min:indR_max, indC_min:indC_max);
         uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max); 
         uniqueBoundary_local((floor(uniqueBoundary_local/10000)~=ID_current)&(mod(uniqueBoundary_local,10000)~=ID_current)) = 0;    % leave only associated with this grain.
-        boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+
+        % (New field .{gbNumLength} = [gbNum, gbLength])
+        for ii=1:length(ID_neighbors)
+           if ID_neighbors(ii)>ID_current
+               gbNum = 10000*ID_neighbors(ii) + ID_current;
+           else
+               gbNum = 10000*ID_current + ID_neighbors(ii);
+           end
+           gbLength = sum(uniqueBoundary_local(:)==gbNum);
+           struCell{iE}(iS).gbNumLength = [struCell{iE}(iS).gbNumLength; gbNum, gbLength];
+        end
+        
+        
         trueTwinMap_local = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);  
         trueTwinMap_local(ID_local~=ID_current) = 0;
-        clusterNumMap_local = clusterNumMapCell{iE}(indR_min:indR_max, indC_min:indC_max);  
-        clusterNumMap_local(ID_local~=ID_current) = 0;
         % Find active system, if any, using cTrueTwin/tGb field
         activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
         
-        for iTwin = 1:4
+        for iTwin = 1:6
             if activeTS(iTwin)==1   
+                clear csl;
                 % (Step-2) Rotate maps 
                 ID_r = imrotate(ID_local, traceDir(iTwin), 'nearest', 'loose');
                 X_r = imrotate(X_local, traceDir(iTwin), 'nearest', 'loose');
                 Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
-                uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'bilinear', 'loose');
+                uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
+                uniqueBoundary_r = imdilate(uniqueBoundary_r,ones(3));
                 trueTwinMap_r = imrotate(trueTwinMap_local, traceDir(iTwin), 'nearest', 'loose');
-                clusterNumMap_r = imrotate(clusterNumMap_local, traceDir(iTwin), 'nearest', 'loose');
                 vMap_r = (trueTwinMap_r==iTwin+nss);    % variant map.  
-                if toIdentify == 1
-                    vMap_r = (clusterNumMap_r == iCluster); % try this to segment clusterNumMap into variantMap(or trueTwinMap)  
-                end
                 
                 [nr,nc] = size(vMap_r);
                 gbLabelMap = zeros(nr,nc);    % to store assigned gb_label
@@ -248,7 +258,10 @@ for iE = 4
                 % (Step-5) go back to clean
                 cleanTF = 1;
                 if cleanTF
-                    gbList = unique(gbNumXY_intersect(:,1));
+                    % gbList = unique(gbNumXY_intersect(:,1));
+                    % Here, get allowable intersecting gbList from manually labeled results  
+                    gbList = struCell{iE}(iS).tGb{iTwin};                    
+                    
                     for ir=1:nr
                         tf = ismember(gbLR(ir,:),gbList);
                         if sum(tf)==1
@@ -262,9 +275,8 @@ for iE = 4
                     end
                 end
                 
-                temp = cslMap;
                 % rotate back, need to crop again.
-                temp = imrotate(cslMap,-traceDir(iTwin), 'nearest', 'loose');
+                temp = imrotate(gbLabelMap,-traceDir(iTwin), 'nearest', 'loose');
                 ID_back = imrotate(ID_r,-traceDir(iTwin), 'nearest', 'loose');
                 ind_back = ismember(ID_back, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
                 
@@ -283,36 +295,22 @@ for iE = 4
 %                 indR_back_min = max(1, find(sum(ind_back, 2), 1, 'first')-1);
 %                 indR_back_max = min(size(ID_back,1), find(sum(ind_back, 2), 1, 'last')+1);
                 
-                csl(:,:,iTwin) = temp(indR_back_min:indR_back_max, indC_back_min:indC_back_max);
-                        
+                gbLabelMap_back = temp(indR_back_min:indR_back_max, indC_back_min:indC_back_max);
+                for ii = 1:length(gbList)
+                    ind = find(struCell{iE}(iS).tGb{iTwin} == gbList(ii));  % 'ind' should be the same as 'ii'                    
+                    tGbVol = sum(gbLabelMap_back(:)==gbList(ii));
+                    struCell{iE}(iS).tGbVol{iTwin}(ind) = tGbVol;
+                end
+                
             end % end of if(activeTS(iTwin)==1)
             
         end % end of for iTwin=1:6
         
-        if toIdentify==1
-            [nr,nc,np] = size(csl);
-            tnMap = zeros(nr,nc);
-            for ir=1:nr
-               for ic=1:nc
-                  [maxV,temp] = max(csl(ir,ic,:)); 
-                  if maxV>0
-                    tnMap(ir,ic) = temp;
-                  end
-               end
-            end
-        end
-        
     end % end of (for iS=1:end)
 end % end of (for iE=2:5) 
 
-
-
-
-
-
-
-
-
+%% save updated struCell
+save('temp_results\new_variant_map.mat','struCell','-append');
 
 
 
