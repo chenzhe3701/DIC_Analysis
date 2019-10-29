@@ -188,7 +188,9 @@ for iE = 2:5
                         ID_r = imrotate(ID_local, traceDir(iTwin), 'nearest', 'loose');
                         X_r = imrotate(X_local, traceDir(iTwin), 'nearest', 'loose');
                         Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
-                        uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'bilinear', 'loose');
+%                         uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'bilinear', 'loose');
+                        uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
+                        uniqueBoundary_r = imdilate(uniqueBoundary_r,ones(3));
                         clusterNumMap_r = imrotate(clusterNumMap_local, traceDir(iTwin), 'nearest', 'loose');
                         vMap_r = (clusterNumMap_r == iC); % try this to segment clusterNumMap into variantMap(or trueTwinMap)
                         
@@ -376,8 +378,7 @@ end
 save('temp_results\new_variant_map.mat','variantMapCleanedCell','-append');
 
 
-%% Count tVol again
-% need to load a valid struCell here. ================================================  
+%% Count tVol again, need to load a valid struCell here. ================================================  
 SF_th = 0.15;  
 for iE = iE_start:iE_stop
     % use the updated trueTwinMapCell.  Use variantMapCleanedCell--------------------   
