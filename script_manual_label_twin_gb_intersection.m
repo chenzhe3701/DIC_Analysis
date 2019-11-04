@@ -105,6 +105,10 @@ load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
 
 %% [The following is for manual label]
+struRef = struCell; % save the old struCell as ref.
+
+
+
 %% Initialize the related fields
 % Select an iE.
 for iE = iE_start:iE_stop
@@ -144,24 +148,26 @@ for iE = iE_start:iE_stop
     end
 end
 
-%% [for modification] If modify earlier strain level (e.g., 2), also modify that grain at later strain level (copy 2->3, then 3->4, etc)
-% start to modify from this iE
-start_modify_from_iE = 5;
-for ie = start_modify_from_iE:iE_stop
-%     a0 = load(['temp_results\for_recover_iE_',num2str(ie-1)],'struCell');
-%     a0 = a0.struCell{ie-1}(iS);
-    a0 = struCell{ie-1}(iS);
-    % copy
-    struCell{ie}(iS).tGb = a0.tGb;
-    struCell{ie}(iS).tGbPts = a0.tGbPts;
-    struCell{ie}(iS).tGbNormal = a0.tGbNormal;
-    struCell{ie}(iS).tGbPtsiE = a0.tGbPtsiE;
-end
+%% [for modification only] If modify earlier strain level (e.g., 2), also modify that grain at later strain level (copy 2->3, then 3->4, etc)
+% % start to modify from this iE
+% start_modify_from_iE = 5;
+% for ie = start_modify_from_iE:iE_stop
+% %     a0 = load(['temp_results\for_recover_iE_',num2str(ie-1)],'struCell');
+% %     a0 = a0.struCell{ie-1}(iS);
+%     a0 = struCell{ie-1}(iS);
+%     % copy
+%     struCell{ie}(iS).tGb = a0.tGb;
+%     struCell{ie}(iS).tGbPts = a0.tGbPts;
+%     struCell{ie}(iS).tGbNormal = a0.tGbNormal;
+%     struCell{ie}(iS).tGbPtsiE = a0.tGbPtsiE;
+% end
 
 
 %% Select an iS to start
 iS = 1;
 %%
+lines_total = 0;
+
 iE = iE_start;
 continueTF = true;
 while (continueTF)&&(iS<length(struCell{iE}))
@@ -170,13 +176,23 @@ while (continueTF)&&(iS<length(struCell{iE}))
     
     for iE = iE_start:iE_stop                
         disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
+        
+        % [relabel 20191101 code] in this code, may need to initialize the 4 fields based on previous iE result. 
+%         if iE>iE_start
+%             struCell{iE}(iS).tGb = struCell{iE-1}(iS).tGb;
+%             struCell{iE}(iS).tGbPts = struCell{iE-1}(iS).tGbPts;
+%             struCell{iE}(iS).tGbNormal = struCell{iE-1}(iS).tGbNormal;
+%             struCell{iE}(iS).tGbPtsiE = struCell{iE-1}(iS).tGbPtsiE;
+%         end
+            
         % find grains that have been determined to be twinned up to this iE
         gns = [];
         for ii = iE_start:iE
             gns = [gns;twinned_grain_list{ii}];
         end
+        activeTS = sum(struRef{iE}(iS).cTrueTwin,1)>0;
         
-        if ismember(struCell{iE}(iS).gID, gns)
+        if ismember(struCell{iE}(iS).gID, gns)            
             %% close all;
             ID_current = struCell{iE}(iS).gID;
             ind = find(gID==ID_current);
@@ -211,64 +227,121 @@ while (continueTF)&&(iS<length(struCell{iE}))
             trueTwinMapLocal = trueTwinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
             e_local = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
             
-            % plot only once, twinMap and eMap at related iEs
-            if ~plottedRelatedInfo
-                for ii = iE_stop:-1:iE+1
-                    myplot(X_local, Y_local, trueTwinMapCell{ii}(indR_min:indR_max, indC_min:indC_max), grow_boundary(boundaryTF_local));
-                    caxis([18 24]);
-                    title(['iE=',num2str(ii)],'fontweight','normal');
-                    disableDefaultInteractivity(gca);
-                    
-                    myplot(X_local, Y_local, strainFile{ii}.exx(indR_min:indR_max, indC_min:indC_max), grow_boundary(boundaryTF_local));
-                    title(['iE=',num2str(ii)],'fontweight','normal');
-                    for ID_target = ID_neighbors
-                        local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, [1,2,3,19:24], gca);
-                    end
-                    disableDefaultInteractivity(gca);
-                end
-                plottedRelatedInfo = true;
-            end
-            
-            [hF_t,a0,~] = myplot(X_local, Y_local, trueTwinMapLocal, boundaryTF_local);
-            caxis([18 24]);
-            label_map_with_ID(X_local, Y_local, ID_local, hF_t, ID_current);
-            disableDefaultInteractivity(a0);
-            
-            [hF_e,aA,~] = myplot(X_local, Y_local, e_local, grow_boundary(boundaryTF_local));
-            title(['iE=',num2str(iE)],'fontweight','normal');
-            disableDefaultInteractivity(aA);
-            hold on;
-            local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_current, [1,2,3,19:24], gca);
-            %         for ID_target = ID_neighbors
-            %             local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, [1,2,3,19:24], gca);
-            %         end
+%             % plot only once, twinMap and eMap at related iEs
+%             if ~plottedRelatedInfo
+%                 for ii = iE_stop:-1:iE+1
+%                     myplot(X_local, Y_local, trueTwinMapCell{ii}(indR_min:indR_max, indC_min:indC_max), grow_boundary(boundaryTF_local));
+%                     caxis([18 24]);
+%                     title(['iE=',num2str(ii)],'fontweight','normal');
+%                     disableDefaultInteractivity(gca);
+%                     
+%                     myplot(X_local, Y_local, strainFile{ii}.exx(indR_min:indR_max, indC_min:indC_max), grow_boundary(boundaryTF_local));
+%                     title(['iE=',num2str(ii)],'fontweight','normal');
+%                     for ID_target = ID_neighbors
+%                         local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, [1,2,3,19:24], gca);
+%                     end
+%                     disableDefaultInteractivity(gca);
+%                 end
+%                 plottedRelatedInfo = true;
+%             end
+%             
+%             [hF_t,a0,~] = myplot(X_local, Y_local, trueTwinMapLocal, boundaryTF_local);
+%             caxis([18 24]);
+%             label_map_with_ID(X_local, Y_local, ID_local, hF_t, ID_current);
+%             disableDefaultInteractivity(a0);
+%             
+%             [hF_e,aA,~] = myplot(X_local, Y_local, e_local, grow_boundary(boundaryTF_local));
+%             title(['iE=',num2str(iE)],'fontweight','normal');
+%             disableDefaultInteractivity(aA);
+%             hold on;
+%             local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_current, [1,2,3,19:24], gca);
+%             %         for ID_target = ID_neighbors
+%             %             local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, [1,2,3,19:24], gca);
+%             %         end
             
             
             %%
-            % --> find existing lines in this region
-            for iTwin = 1:6
-                tGbNormals = struCell{iE}(iS).tGbNormal{iTwin};
-                for iGb = 1:length(tGbNormals)
-                    if ~isempty(tGbNormals{iGb})
-                        for iLine = 1:length(tGbNormals{iGb})
-                            drawline(aA,'Position',tGbNormals{iGb}{iLine});
+%             % --> find existing lines in this region
+%             for iTwin = 1:6
+%                 tGbNormals = struCell{iE}(iS).tGbNormal{iTwin};
+%                 for iGb = 1:length(tGbNormals)
+%                     if ~isempty(tGbNormals{iGb})
+%                         for iLine = 1:length(tGbNormals{iGb})
+%                             drawline(aA,'Position',tGbNormals{iGb}{iLine});
+%                         end
+%                     end
+%                 end
+%             end
+            
+            % [relabel 20191101 code] Input new trace, but here can get from reference/ground truce struCell 
+            % An improvement could be, compare with lines at previous iE. only draw new lines. 
+            % This is because manual label also have errors: sometimes a line with iE at current is actually an old line.  
+            lines_previous_iE = {[0 0; 0 0]};
+            ilines = 0;
+            for ie = iE_start:iE-1
+                for itwin = 1:6
+                    for igb = 1:length(struRef{ie}(iS).tGb{itwin})
+                        for ipt = 1:length(struRef{ie}(iS).tGbPtsiE{itwin}{igb})
+                            if struRef{ie}(iS).tGbPtsiE{itwin}{igb}(ipt) <= ie
+                                ilines = ilines + 1;
+                                lines_previous_iE{ilines} = struRef{ie}(iS).tGbNormal{itwin}{igb}{ipt};
+                            end
+                        end
+                    end
+                end
+            end
+                                            
+            lines_to_draw = [];
+            ilines = 0;
+            for itwin = 1:6
+                for igb = 1:length(struRef{iE}(iS).tGb{itwin})
+                    for ipt = 1:length(struRef{iE}(iS).tGbPtsiE{itwin}{igb})
+                        if struRef{iE}(iS).tGbPtsiE{itwin}{igb}(ipt) == iE
+                            % if not found in previous iE
+                            line_t = struRef{iE}(iS).tGbNormal{itwin}{igb}{ipt};    % tentative line
+                            if all(cellfun(@(x) sum(abs(x(:)-line_t(:)))>50, lines_previous_iE))    % tentative line significantly different from any previous line
+                                ilines = ilines + 1;
+                                lines_to_draw{ilines} = line_t;
+                                lines_total = lines_total + 1
+                            end
                         end
                     end
                 end
             end
             
-            needToAdd = questdlg('add trace?','select answer','Yes','No','Cancel','No');
+%             needToAdd = questdlg('add trace?','select answer','Yes','No','Cancel','No');
+            
+            % [relabel 20191101 code] assign needToAdd based on if there were lines to draw
+            if isempty(lines_to_draw)
+                needToAdd = 'No';
+            else
+                needToAdd = 'Yes';
+                nlines = length(lines_to_draw);
+                ilines = 1;
+            end
+            
             switch needToAdd
                 case 'Yes'
                     nextTrace = true;
                     while nextTrace
-                        % can use a button to start drawing a line
-                        handleDrawline = drawline(aA,'Color','r');
-                        posAdd = customWait(handleDrawline);
+%                         % can use a button to start drawing a line
+%                         handleDrawline = drawline(aA,'Color','r');
+%                         posAdd = customWait(handleDrawline);
+%                         
+%                         answer = questdlg('add,redraw,or next grain?','select operation',...
+%                             'NextTrace','Redraw','AcceptAndNext_iE',...
+%                             'AcceptAndNext_iE');
+
+                        % [relabel 20191101 code] assign the lines to draw to posAdd, and asign value to answer  
+                        posAdd = lines_to_draw{ilines};
+                        if ilines<nlines
+                            answer = 'NextTrace';
+                            ilines = ilines + 1;
+                        else
+                            answer = 'AcceptAndNext_iE';
+                        end
                         
-                        answer = questdlg('add,redraw,or next grain?','select operation',...
-                            'NextTrace','Redraw','AcceptAndNext_iE',...
-                            'AcceptAndNext_iE');
+
                         % find coordinate/maybe indices
                         pt1 = posAdd(1,:);
                         pt2 = posAdd(2,:);
@@ -294,7 +367,8 @@ while (continueTF)&&(iS<length(struCell{iE}))
                         end
                         % sometimes, the line covers two unique grain boundaries
                         igb = 1;
-                        while igb<=length(gbNum)
+                        ngb = length(gbNum);
+                        while igb<=ngb
                             gbn = gbNum(igb);
                             if (floor(gbn/10000)~=ID_current)&&(mod(gbn,10000)~=ID_current)
                                 igb = igb + 1;
@@ -302,10 +376,14 @@ while (continueTF)&&(iS<length(struCell{iE}))
                                 gbNum = gbn;
                                 break;
                             end
+%                             error("redraw, line covers more than one unique grain boundaries");
+                        end
+                        % [relabel 20191101 code]. Note, modify, but don't remember if this will work for the original code.  
+                        % Today there is an example of  gbNum = [12691259; 12691259; 12951269]; @ iE=2, iS=1168, ID_curren = 1295.  
+                        if igb>ngb
                             error("redraw, line covers more than one unique grain boundaries");
                         end
-                        
-                        
+                                       
                         ind_of_ind = find(uniqueBoundary_local(inds)==gbNum, 1, 'first');
                         ind = inds(ind_of_ind);
                         xcoord = X_local(ind);
@@ -315,7 +393,18 @@ while (continueTF)&&(iS<length(struCell{iE}))
                             case 'NextTrace'
                                 % look at direction of line drawn, determine which twin system it is
                                 direction = atand((y(2)-y(1))/(x(2)-x(1)));
-                                [~,iTwin] = min(abs(direction-traceDir));
+%                                 [~,iTwin] = min(abs(direction-traceDir));  
+
+                                % [relabel 20191101 code] chenzhe, 2019-11-01
+                                % a potential problem is that, if two systems have similar direction, 
+                                % but the one with similar direction as the labeled was not determined as active, 
+                                % it can lead to the labeling of a ts that we did not want to label.   
+                                %
+                                % Method: first, assign 'inf' to the dirDiff of the inactive twin systems.  Need to consider angle range. 
+                                dirDiff = abs(direction-traceDir);
+                                dirDiff(dirDiff>90) = 180 - dirDiff(dirDiff>90);
+                                dirDiff(~activeTS) = inf;
+                                [~,iTwin] = min(dirDiff);
                                 
                                 iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
                                 if isempty(iGb)
@@ -337,7 +426,18 @@ while (continueTF)&&(iS<length(struCell{iE}))
                             case 'AcceptAndNext_iE'
                                 % look at direction of line drawn, determine which twin system it is
                                 direction = atand((y(2)-y(1))/(x(2)-x(1)));
-                                [~,iTwin] = min(abs(direction-traceDir));
+%                                 [~,iTwin] = min(abs(direction-traceDir));
+                                
+                                % [relabel 20191101 code] chenzhe, 2019-11-01
+                                % a potential problem is that, if two systems have similar direction, 
+                                % but the one with similar direction as the labeled was not determined as active, 
+                                % it can lead to the labeling of a ts that we did not want to label.   
+                                %
+                                % Method: first, assign 'inf' to the dirDiff of the inactive twin systems 
+                                dirDiff = abs(direction-traceDir);
+                                dirDiff(dirDiff>90) = 180 - dirDiff(dirDiff>90);
+                                dirDiff(~activeTS) = inf;
+                                [~,iTwin] = min(dirDiff);
                                 
                                 iGb = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
                                 if isempty(iGb)
@@ -354,19 +454,19 @@ while (continueTF)&&(iS<length(struCell{iE}))
                                     struCell{iE}(iS).tGbNormal{iTwin}{iGb} = [struCell{iE}(iS).tGbNormal{iTwin}{iGb}; {[pt1;pt2]}];
                                     struCell{iE}(iS).tGbPtsiE{iTwin}{iGb} = [struCell{iE}(iS).tGbPtsiE{iTwin}{iGb}; iE];
                                 end
-                                close(hF_e);
-                                close(hF_t);
+%                                 close(hF_e);
+%                                 close(hF_t);
                                 nextTrace = false;
                                 
                                 % if next iE, need to first copy fields at this iE to later iEs   
-                                if iE>=3
+                                % if iE>=3
                                 for ii = iE+1:iE_stop
                                     struCell{ii}(iS).tGb = struCell{iE}(iS).tGb;
                                     struCell{ii}(iS).tGbPts = struCell{iE}(iS).tGbPts;
                                     struCell{ii}(iS).tGbNormal = struCell{iE}(iS).tGbNormal;
                                     struCell{ii}(iS).tGbPtsiE = struCell{iE}(iS).tGbPtsiE;
                                 end
-                                end
+                                % end   % [relabel 20191101 code] don't remember why used iE>3. Was that for debugging?  Disable it for now today.    
                         end
                     end
                     
@@ -381,8 +481,8 @@ while (continueTF)&&(iS<length(struCell{iE}))
                         end
                     end
                     
-                    close(hF_e);
-                    close(hF_t);
+%                     close(hF_e);
+%                     close(hF_t);
                 case 'Cancel'
                     iS = iS - 1;    % when cancel, reduce by 1 first
                     %                 close(handleFigA);
@@ -473,7 +573,7 @@ iE = iE_current;    % change back
 
 %%
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save(['temp_results\',timeStr,'_iE_',num2str(iE),'_twin_at_boundary_manual_result.mat'], 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
+save(['temp_results\',timeStr,'_twin_at_boundary_manual_result.mat'], 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
     'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
 % save([timeStr,'_twin_at_boundary_result_ws.mat'],'-v7.3');
 
