@@ -1201,142 +1201,143 @@ end
 % calculate edmat: strain distribution matrix
 % [iE, ID_current, gb, nanmean of eEff @ d=1:250 data point distance to that gb.  
 
-[~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
-uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
-
-[distMap, gbLabel] = city_block(uniqueBoundary);
-
-for iE = 2:5
-    
-    eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
-    edmat = [];
-    
-    iS = 1;
-    warning('off','MATLAB:table:RowsAddedExistingVars');
-    continueTF = true;
-    dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
-    dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
-    
-    hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
-    hN = length(struCell{iE});
-    while (continueTF)&&(iS<=length(struCell{iE}))
-        waitbar(iS/hN, hW);
-        
-        close all;
-        ID_current = struCell{iE}(iS).gID
-        ind = find(gID==ID_current);
-        
-        nNeighbors = gNNeighbors(ind);
-        ID_neighbors = gNeighbors(ind, 1:nNeighbors);
-        
-        ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
-        
-        % Make it one data point wider on each side
-        indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
-        indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
-        indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
-        indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
-        
-        ID_local = ID(indR_min:indR_max, indC_min:indC_max);
-
-        eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
-        gbLabel_local = gbLabel(indR_min:indR_max, indC_min:indC_max);
-        
-        % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
-        for iNb = 1:nNeighbors
-            ID_neighbor = ID_neighbors(iNb);
-            iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
-            if ~isempty(iS_neighbor)
-                
-                % (1.1) Calculate this_uniqueGB number.
-                if ID_current > ID_neighbor
-                    gb = ID_current * 10000 + ID_neighbor;
-                else
-                    gb = ID_neighbor * 10000 + ID_current;
-                end
-                
-                % strain calculation in area of interest.
-                distMap_local = distMap(indR_min:indR_max, indC_min:indC_max);
-                mask = (gbLabel_local==gb)&(ID_local==ID_current);
-                distMap_local(~mask) = nan;
-                edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
-                
-            end
-            % end of ~isempty(iS_neighbor)
-            
-        end
-
-        % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
-        iS = iS + 1;
-    end
-    close(hW);
-    warning on;
-    
-    switch iE
-        case 2
-            edmatII_2 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_2','x_dist', '-append','-v7.3');
-        case 3
-            edmatII_3 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_3','x_dist', '-append','-v7.3');
-        case 4
-            edmatII_4 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_4','x_dist', '-append','-v7.3');
-        case 5
-            edmatII_5 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_5','x_dist', '-append','-v7.3');
-    end
-    
-end
+% [~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
+% uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
+% 
+% [distMap, gbLabel] = city_block(uniqueBoundary);
+% 
+% for iE = 2:5
+%     
+%     eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
+%     edmat = [];
+%     
+%     iS = 1;
+%     warning('off','MATLAB:table:RowsAddedExistingVars');
+%     continueTF = true;
+%     dToTriple_th = 5;       % eliminate intersection whose distance to triple point is smaller than this value
+%     dToTriple_th_to_label = dToTriple_th;  % label if distance of intersection to triple point is smaller than this value
+%     
+%     hW = waitbar(0, ['iE=',num2str(iE),' analyze each grain']);
+%     hN = length(struCell{iE});
+%     while (continueTF)&&(iS<=length(struCell{iE}))
+%         waitbar(iS/hN, hW);
+%         
+%         close all;
+%         ID_current = struCell{iE}(iS).gID
+%         ind = find(gID==ID_current);
+%         
+%         nNeighbors = gNNeighbors(ind);
+%         ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+%         
+%         ind_local = ismember(ID, [ID_current, ID_neighbors]); %ismember(ID, [ID_current,ID_neighbor]);
+%         
+%         % Make it one data point wider on each side
+%         indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+%         indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+%         indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+%         indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+%         
+%         ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+% 
+%         eMap_local = eMap(indR_min:indR_max, indC_min:indC_max);  % This is for effective strain
+%         gbLabel_local = gbLabel(indR_min:indR_max, indC_min:indC_max);
+%         
+%         % [[[[For each neighbor]  get stats about neighbor and plot, such as m'
+%         for iNb = 1:nNeighbors
+%             ID_neighbor = ID_neighbors(iNb);
+%             iS_neighbor = find(arrayfun(@(x) x.gID == ID_neighbor, struCell{iE}));
+%             if ~isempty(iS_neighbor)
+%                 
+%                 % (1.1) Calculate this_uniqueGB number.
+%                 if ID_current > ID_neighbor
+%                     gb = ID_current * 10000 + ID_neighbor;
+%                 else
+%                     gb = ID_neighbor * 10000 + ID_current;
+%                 end
+%                 
+%                 % strain calculation in area of interest.
+%                 distMap_local = distMap(indR_min:indR_max, indC_min:indC_max);
+%                 mask = (gbLabel_local==gb)&(ID_local==ID_current);
+%                 distMap_local(~mask) = nan;
+%                 edmat = [edmat; iE, ID_current, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)];
+%                 
+%             end
+%             % end of ~isempty(iS_neighbor)
+%             
+%         end
+% 
+%         % disp(['iE=',num2str(iE),', iS=',num2str(iS),', ID=',num2str(struCell{iE}(iS).gID)]);
+%         iS = iS + 1;
+%     end
+%     close(hW);
+%     warning on;
+%     
+%     switch iE
+%         case 2
+%             edmatII_2 = edmat;
+%             save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_2','x_dist', '-append','-v7.3');
+%         case 3
+%             edmatII_3 = edmat;
+%             save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_3','x_dist', '-append','-v7.3');
+%         case 4
+%             edmatII_4 = edmat;
+%             save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_4','x_dist', '-append','-v7.3');
+%         case 5
+%             edmatII_5 = edmat;
+%             save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmatII_5','x_dist', '-append','-v7.3');
+%     end
+%     
+% end
 
 
 %% Added something to the code, but run here to increase speed, no need to calculate everything again.  If run from beginning, no need to run again.
-for iE = 2:5
-    load(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2');
-    for ir = 1:size(T,1)
-        ID_current = T.ID(ir)
-        ID_neighbor = T.ID_neighbor(ir);
-        gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
-        iTwin = T.TS(ir);
-        
-        iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
-        
-        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-        if isempty(ind)
-            tGbVol = 0;
-        else
-            tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+if 0
+    for iE = 2:5
+        load(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2');
+        for ir = 1:size(T,1)
+            ID_current = T.ID(ir)
+            ID_neighbor = T.ID_neighbor(ir);
+            gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
+            iTwin = T.TS(ir);
+            
+            iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
+            
+            ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+            if isempty(ind)
+                tGbVol = 0;
+            else
+                tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+            end
+            
+            % add to new colume
+            T.tGbVol(ir) = tGbVol;
+            T.tGbVolPct(ir) = tGbVol/(pi/4*(T.gDia(ir)/umPerDp)^2);
+            T.tGbStrength(ir) = T.tGbVolPct(ir)/T.gb_length(ir);
+        end
+        for ir = 1:size(T2,1)
+            ID_current = T2.ID(ir)
+            ID_neighbor = T2.ID_neighbor(ir);
+            gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
+            iTwin = T2.TS(ir);
+            
+            iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
+            
+            ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
+            if isempty(ind)
+                tGbVol = 0;
+            else
+                tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
+            end
+            
+            % add to new colume
+            T2.tGbVol(ir) = tGbVol;
+            T2.tGbVolPct(ir) = tGbVol/(pi/4*(T2.gDia(ir)/umPerDp)^2);
+            T2.tGbStrength(ir) = T2.tGbVolPct(ir)/T2.gb_length(ir);
         end
         
-        % add to new colume
-        T.tGbVol(ir) = tGbVol;
-        T.tGbVolPct(ir) = tGbVol/(pi/4*(T.gDia(ir)/umPerDp)^2);
-        T.tGbStrength(ir) = T.tGbVolPct(ir)/T.gb_length(ir);
+        save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2','-append');
     end
-    for ir = 1:size(T2,1)
-        ID_current = T2.ID(ir)
-        ID_neighbor = T2.ID_neighbor(ir);
-        gbNum = max(ID_current,ID_neighbor)*10000 + min(ID_current,ID_neighbor);
-        iTwin = T2.TS(ir);
-        
-        iS = find(arrayfun(@(x) x.gID == ID_current,struCell{iE}));
-        
-        ind = find(struCell{iE}(iS).tGb{iTwin} == gbNum);
-        if isempty(ind)
-            tGbVol = 0;
-        else
-            tGbVol = struCell{iE}(iS).tGbVol{iTwin}(ind);
-        end
-        
-        % add to new colume
-        T2.tGbVol(ir) = tGbVol;
-        T2.tGbVolPct(ir) = tGbVol/(pi/4*(T2.gDia(ir)/umPerDp)^2);
-        T2.tGbStrength(ir) = T2.tGbVolPct(ir)/T2.gb_length(ir);
-    end
-    
-    save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2','-append');
 end
-
 %% next, need to go to the code for summary.
 
 

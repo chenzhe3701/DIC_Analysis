@@ -30,6 +30,9 @@ end
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
 [confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
 
+% This provides a valid struCell
+[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection');
+
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 catch
@@ -103,7 +106,7 @@ end
 load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');
 
 % load previous twin_gb interaction result, for reference.
-% load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
+load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile),'struCell');
 
 %%
 % Assign each variant to each boundary.
