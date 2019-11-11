@@ -3,6 +3,12 @@
 % (1) clean cluster number map  (cluster tracking? find gb cluster?)
 % (2) cluster to twin by trace analysis
 % (3) get twin gb intersection
+%
+% chenzhe, 2019-11-08
+% We can select another grain, or keep the same grain.
+% We have a potentially better method for dividing cluster into variants.
+% --> Now the code keeps the old method. Also shows the new method.
+% ID=639, iE=5, iC=1, seems to be a good example.
 
 clear;
 addChenFunction;
@@ -18,7 +24,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -27,13 +33,18 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\','select the confirmed results where twin identification was based on trace dir and strain');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the confirmed results where twin identification was based on trace dir and strain');
+
+[newVariantFile, newVariantPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 catch
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
+
+% load new twin variant map.
+load(fullfile(newVariantPath, newVariantFile),'variantMapCleanedCell','struCell');
 
 % Make unique grain boundary map, and a list of the unique grain boundaries
 [~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
@@ -61,7 +72,7 @@ useParallel = 1;
 threshold = 1000;
 useThreshold = 0;
 
-%% [data] strain data. Convert into v7.3 for partial loading
+% [data] strain data. Convert into v7.3 for partial loading
 clear strainFile;
 for iE = iE_start:iE_stop
     strainFileName = [dicPath,'\',f2,STOP{iE+B}];
@@ -107,7 +118,7 @@ end
 
 %% (0) load data: clusterNumberMapCell, stru-->struCell.  And show how to clean clusterNumMap
 close all;
-clusterNumberMapCell = cell(1,length(STOP)-1);
+clusterNumMapCell = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 
 load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
@@ -115,7 +126,7 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     load([saveDataPath,fName_c2t_result],'clusterNumMap','clusterNumMapCleaned');
-    clusterNumberMapCell{iE} = clusterNumMap;   % clusterNumMapCleaned;         % for this code use non-cleaned, and show how to clean
+    clusterNumMapCell{iE} = clusterNumMap;   % clusterNumMapCleaned;         % for this code use non-cleaned, and show how to clean
     % initialize/zero related fields
     for iS =1:length(struCell{iE})
         struCell{iE}(iS).cActiveSS = zeros(length(struCell{iE}(iS).cLabel), length(struCell{iE}(iS).tLabel));
@@ -124,12 +135,13 @@ end
 
 
 % This is clean cluster number map -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-iE_select = 4;
+iE_select = 5;
 iC_select = 1;
 
 for iE = iE_start:iE_stop
     
-    iS = find(arrayfun(@(x) x.gID == 694,struCell{iE}));    % 378, 694  ----------------------------------------------------------------------------------------------------------------------------------------- 
+    % try iE=5, ID = 541, 639
+    iS = find(arrayfun(@(x) x.gID == 639,struCell{iE}));    % 378, 694  ----------------------------------------------------------------------------------------------------------------------------------------- 
     
     ID_current = gIDwithTrace(iS);
     
@@ -141,7 +153,7 @@ for iE = iE_start:iE_stop
     
     ID_local = ID(indR_min:indR_max, indC_min:indC_max);
     
-    clusterNumMapLocal = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    clusterNumMapLocal = clusterNumMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
     
     x_local = X(indR_min:indR_max, indC_min:indC_max);
@@ -166,7 +178,8 @@ for iE = iE_start:iE_stop
         colormap(parula(3));
         set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
     end
-    clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.00025);   % choices can be 0.0025 or 0.00025, whichever ok to keep more small and long traces  ------------------------------------------------- 
+    % choices can be 0.0025 or 0.00025, whichever ok to keep more small and long traces. In real code = 0.001.  ------------------------------------------------- 
+    clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.00025);   
     if ismember(iE,iE_select)
         clusterNumMapLocal_a = clusterNumMapLocal;
         clusterNumMapLocal_a(ID_local~=ID_current)=nan;
@@ -184,13 +197,517 @@ for iE = iE_start:iE_stop
     % This is likely slow, but maybe enough for current purpose ?
     ind1 = find(ID==ID_current);
     ind2 = find(ID_local==ID_current);
-    clusterNumberMapCell{iE}(ind1) = clusterNumMapLocal(ind2);
+    clusterNumMapCell{iE}(ind1) = clusterNumMapLocal(ind2);
+end
+
+%% script to select grain of interest
+% myplot(X,Y,clusterNumberMapCell{5},boundaryTFB);
+% label_map_with_ID(X,Y,ID,gcf,unique(ID(:)),'r');
+
+%% [Show the New method] cluster to twin variant, for iE_select, iS, iC_select  
+% The main code was in function: ..._confirmed_twin_to_variant_()
+% [option-2] 
+% Also tried to first combine all twinned clusters, then divide them together into variants.  
+% But does not seem to be very different, maybe even a little worse.   
+
+iE = iE_select;
+debugTF = 1;
+iS = iS;
+
+ID_current = struCell{iE}(iS).gID
+ind = find(gID==ID_current);
+
+euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
+if (1==eulerAligned)
+    g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
+    [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [0,0,0], [0,0,0], stressTensor, sampleMaterial, 'twin');
+else
+    g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
+    [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [-90,180,0], [0,0,0], stressTensor, sampleMaterial, 'twin'); % setting-2
+end
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+traceDir = abs_schmid_factor(nss+1:nss+ntwin,3);    % angle x-to-y
+
+nNeighbors = gNNeighbors(ind);
+ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+
+ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+
+% Make it one data point wider on each side
+indC_min = max(1, find(sum(ind_local, 1), 1, 'first')-1);
+indC_max = min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+indR_min = max(1, find(sum(ind_local, 2), 1, 'first')-1);
+indR_max = min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+
+% (Step-1) Crop local maps
+ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+X_local = X(indR_min:indR_max, indC_min:indC_max);
+Y_local = Y(indR_min:indR_max, indC_min:indC_max);
+uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
+uniqueBoundary_local((floor(uniqueBoundary_local/10000)~=ID_current)&(mod(uniqueBoundary_local,10000)~=ID_current)) = 0;    % leave only associated with this grain.
+boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+clusterNumMap_local = clusterNumMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+clusterNumMap_local(ID_local~=ID_current) = 0;
+% Find active system, if any, using cTrueTwin/tGb field
+activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
+
+grains_variant_map = zeros(size(ID_local));
+% for each cluster, depending on how many variants it has
+for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
+    
+    nTwins = sum(struCell{iE}(iS).cTrueTwin(iC,:));
+    twinClusters = iC;
+    
+%     % [option-2]
+%     nTwins = sum(sum(struCell{iE}(iS).cTrueTwin, 1)>0);
+%     twinClusters = find(sum(struCell{iE}(iS).cTrueTwin, 1)>0);
+    
+    if debugTF == 1
+        myplot(ismember(clusterNumMap_local,twinClusters),boundaryTF_local);
+    end
+
+    if nTwins==0
+        % not a twinned cluster
+        tnMap = zeros(size(clusterNumMap_local));
+    elseif nTwins==1
+        % assign this cluster to a single variant
+        variant_num = find(struCell{iE}(iS).cTrueTwin(iC,:));
+        tnMap = zeros(size(clusterNumMap_local));
+        tnMap(clusterNumMap_local==iC) = variant_num;
+    elseif nTwins>1
+        clear csl;
+        
+        if debugTF==1
+           myplot(X_local,Y_local,clusterNumMap_local, boundaryTF_local);
+           caxis([-0.1, max(clusterNumMap_local(:))+0.1]);
+        end
+        
+        % need to divide
+        for iTwin = 1:6
+%             if activeTS(iTwin) == 1 % [option-2]
+            if struCell{iE}(iS).cTrueTwin(iC,iTwin)==1
+                % (Step-2) Rotate maps
+                ID_r = imrotate(ID_local, traceDir(iTwin), 'nearest', 'loose');
+                X_r = imrotate(X_local, traceDir(iTwin), 'nearest', 'loose');
+                Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
+                uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
+                uniqueBoundary_r = imdilate(uniqueBoundary_r,ones(3));
+                clusterNumMap_r = imrotate(clusterNumMap_local, traceDir(iTwin), 'nearest', 'loose');
+                vMap_r = ismember(clusterNumMap_r, twinClusters); % try this to segment clusterNumMap into variantMap(or trueTwinMap)
+                
+                if debugTF==1
+                    myplot(vMap_r, uniqueBoundary_r);
+                end
+                
+                [nr,nc] = size(vMap_r);
+                gbLabelMap = zeros(nr,nc);    % to store assigned gb_label
+                gbNumXY_intersect = [];     % [gbNum, Xpos, Ypos]  ----------------------------------> this could be recorded in struCell.
+                cslMap = zeros(nr,nc);     % a map recording Connected Segment Length (CSL)   ----------> this might be helpful do determine variant number, if starting point is clusterNumMap.
+                gbLR = zeros(nr,2);     % store each rows two possible gbs
+                
+                % (Step-3)
+                for ir = 1:nr
+                    if any(vMap_r(ir,:))
+                        icL_back = find(uniqueBoundary_r(ir,:),1,'first');
+                        gbL = uniqueBoundary_r(ir,icL_back);
+                        icR_back = find(uniqueBoundary_r(ir,:),1,'last');
+                        gbR = uniqueBoundary_r(ir,icR_back);
+                        gbLR(ir,:) = [gbL, gbR];
+                        
+                        % (instert Step-4) determine if gbL/R can be considered as an intersecting gb. -----------------------------------
+                        length_cr = round(min(30, (icR_back - icL_back)/2));
+                        num_cr = round(length_cr * 0.7);
+                        if sum(vMap_r(ir,icL_back:icL_back+length_cr))>num_cr
+                            gbNumXY_intersect = [gbNumXY_intersect; gbL, X_r(ir,icL_back), Y_r(ir,icL_back)];
+                        end
+                        if sum(vMap_r(ir,icR_back-length_cr:icR_back))>num_cr
+                            gbNumXY_intersect = [gbNumXY_intersect; gbR, X_r(ir,icR_back), Y_r(ir,icR_back)];
+                        end
+                        % end of (Step-4). Alternatively, read from manual label for data analysis. ---------------------------------------
+                        
+                        icL_front = find(vMap_r(ir,:),1,'first');
+                        icR_front = find(vMap_r(ir,:),1,'last');
+                        % will be false, if either is empty
+                        while (icL_front<=icR_front)
+                            csl_length = 0;
+                            if (icL_front-icL_back)<=(icR_back-icR_front)
+                                % search for connected segments from left to right
+                                while(vMap_r(ir,icL_front))
+                                    gbLabelMap(ir,icL_front) = 1;  % prepare to assign label
+                                    vMap_r(ir,icL_front) = 0; % make element on variant map 0
+                                    icL_front = icL_front + 1;   % move pointer forward to the right
+                                    csl_length = csl_length + 1;
+                                end
+                                cslMap(gbLabelMap==1) = csl_length;
+                                gbLabelMap(gbLabelMap==1) = gbL;
+                                icL_back = icL_front - 1;    % assign left side back
+                                icL_front = find(vMap_r(ir,:),1,'first'); % search left side front again
+                            else
+                                while (vMap_r(ir,icR_front))
+                                    gbLabelMap(ir,icR_front) = 1;
+                                    vMap_r(ir,icR_front) = 0;
+                                    icR_front = icR_front - 1;
+                                    csl_length = csl_length + 1;
+                                end
+                                cslMap(gbLabelMap==1) = csl_length;
+                                gbLabelMap(gbLabelMap==1) = gbR;
+                                icR_back = icR_front + 1;
+                                icR_front = find(vMap_r(ir,:),1,'last');
+                            end
+                        end
+                    end % end of if any(variant_r(ir,:))
+                end % end of for ir=1:nr
+                
+                % (Step-5) go back to clean.  Sometimes, no intersection is determined ...
+                cleanTF = 1;
+                if (cleanTF)&&(~isempty(gbNumXY_intersect))
+                    gbList = unique(gbNumXY_intersect(:,1));
+                    for ir=1:nr
+                        tf = ismember(gbLR(ir,:),gbList);
+                        if sum(tf)==1
+                            gbOK = gbLR(ir, tf);
+                            gbKO = gbLR(ir, ~tf);
+                            ind = gbLabelMap(ir,:) == gbKO;
+                            gbLabelMap(ir,ind) = gbOK;
+                        elseif sum(ismember(gbLR(ir,:),gbList))==0
+                            gbLabelMap(ir,:) = 0;
+                        end
+                    end
+                end
+                
+                temp = cslMap;
+                % rotate back, need to crop again.
+                temp = imrotate(cslMap,-traceDir(iTwin), 'nearest', 'loose');
+                ID_back = imrotate(ID_r,-traceDir(iTwin), 'nearest', 'loose');
+                ind_back = ismember(ID_back, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+                
+                % Need to crop a region of the original size.
+                img1_template = (ID_local==ID_current);
+                img2_signal = (ID_back==ID_current);
+                [yOffSet, xOffSet] = normxcorr2A_register(img1_template, img2_signal, [0 0 0 0], [0 0 0 0], 0);
+                indC_back_min = 1 + xOffSet;
+                indC_back_max = indC_back_min + indC_max - indC_min;
+                indR_back_min = 1 + yOffSet;
+                indR_back_max = indR_back_min + indR_max - indR_min;
+                
+                % Make it one data point wider on each side
+                %                         indC_back_min = max(1, find(sum(ind_back, 1), 1, 'first')-1);
+                %                         indC_back_max = min(size(ID_back,2), find(sum(ind_back, 1), 1, 'last')+1);
+                %                         indR_back_min = max(1, find(sum(ind_back, 2), 1, 'first')-1);
+                %                         indR_back_max = min(size(ID_back,1), find(sum(ind_back, 2), 1, 'last')+1);
+                
+                csl(:,:,iTwin) = temp(indR_back_min:indR_back_max, indC_back_min:indC_back_max);
+                
+                if debugTF==1
+                    myplot(csl(:,:,iTwin), imdilate(boundaryTF_local,ones(3))); 
+                    caxis([0 370]);
+                    set(gca,'xTick',[],'yTick',[],'fontsize',18);
+                end
+                
+            end % end of if(activeTS(iTwin)==1)
+            
+        end % end of for iTwin=1:6
+        
+        [nr,nc,np] = size(csl);
+        tnMap = zeros(nr,nc);   % variant_num_map of this cluster
+        for ir=1:nr
+            for ic=1:nc
+                [maxV,temp] = max(csl(ir,ic,:));
+                if maxV>0
+                    tnMap(ir,ic) = temp;
+                end
+            end
+        end
+        
+    end % end of elseif sum(struCell{iE}(iS).cTrueTwin(iC,:))>1
+    
+    % Here need to prevent elements belonging to other clusters having a tnMap value (caused by rotation).
+    tnMap(~ismember(clusterNumMap_local,twinClusters)) = 0;
+    
+    if debugTF==1
+        [f,a,c] = myplot(tnMap,boundaryTF_local);
+        colormap(parula(3));
+        caxis([0,2]);
+        set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
+        
+        set(gca,'xticklabel','','yticklabel','');
+        title('Variant ID, uncleaned','fontweight','normal');
+        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+    end
+    
+    clusters_variant_map{iC} = tnMap;
+    grains_variant_map = grains_variant_map + clusters_variant_map{iC};
+end % end of for iC = 1:num_of_clusters
+
+% do clean up here, after combining all the clusters.  
+% Note: if not all clusters are selected, the result can be different from that actually analyzed for the data.  
+grains_variant_map  = one_pass_fill(grains_variant_map);
+if debugTF==1
+    [f,a,c] = myplot(grains_variant_map,boundaryTF_local);
+    colormap(parula(3));
+    caxis([0,2]);
+    set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
+    
+    set(gca,'xticklabel','','yticklabel','');
+    title('Variant ID, cleaned','fontweight','normal');
+    set(gca,'xTick',[],'yTick',[],'fontsize',18);
 end
 
 
-%% (1) cluster to twin by trace analysis
+%% Associating twin variants to grain boundary
+close all;
+iE = iE_select;  
 debugTF = 1;
 iS = iS;
+iTwin_selected = 1;
+
+ID_current = struCell{iE}(iS).gID
+ind = find(gID==ID_current);
+
+euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
+if (1==eulerAligned)
+    g = euler_to_transformation(euler,[0,0,0],[0,0,0]);
+    [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [0,0,0], [0,0,0], stressTensor, sampleMaterial, 'twin');
+else
+    g = euler_to_transformation(euler,[-90,180,0],[0,0,0]); % setting-2
+    [abs_schmid_factor, ~, burgersXY] = trace_analysis_TiMgAl(euler, [-90,180,0], [0,0,0], stressTensor, sampleMaterial, 'twin'); % setting-2
+end
+[ssa, c_a, nss, ntwin, ssGroup] = define_SS(sampleMaterial,'twin');
+traceDir = abs_schmid_factor(nss+1:nss+ntwin,3);    % angle x-to-y
+
+nNeighbors = gNNeighbors(ind);
+ID_neighbors = gNeighbors(ind, 1:nNeighbors);
+
+ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+
+% Make it one data point wider on each side
+bd = 40;    % extra size
+indC_min = -bd + max(1, find(sum(ind_local, 1), 1, 'first')-1);
+indC_max = bd + min(size(ID,2), find(sum(ind_local, 1), 1, 'last')+1);
+indR_min = -bd + max(1, find(sum(ind_local, 2), 1, 'first')-1);
+indR_max = bd+ min(size(ID,1), find(sum(ind_local, 2), 1, 'last')+1);
+
+% (Step-1) Crop local maps
+ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+X_local = X(indR_min:indR_max, indC_min:indC_max);
+Y_local = Y(indR_min:indR_max, indC_min:indC_max);
+uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
+uniqueBoundary_local((floor(uniqueBoundary_local/10000)~=ID_current)&(mod(uniqueBoundary_local,10000)~=ID_current)) = 0;    % leave only associated with this grain.
+boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+
+variantMap_local = variantMapCleanedCell{iE}(indR_min:indR_max, indC_min:indC_max);
+variantMap_local(ID_local~=ID_current) = 0;
+% Find active system, if any, using cTrueTwin/tGb field
+activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
+
+% if debugTF==1
+%     myplot(variantMap_local, boundaryTF_local);
+% end
+
+gGbLabelMap = zeros(size(variantMap_local));
+for iTwin = 1:6%iTwin_selected
+    if activeTS(iTwin)==1
+        
+        if debugTF==1
+            myplot(ismember(variantMap_local,iTwin), boundaryTF_local);
+        end
+        
+        clear csl;
+        % (Step-2) Rotate maps
+        ID_r = imrotate(ID_local, traceDir(iTwin), 'nearest', 'loose');
+        X_r = imrotate(X_local, traceDir(iTwin), 'nearest', 'loose');
+        Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
+        uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
+        uniqueBoundary_r = imdilate(uniqueBoundary_r,ones(3));
+        variantMap_r = imrotate(variantMap_local, traceDir(iTwin), 'nearest', 'loose');
+        vMap_r = (variantMap_r==iTwin);    % variant map.
+        
+        [nr,nc] = size(vMap_r);
+        gbLabelMap = zeros(nr,nc);    % to store assigned gb_label
+        gbNumXY_intersect = [];     % [gbNum, Xpos, Ypos]  ----------------------------------> this could be recorded in struCell.
+        cslMap = zeros(nr,nc);     % a map recording Connected Segment Length (CSL)   ----------> this might be helpful do determine variant number, if starting point is clusterNumMap.
+        gbLR = zeros(nr,2);     % store each rows two possible gbs
+        
+        % (Step-3)
+        for ir = 1:nr
+            if any(vMap_r(ir,:))
+                icL_back = find(uniqueBoundary_r(ir,:),1,'first');
+                gbL = uniqueBoundary_r(ir,icL_back);
+                icR_back = find(uniqueBoundary_r(ir,:),1,'last');
+                gbR = uniqueBoundary_r(ir,icR_back);
+                gbLR(ir,:) = [gbL, gbR];
+                
+                % (instert Step-4) determine if gbL/R can be considered as an intersecting gb. -----------------------------------
+                length_cr = round(min(30, (icR_back - icL_back)/2));
+                num_cr = round(length_cr * 0.7);
+                if sum(vMap_r(ir,icL_back:icL_back+length_cr))>num_cr
+                    gbNumXY_intersect = [gbNumXY_intersect; gbL, X_r(ir,icL_back), Y_r(ir,icL_back)];
+                end
+                if sum(vMap_r(ir,icR_back-length_cr:icR_back))>num_cr
+                    gbNumXY_intersect = [gbNumXY_intersect; gbR, X_r(ir,icR_back), Y_r(ir,icR_back)];
+                end
+                % end of (Step-4). Alternatively, read from manual label for data analysis. ---------------------------------------
+                
+                icL_front = find(vMap_r(ir,:),1,'first');
+                icR_front = find(vMap_r(ir,:),1,'last');
+                % will be false, if either is empty
+                while (icL_front<=icR_front)
+                    csl_length = 0;
+                    if (icL_front-icL_back)<=(icR_back-icR_front)
+                        % search for connected segments from left to right
+                        while(vMap_r(ir,icL_front))
+                            gbLabelMap(ir,icL_front) = 1;  % prepare to assign label
+                            vMap_r(ir,icL_front) = 0; % make element on variant map 0
+                            icL_front = icL_front + 1;   % move pointer forward to the right
+                            csl_length = csl_length + 1;
+                        end
+                        cslMap(gbLabelMap==1) = csl_length;
+                        gbLabelMap(gbLabelMap==1) = gbL;
+                        icL_back = icL_front - 1;    % assign left side back
+                        icL_front = find(vMap_r(ir,:),1,'first'); % search left side front again
+                    else
+                        while (vMap_r(ir,icR_front))
+                            gbLabelMap(ir,icR_front) = 1;
+                            vMap_r(ir,icR_front) = 0;
+                            icR_front = icR_front - 1;
+                            csl_length = csl_length + 1;
+                        end
+                        cslMap(gbLabelMap==1) = csl_length;
+                        gbLabelMap(gbLabelMap==1) = gbR;
+                        icR_back = icR_front + 1;
+                        icR_front = find(vMap_r(ir,:),1,'last');
+                    end
+                end
+            end % end of if any(variant_r(ir,:))
+        end % end of for ir=1:nr
+        
+%         % This is for plot. gbLabelMap in the rotated coord. Before clean up.     
+%         if debugTF==1
+%             gb_list = unique(gbLabelMap(:));
+%             gb_list(gb_list==0) = [];
+%             tempMap = gbLabelMap;
+%             for ii = 1:length(gb_list)
+%                 tempMap(tempMap==gb_list(ii)) = ii;
+%             end
+%             myplot(tempMap,uniqueBoundary_r);
+%             title('before clean up, rotated','fontweight','normal');
+%         end
+        
+        % (Step-5) go back to clean
+        cleanTF = 1;
+        if cleanTF
+            % gbList = unique(gbNumXY_intersect(:,1));
+            % Here, get allowable intersecting gbList from manually labeled results
+            gbList = struCell{iE}(iS).tGb{iTwin};
+            
+            for ir=1:nr
+                tf = ismember(gbLR(ir,:),gbList);
+                if sum(tf)==1
+                    gbOK = gbLR(ir, tf);
+                    gbKO = gbLR(ir, ~tf);
+                    ind = gbLabelMap(ir,:) == gbKO;
+                    gbLabelMap(ir,ind) = gbOK;
+                elseif sum(ismember(gbLR(ir,:),gbList))==0
+                    gbLabelMap(ir,:) = 0;
+                end
+            end
+        end
+        
+%         % This is for plot. gbLabelMap in the rotated coord. After clean up.     
+%         if debugTF==1
+%             gb_list = unique(gbLabelMap(:));
+%             gb_list(gb_list==0) = [];
+%             tempMap = gbLabelMap;
+%             for ii = 1:length(gb_list)
+%                 tempMap(tempMap==gb_list(ii)) = ii;
+%             end
+%             myplot(tempMap,uniqueBoundary_r);
+%             title('after clean up, rotated','fontweight','normal');
+%         end
+        
+        
+        
+        % rotate back, need to crop again.
+        temp = imrotate(gbLabelMap,-traceDir(iTwin), 'nearest', 'loose');
+        ID_back = imrotate(ID_r,-traceDir(iTwin), 'nearest', 'loose');
+        ind_back = ismember(ID_back, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+        
+        % Need to crop a region of the original size.
+        img1_template = (ID_local==ID_current);
+        img2_signal = (ID_back==ID_current);
+        [yOffSet, xOffSet] = normxcorr2A_register(img1_template, img2_signal, [0 0 0 0], [0 0 0 0], 0);
+        indC_back_min = 1 + xOffSet;
+        indC_back_max = indC_back_min + indC_max - indC_min;
+        indR_back_min = 1 + yOffSet;
+        indR_back_max = indR_back_min + indR_max - indR_min;
+        
+        gbLabelMap_back = temp(indR_back_min:indR_back_max, indC_back_min:indC_back_max);
+        for ii = 1:length(gbList)
+            ind = find(struCell{iE}(iS).tGb{iTwin} == gbList(ii));  % 'ind' should be the same as 'ii'
+            tGbVol = sum(gbLabelMap_back(:)==gbList(ii));
+            struCell{iE}(iS).tGbVol{iTwin}(ind) = tGbVol;
+        end
+        
+        % This is for plot.  In the rotated back frame.  Plot a little bit larger area. 
+        if debugTF==1
+            gb_list = unique(gbLabelMap_back(:));
+            gb_list(gb_list==0) = [];
+            tempMap = gbLabelMap_back;
+            for ii = 1:length(gb_list)
+                tempMap(tempMap==gb_list(ii)) = ii;
+            end
+            [f,a,c] = myplot(X_local, Y_local,tempMap,boundaryTF_local);
+            label_map_with_ID(X_local, Y_local, ID_local, gcf, unique(ID_local(:)), 'r', 18);
+            title('','fontweight','normal');
+            N = length(gb_list);
+            colormap(parula(N+1));
+            str = [];
+            for ii = 1:length(gb_list)
+               str{ii} = [num2str(floor(gb_list(ii)/10000)),' - ',num2str(mod(gb_list(ii),10000)) ];
+            end
+            set(c,'limits',[N/(N+1),N],'ticks', N/(N+1)+(N-N/(N+1))/(2*N).*[1:2:2*N], 'TickLabels',str);
+            set(gca,'fontsize',18,'xtick',[],'ytick',[]);
+        end
+        
+        gGbLabelMap = gGbLabelMap + gbLabelMap_back;
+        
+    end % end of if(activeTS(iTwin)==1)
+    
+end % end of for iTwin=1:6
+
+% % Whole map. Just for visulization, but we actually analyzed each twin system. 
+% if debugTF==1
+%     gb_list = unique(gGbLabelMap(:));
+%     gb_list(gb_list==0) = [];
+%     tempMap = gGbLabelMap;
+%     for ii = 1:length(gb_list)
+%         tempMap(tempMap==gb_list(ii)) = ii;
+%     end
+%     myplot(tempMap,uniqueBoundary_local);
+%     title('','fontweight','normal');
+% end
+
+
+%% (1) cluster to twin by trace analysis. [Old method]
+debugTF = 1;
+iS = iS;
+
+ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+indC_min = find(sum(ind_local, 1), 1, 'first');
+indC_max = find(sum(ind_local, 1), 1, 'last');
+indR_min = find(sum(ind_local, 2), 1, 'first');
+indR_max = find(sum(ind_local, 2), 1, 'last');
+
+ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+
+clusterNumMapLocal = clusterNumMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+clusterNumMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
+
+x_local = X(indR_min:indR_max, indC_min:indC_max);
+y_local = Y(indR_min:indR_max, indC_min:indC_max);
+boundaryTFLocal = boundaryTF(indR_min:indR_max, indC_min:indC_max);
+exxLocal = strainFile{iE}.exx(indR_min:indR_max, indC_min:indC_max);
+
 % clean old data to relabel.
 for iE = iE_start:iE_stop
     struCell{iE}(iS).cActiveSS = zeros(size(struCell{iE}(iS).cActiveSS));
@@ -252,7 +769,7 @@ for iE_entry = iE_start:iE_stop
                 
                 % run this for real analysis.  Below: each cell contains cells of tMap at an iEs
                 ssAllowed = ones(ntwin,1);
-                [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
                             struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',0 * debugTF, 0.3,0.3,ssAllowed, true);
                         
             end % end of iEC
