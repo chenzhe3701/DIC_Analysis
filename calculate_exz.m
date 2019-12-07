@@ -1,4 +1,4 @@
-function exz_iTwin_jMode = calculate_exz(euler_1, euler_2,sampleMaterial)
+function [exz_iTwin_jMode,exz_iTwin_jSS] = calculate_exz(euler_1, euler_2,sampleMaterial)
 % chenzhe, 2019-10-16
 % input two euler angles.
 % output the expression of 6 twin systems' displacement gradient in the
@@ -43,16 +43,18 @@ for iTwin = 1:6
         dcm_crystal_to_ss = [bx;sy;nz];
         
         dgm_ss(:,:,iss) = dcm_crystal_to_ss * dgm_c * dcm_crystal_to_ss';
-        exz_iTwin_jSS(iss) = dgm_ss(1,3,iss);
+        exz_thisTwin_jSS(iss) = dgm_ss(1,3,iss);
     end
     % for ss 1-18, take absolute value
-    exz_iTwin_jSS(1:18) = abs(exz_iTwin_jSS(1:18));
+    exz_thisTwin_jSS(1:18) = abs(exz_thisTwin_jSS(1:18));
     
-    exz_iTwin_jMode(iTwin,1) = max(exz_iTwin_jSS(1:3));
-    exz_iTwin_jMode(iTwin,2) = max(exz_iTwin_jSS(4:6));
-    exz_iTwin_jMode(iTwin,3) = max(exz_iTwin_jSS(7:12));
-    exz_iTwin_jMode(iTwin,4) = max(exz_iTwin_jSS(13:18));
-    exz_iTwin_jMode(iTwin,5) = max(exz_iTwin_jSS(19:24));
+    exz_iTwin_jMode(iTwin,1) = max(exz_thisTwin_jSS(1:3));
+    exz_iTwin_jMode(iTwin,2) = max(exz_thisTwin_jSS(4:6));
+    exz_iTwin_jMode(iTwin,3) = max(exz_thisTwin_jSS(7:12));
+    exz_iTwin_jMode(iTwin,4) = max(exz_thisTwin_jSS(13:18));
+    exz_iTwin_jMode(iTwin,5) = max(exz_thisTwin_jSS(19:24));
+    
+    exz_iTwin_jSS(iTwin,:) = exz_thisTwin_jSS;
 end
 
 
