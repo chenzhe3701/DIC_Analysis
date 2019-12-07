@@ -73,7 +73,20 @@ for iL = 1:size(input_dir,1)
             X = -10^(-9);
         end
         
-        plot(X,Y,'.','MarkerSize',24,'color',colors(iL,:));
+        plot(X,Y,'.','MarkerSize',12,'color',colors(iL,:));
+        
+%         % plot accord to equal surface area
+%         if (x^2+y^2<1-0.8^2)
+%             plot(X,Y,'.','MarkerSize',12,'color','r');
+%         elseif (x^2+y^2<1-0.6^2)
+%             plot(X,Y,'.','MarkerSize',12,'color','y');
+%         elseif (x^2+y^2<1-0.4^2)
+%             plot(X,Y,'.','MarkerSize',12,'color','g');
+%         elseif (x^2+y^2<1-0.2^2)
+%             plot(X,Y,'.','MarkerSize',12,'color','b');
+%         elseif (x^2+y^2<1-0^2)
+%             plot(X,Y,'.','MarkerSize',12,'color','m');
+%         end
         
     end
 end
