@@ -29,6 +29,19 @@
 % So, maybe just use the result 'mPrimeMatrixAbs' and 'resBurgersMatrixAbs'.
 %
 % % [important detail] round to reduce error in do ranking, chenzhe, 2019-10-19
+%
+% 2019-12-06, just a comment:
+% if we want to add weight by the SFs, we might need to:
+% normalize m' by (m'-min)/(max-min) = (m'+1)/2
+% normalize SFs by (SF+0.5)/1
+% then multiply (m'+1)/2 * (SF_a+0.5) * (SF_b+0.5)
+% Further, CRSS might also need to be considered.
+% These can be done outside of the code.
+%
+% 2019-12-06  correct error:
+% for mPrime between slip and twin systems, first need to
+% check relative direction (twin_dir,gb_normal), then make
+% (slip_dir,gb_normal) the same relative direction.
 
 function [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = ...
     calculate_mPrime_and_resB(euler_1, euler_2, stressTensor, gbNormal, material, twinTF)
@@ -73,7 +86,7 @@ end
 for iSS = 1:nss
     slipPlaneG2(iSS,:) = ss(1,:,iSS) * m2;         % for grain 1, [slip plane normal] expressed in Global system
     slipDirectionG2(iSS,:) = ss(2,:,iSS) * m2;     % for grain 1, [slip direction] expressed in Global system
-    slipDirectionG2(iSS,:) = slipDirectionG2(iSS,:) * sign(dot(slipDirectionG2(iSS,:), gbNormal));      % This makes the incoming and outgoing burgers vector pointing to the same side of the GB.
+    slipDirectionG2(iSS,:) = slipDirectionG2(iSS,:) * sign(dot(slipDirectionG2(iSS,:), gbNormal));      % This makes the incoming and outgoing burgers vector pointing to the same side of the GB. (same as gb_normal)
     slipDirectionG2W(iSS,:) = slipDirectionG2(iSS,:)*burgersWeight(iSS);
     schmidFactorG2(iSS,1) = abs(slipPlaneG2(iSS,:) * stressTensor * slipDirectionG2(iSS,:)');  % Schimid factor for slip system j
 end
@@ -95,9 +108,28 @@ sfG2Matrix = repmat(schmidFactorG2',nSS,1);
 avgSFMatrix = (sfG1Matrix + sfG2Matrix)/2;
 for iSSG1 = 1:nSS
     for iSSG2 = 1:nSS
-        mPrimeMatrix(iSSG1,iSSG2) = abs(dot(slipPlaneG1(iSSG1,:),slipPlaneG2(iSSG2,:))) * dot(slipDirectionG1(iSSG1,:),slipDirectionG2(iSSG2,:));
-        resBurgersMatrix(iSSG1,iSSG2) = norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) );
-        resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) ),  norm( slipDirectionG1(iSSG1,:)+slipDirectionG2(iSSG2,:) ) );
+        s1 = slipDirectionG1(iSSG1,:);
+        s2 = slipDirectionG2(iSSG2,:);
+        % slip-slip already aligned to same direction. twin-twin cannot change direction.  
+        % If slip-twin, first need to find out relative direction between twin and gb_normal, then find relative direction between slip and gb_normal and change to the same   
+        if ismember(iSSG1,1:nss) && ismember(iSSG2,nss+1:nss+ntwin)
+            % if twin_dir(s2) is different from gb_normal, change s1 again 
+            if sign(dot(s2, gbNormal))<0
+                s1 = -s1;
+            end
+        elseif ismember(iSSG1,nss+1:nss+ntwin) && ismember(iSSG2,1:nss) 
+            % if twin_dir(s1) is different from gb_normal, change s1 again 
+            if sign(dot(s1, gbNormal))<0
+                s2 = -s2;
+            end
+        end
+        mPrimeMatrix(iSSG1,iSSG2) = abs(dot(slipPlaneG1(iSSG1,:),slipPlaneG2(iSSG2,:))) * dot(s1,s2);
+        resBurgersMatrix(iSSG1,iSSG2) = norm( s1-s2 );
+        resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm(s1-s2),  norm(s1+s2) );
+        
+%         mPrimeMatrix(iSSG1,iSSG2) = abs(dot(slipPlaneG1(iSSG1,:),slipPlaneG2(iSSG2,:))) * dot(slipDirectionG1(iSSG1,:),slipDirectionG2(iSSG2,:));
+%         resBurgersMatrix(iSSG1,iSSG2) = norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) );
+%         resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm( slipDirectionG1(iSSG1,:)-slipDirectionG2(iSSG2,:) ),  norm( slipDirectionG1(iSSG1,:)+slipDirectionG2(iSSG2,:) ) );
     end
 end
 mPrimeMatrixAbs(1:24,1:24) = abs(mPrimeMatrix(1:24,1:24));
@@ -105,6 +137,10 @@ mPrimeMatrixAbs(1:24,1:24) = abs(mPrimeMatrix(1:24,1:24));
 % chenzhe, 2019-08-01.
 % Maybe, for twin, don't consider two directions, but let's see. 
 resBurgersMatrixAbs(nss+1:nss+ntwin, nss+1:nss+ntwin) = resBurgersMatrix(nss+1:nss+ntwin, nss+1:nss+ntwin);
+
+% weighted metric
+weight = sfG1Matrix .* sfG2Matrix;
+mPrimeMatrixW = (mPrimeMatrix + 1) .* weight;
 
 % [important detail] round to reduce error in do ranking, chenzhe, 2019-10-19
 mPrimeMatrix = round(mPrimeMatrix,4);
