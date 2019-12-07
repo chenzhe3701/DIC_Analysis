@@ -59,11 +59,12 @@ for ii = length(sfs):-1:1
             dx = dx * factor;
         end
         if ismember(ssLabel(ii),1:3)
-            plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',2,'color', [1 0 0] * max(sfs(ii),0)*2);
+            plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',3,'color', [1 0 0] * max(sfs(ii),0)*2);
         elseif ismember(ssLabel(ii),19:24)
-            plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',2,'color', [0 0 1] * max(sfs(ii),0)*2);
+            plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',3,'color', [0 0 1] * max(sfs(ii),0)*2);
+            text(x_this_nb + dx, y_this_nb + dy,['TS#',num2str(ssLabel(ii)-18,'%2d')],'fontsize',16, 'color', [0 0 1] * max(sfs(ii),0)*2);
         end
-        text(x_this_nb, y_this_nb, 50, num2str(ID_target));
+        text(x_this_nb, y_this_nb, 50, num2str(ID_target),'fontsize',18);
         %     text(x_this_nb, y_this_nb, 50, num2str(sfs(ii),3));
     end
 end

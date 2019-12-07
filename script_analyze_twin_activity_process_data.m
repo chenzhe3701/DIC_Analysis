@@ -117,13 +117,13 @@ xTriple = X(indTriple);
 yTriple = Y(indTriple);
 %% Select an iS to start
 %%
-plotTF = 0;
+plotTF = 1;
 pauseTF = 0;
 umPerX = 360/4096;
 umPerDp = 360/4096*5;
 
 for iE = 2:5
-    variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF','gb_length',...
+    variableNames = {'iE','ID','gDia','ID_neighbor','gDia_neighbor','TS','TSF','gb_length','gb_dir',...
         'incoming','iiE_each_twin','iiE_each_twin_at_this_boundary','intersection_to_triple','iiE_twins_at_this_boundary_nb',...
         'mPrime','rank_mPrime','ssn_nb','SF_nb',...
         'resB','rank_resB','ssn_nb_r','SF_nb_r',...
@@ -136,6 +136,8 @@ for iE = 2:5
     T.Properties.VariableNames = variableNames;
     T2 = T;
     T_template = T;
+    lookupMa = [];
+    lookupMb = [];
     
     eMap = calculate_effective_strain(strainFile{iE-1}.exx, strainFile{iE-1}.exy, strainFile{iE-1}.eyy);
     edmat = [];
@@ -209,13 +211,12 @@ for iE = 2:5
         
         % If grain of interest is twinned (here it means: got a twin-gb intersection labeled)
         if any(cellfun(@(x) ~isempty(x), struCell{iE}(iS).tGb)) % sum(struCell{iE}(iS).cTrueTwin(:))>0
-            %%
             if plotTF==1
                 %         [handleFig0,a1,~] = myplot(X_local, Y_local, e_local, boundaryTF_local);
                 %         disableDefaultInteractivity(a1);
                 %         [handleFig,aa,~] = myplot(X_local, Y_local, trueTwinMapLocal, boundaryTF_local);
                 %         caxis([18 24]);
-                [handleFig,aa,~] = myplot(X_local, Y_local, exx_local, boundaryTF_local);  % boundaryTF_local_2 = find_boundary_from_ID_matrix(trueTwinMapLocal>0)|(boundaryTF_local);
+                [handleFig,aa,~] = myplot_bg(X_local, Y_local, exx_local, boundaryTF_local);  % boundaryTF_local_2 = find_boundary_from_ID_matrix(trueTwinMapLocal>0)|(boundaryTF_local);
                 label_map_with_ID(X_local, Y_local, ID_local, handleFig, ID_current);
                 disableDefaultInteractivity(aa);
                 hold on;
@@ -243,7 +244,16 @@ for iE = 2:5
                     else
                         gb = ID_neighbor * 10000 + ID_current;
                     end
-                    gb_length = sum(uniqueBoundary_local(:)==gb);
+                    % Find gb_length and gb_dir
+                    ind = uniqueBoundary_local(:)==gb;
+                    gb_length = sum(ind);
+                    xs = X_local(ind);
+                    ys = Y_local(ind);
+                    mdl = fitlm(xs,ys);
+                    gb_dir = atand(mdl.Coefficients.Estimate(2));
+                    gb_normal = 90 + gb_dir;
+                    gb_normal_v = [cosd(gb_normal),sind(gb_normal),0]; 
+                    gb_normal_v = gb_normal_v/norm(gb_normal_v);
                     
                     % strain calculation in area of interest.
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
@@ -354,7 +364,7 @@ for iE = 2:5
                         % Calculate mPrime
                         ind_nb = find(gID==ID_neighbor);
                         euler_nb = [gPhi1(ind_nb),gPhi(ind_nb),gPhi2(ind_nb)];
-                        [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler, euler_nb, stressTensor, [1 0 0], sampleMaterial, 'twin');
+                        [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler, euler_nb, stressTensor, gb_normal_v, sampleMaterial, 'twin');
                         
                         [max_basal_SF, ~] = max(schmidFactorG1(1:3));
                         [max_twin_SF, ~] = max(schmidFactorG1(19:24));
@@ -380,14 +390,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin,~] = sort(mPrime_each_twin,'descend');
                         [~,rank_mPrime_each_twin] = ismember(mPrime_each_twin, sorted_mPrime_each_twin);    % m'-rank
                         ssn_nb_for_each_twin = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin,~] = sort(resB_each_twin,'ascend');
                         [~,rank_resB_each_twin] = ismember(resB_each_twin, sorted_resB_each_twin);  % resB-rank
@@ -409,14 +419,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin_wrtB, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin_wrtB,~] = sort(mPrime_each_twin_wrtB,'descend');
                         [~,rank_mPrime_each_twin_wrtB] = ismember(mPrime_each_twin_wrtB, sorted_mPrime_each_twin_wrtB);    % m'-rank
                         ssn_nb_for_each_twin_wrtB = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin_wrtB = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin_wrtB, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtB,~] = sort(resB_each_twin_wrtB,'ascend');
                         [~,rank_resB_each_twin_wrtB] = ismember(resB_each_twin_wrtB, sorted_resB_each_twin_wrtB);  % resB-rank
@@ -436,14 +446,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin_wrtT, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin_wrtT,~] = sort(mPrime_each_twin_wrtT,'descend');
                         [~,rank_mPrime_each_twin_wrtT] = ismember(mPrime_each_twin_wrtT, sorted_mPrime_each_twin_wrtT);    % m'-rank
                         ssn_nb_for_each_twin_wrtT = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin_wrtT = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin_wrtT, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtT,~] = sort(resB_each_twin_wrtT,'ascend');
                         [~,rank_resB_each_twin_wrtT] = ismember(resB_each_twin_wrtT, sorted_resB_each_twin_wrtT);  % resB-rank
@@ -456,10 +466,14 @@ for iE = 2:5
                         if plotTF==1
                             % find the mPrime to plot. ------> Note that for each boundary, only one mPrime and rank is selected to plot.  But for each twin system, there is an mPrime.
                             if have_incoming_twin_at_boundary
-                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*incoming_TS_TF(:));
+                                tv = double(incoming_TS_TF(:)); % temp vector
+                                tv(tv==0)=nan;
+                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*tv);
                                 mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
                             else
-                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*activeTS(:));
+                                tv = double(activeTS(:));
+                                tv(tv==0)=nan;
+                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*tv);
                                 mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
                             end
                             
@@ -474,11 +488,11 @@ for iE = 2:5
                             
                             
                             inds = find(uniqueBoundary_local==gb);
-                            plot(X_local(inds),Y_local(inds),'.','markersize',18,'color',[1 1 0] * mPrime_toPlot);
+                            plot(X_local(inds),Y_local(inds),'.','markersize',18,'color',[1 1 0] * (mPrime_toPlot+1)/2);
                             if outgoing_basal==1
-                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','r','fontsize',16);
+                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_toPlot,'%.3f'), ', (',num2str(mPrime_rank_toPlot,1),')'], 'color','r','fontsize',16);
                             else
-                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','b','fontsize',16);
+                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_toPlot,'%.3f'), ', (',num2str(mPrime_rank_toPlot,1),')'], 'color','b','fontsize',16);
                             end
                         end
                         
@@ -540,6 +554,7 @@ for iE = 2:5
                         
                         % Extend table for summary.  -- can assign in local table using name?
                         for iTwin=1:6
+                            lookupMa = [lookupMa; ID_current, ID_neighbor, iTwin, tSF(iTwin), reshape(schmidFactorG2,1,[]), mPrimeMatrix(iTwin+18,:)];
                             % T_local = [T_local;{iE, ID_current, gDia, ID_neighbor, gDia_neighbor, iTwin, tSF(iTwin), incoming_TS(iTwin), ...
                             %     mPrime_each_twin(iTwin), rank_mPrime_each_twin(iTwin), ssn_each_twin(iTwin), SF_each_twin(iTwin), ...
                             %     resB_each_twin(iTwin), rank_resB_each_twin(iTwin), ssn_each_twin_r(iTwin), SF_each_twin_r(iTwin), ...
@@ -553,6 +568,7 @@ for iE = 2:5
                             T_local.TS(ir) = iTwin;
                             T_local.TSF(ir) = tSF(iTwin);
                             T_local.gb_length(ir) = gb_length;
+                            T_local.gb_dir(ir) = gb_dir;
                             
                             T_local.incoming(ir) = incoming_TS_TF(iTwin);
                             T_local.iiE_each_twin(ir) = iiE_each_twin(iTwin);
@@ -683,6 +699,10 @@ for iE = 2:5
             end
             
         else
+%             % can use continue to just plot twinned ones
+%             iS = iS + 1;
+%             continue;
+            
             % If grain of interest is not twinned, this means (iE_g > iE)   
             
             T_local = T_template;
@@ -706,7 +726,16 @@ for iE = 2:5
                     else
                         gb = ID_neighbor * 10000 + ID_current;
                     end
-                    gb_length = sum(uniqueBoundary_local(:)==gb);
+                    % Find gb_length and gb_dir
+                    ind = uniqueBoundary_local(:)==gb;
+                    gb_length = sum(ind);
+                    xs = X_local(ind);
+                    ys = Y_local(ind);
+                    mdl = fitlm(xs,ys);
+                    gb_dir = atand(mdl.Coefficients.Estimate(2));
+                    gb_normal = 90 + gb_dir;
+                    gb_normal_v = [cosd(gb_normal),sind(gb_normal),0]; 
+                    gb_normal_v = gb_normal_v/norm(gb_normal_v);
                     
                     % strain calculation in area of interest.
                     distMap_local = distance_from_boundary_in_grain(ID_local, [gb,ID_current]);
@@ -797,10 +826,10 @@ for iE = 2:5
                                 intersection_to_triple_nb(iTwin) = dmax;
                                 if dmax < dToTriple_th_to_label
                                     twin_at_triple_nb(iTwin) = 1;
-                                    if plotTF==1
-                                        indr = find(dmax == iE_iTwin_dT_list_nb(:,3));
-                                        text(iE_iTwin_dT_list_nb(indr,4), iE_iTwin_dT_list_nb(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
-                                    end
+%                                     if plotTF==1
+%                                         indr = find(dmax == iE_iTwin_dT_list_nb(:,3));
+%                                         text(iE_iTwin_dT_list_nb(indr,4), iE_iTwin_dT_list_nb(indr,5), 50, [num2str(dmax)], 'color','b','fontsize',36);
+%                                     end
                                 end
                             end
                         end
@@ -819,7 +848,7 @@ for iE = 2:5
                         % Calculate mPrime
                         ind_nb = find(gID==ID_neighbor);
                         euler_nb = [gPhi1(ind_nb),gPhi(ind_nb),gPhi2(ind_nb)];
-                        [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler, euler_nb, stressTensor, [1 0 0], sampleMaterial, 'twin');
+                        [schmidFactorG1, schmidFactorG2, mPrimeMatrix, resBurgersMatrix, mPrimeMatrixAbs, resBurgersMatrixAbs] = calculate_mPrime_and_resB(euler, euler_nb, stressTensor, gb_normal_v, sampleMaterial, 'twin');
                         
                         [max_basal_SF, ~] = max(schmidFactorG1(1:3));
                         [max_twin_SF, ~] = max(schmidFactorG1(19:24));
@@ -829,9 +858,9 @@ for iE = 2:5
                         % Based on whether considering basal or twin in this neighbor, do different things: ...
                         % (3) label basal/twin slip trace
                         ID_target = ID_neighbor;
-                        if plotTF==1
-                            local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, outgoing_ssn_0, gca);
-                        end
+%                         if plotTF==1
+%                             local_fun_label_map_with_ID_and_trace(X_local,Y_local,ID_local,ID_target, outgoing_ssn_0, gca);
+%                         end
                         
                         % find SFs in the neighbor grain
                         SFs_nb_0 = schmidFactorG2(outgoing_ssn_0);
@@ -845,14 +874,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin,~] = sort(mPrime_each_twin,'descend');
                         [~,rank_mPrime_each_twin] = ismember(mPrime_each_twin, sorted_mPrime_each_twin);    % m'-rank
                         ssn_nb_for_each_twin = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin,~] = sort(resB_each_twin,'ascend');
                         [~,rank_resB_each_twin] = ismember(resB_each_twin, sorted_resB_each_twin);  % resB-rank
@@ -874,14 +903,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin_wrtB, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin_wrtB,~] = sort(mPrime_each_twin_wrtB,'descend');
                         [~,rank_mPrime_each_twin_wrtB] = ismember(mPrime_each_twin_wrtB, sorted_mPrime_each_twin_wrtB);    % m'-rank
                         ssn_nb_for_each_twin_wrtB = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin_wrtB = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin_wrtB, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtB,~] = sort(resB_each_twin_wrtB,'ascend');
                         [~,rank_resB_each_twin_wrtB] = ismember(resB_each_twin_wrtB, sorted_resB_each_twin_wrtB);  % resB-rank
@@ -901,14 +930,14 @@ for iE = 2:5
                         outgoing_ssn = outgoing_ssn_0(SF_nb_enough_TF);
                         SFs_nb = schmidFactorG2(outgoing_ssn);
                         
-                        mPrime_local = mPrimeMatrixAbs(19:24, outgoing_ssn);
+                        mPrime_local = mPrimeMatrix(19:24, outgoing_ssn);
                         [mPrime_each_twin_wrtT, ind] = max(mPrime_local,[],2);     % value of interests: m'
                         [sorted_mPrime_each_twin_wrtT,~] = sort(mPrime_each_twin_wrtT,'descend');
                         [~,rank_mPrime_each_twin_wrtT] = ismember(mPrime_each_twin_wrtT, sorted_mPrime_each_twin_wrtT);    % m'-rank
                         ssn_nb_for_each_twin_wrtT = outgoing_ssn(ind);   % ssn in neighbor, for each ss/ts in the grain of interest
                         SF_nb_for_each_twin_wrtT = SFs_nb(ind);          % the SF of that selected ssn in neighbor, for each ss/ts in the grain of interest
 
-                        resB_local = resBurgersMatrixAbs(19:24, outgoing_ssn);
+                        resB_local = resBurgersMatrix(19:24, outgoing_ssn);
                         [resB_each_twin_wrtT, ind] = min(resB_local,[],2);       % value of interest: resB
                         [sorted_resB_each_twin_wrtT,~] = sort(resB_each_twin_wrtT,'ascend');
                         [~,rank_resB_each_twin_wrtT] = ismember(resB_each_twin_wrtT, sorted_resB_each_twin_wrtT);  % resB-rank
@@ -918,34 +947,34 @@ for iE = 2:5
                         
                         
                         % [NOTE] --> Could draw mPrime and color, but label ResB, to maximize information provided.
-                        if plotTF==1
-                            % find the mPrime to plot. ------> Note that for each boundary, only one mPrime and rank is selected to plot.  But for each twin system, there is an mPrime.
-                            if have_incoming_twin_at_boundary
-                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*incoming_TS_TF(:));
-                                mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
-                            else
-                                [mPrime_toPlot, ind] = max(mPrime_each_twin.*activeTS(:));
-                                mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
-                            end
-                            
-                            % find the resB to plot
-                            if have_incoming_twin_at_boundary
-                                [resB_toPlot, ind] = min(resB_each_twin./incoming_TS_TF(:));
-                                resB_rank_toPlot = rank_resB_each_twin(ind);
-                            else
-                                [resB_toPlot, ind] = min(resB_each_twin./activeTS(:));
-                                resB_rank_toPlot = rank_resB_each_twin(ind);
-                            end
-                            
-                            
-                            inds = find(uniqueBoundary_local==gb);
-                            plot(X_local(inds),Y_local(inds),'.','markersize',18,'color',[1 1 0] * mPrime_toPlot);
-                            if outgoing_basal==1
-                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','r','fontsize',16);
-                            else
-                                text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','b','fontsize',16);
-                            end
-                        end
+%                         if plotTF==1
+%                             % find the mPrime to plot. ------> Note that for each boundary, only one mPrime and rank is selected to plot.  But for each twin system, there is an mPrime.
+%                             if have_incoming_twin_at_boundary
+%                                 [mPrime_toPlot, ind] = max(mPrime_each_twin.*incoming_TS_TF(:));
+%                                 mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
+%                             else
+%                                 [mPrime_toPlot, ind] = max(mPrime_each_twin.*activeTS(:));
+%                                 mPrime_rank_toPlot = rank_mPrime_each_twin(ind);
+%                             end
+%                             
+%                             % find the resB to plot
+%                             if have_incoming_twin_at_boundary
+%                                 [resB_toPlot, ind] = min(resB_each_twin./incoming_TS_TF(:));
+%                                 resB_rank_toPlot = rank_resB_each_twin(ind);
+%                             else
+%                                 [resB_toPlot, ind] = min(resB_each_twin./activeTS(:));
+%                                 resB_rank_toPlot = rank_resB_each_twin(ind);
+%                             end
+%                             
+%                             
+%                             inds = find(uniqueBoundary_local==gb);
+%                             plot(X_local(inds),Y_local(inds),'.','markersize',18,'color',[1 1 0] * mPrime_toPlot);
+%                             if outgoing_basal==1
+%                                 text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','r','fontsize',16);
+%                             else
+%                                 text(mean(X_local(inds)), mean(Y_local(inds)), 50, [num2str(mPrime_rank_toPlot + mPrime_toPlot,4)], 'color','b','fontsize',16);
+%                             end
+%                         end
                         
 
                         % iE_g > iE
@@ -970,6 +999,7 @@ for iE = 2:5
                         
                         % Extend table for summary.  -- can assign in local table using name?
                         for iTwin=1:6
+                            lookupMb = [lookupMb; ID_current, ID_neighbor, iTwin, tSF(iTwin), reshape(schmidFactorG2,1,[]), mPrimeMatrix(iTwin+18,:)];
                             % T_local = [T_local;{iE, ID_current, gDia, ID_neighbor, gDia_neighbor, iTwin, tSF(iTwin), incoming_TS(iTwin), ...
                             %     mPrime_each_twin(iTwin), rank_mPrime_each_twin(iTwin), ssn_each_twin(iTwin), SF_each_twin(iTwin), ...
                             %     resB_each_twin(iTwin), rank_resB_each_twin(iTwin), ssn_each_twin_r(iTwin), SF_each_twin_r(iTwin), ...
@@ -983,7 +1013,8 @@ for iE = 2:5
                             T_local.TS(ir) = iTwin;
                             T_local.TSF(ir) = tSF(iTwin);
                             T_local.gb_length(ir) = gb_length;
-                            
+                            T_local.gb_dir(ir) = gb_dir;
+                                                        
                             T_local.incoming(ir) = incoming_TS_TF(iTwin);
                             T_local.iiE_each_twin(ir) = iiE_each_twin(iTwin);
                             T_local.iiE_each_twin_at_this_boundary(ir) = iiE_each_iTwin_at_this_boundary(iTwin);
@@ -1094,10 +1125,10 @@ for iE = 2:5
     
     %% Save
         timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', ...
+        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', 'lookupMa','lookupMb', ...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
             '-v7.3');
-        copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
+%         copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
     
 end
 
