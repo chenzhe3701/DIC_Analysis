@@ -26,7 +26,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % th_1; % max(traceVote) >= th_1 * length(peakAngles) to have enough_votes
     % th_2; % any traceVote > th_2 * max(traceVote) to become acceptable trace
     
-    clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
+    clusterNumMapL = clusterNumMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
     if debugTF==1
         clusterNumMapL_a = clusterNumMapL;

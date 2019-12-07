@@ -119,9 +119,8 @@ end
 %% (0) load data: clusterNumberMapCell, stru-->struCell.  And show how to clean clusterNumMap
 close all;
 clusterNumMapCell = cell(1,length(STOP)-1);
-struCell = cell(1,length(STOP)-1);
 
-load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
+load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
 
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -688,7 +687,7 @@ end % end of for iTwin=1:6
 % end
 
 
-%% (1) cluster to twin by trace analysis. [Old method]
+%% (1) cluster to twin by trace analysis. [Old method].  Still needed to show the Hough plot.
 debugTF = 1;
 iS = iS;
 
@@ -763,7 +762,12 @@ for iE_entry = iE_start:iE_stop
                 %if(true) % This can control the actual selected strain level for anlaysis -------------------------------------------------------
                 if (iE==iE_select)&&(iC==iC_select)&&(debugTF)  
                     ssAllowed = ones(ntwin,1);
+                    
+                    
                     script_label_twin_trace;    % -------------------------------------------------------------> this is the script to plot everything   
+                    
+                    
+                    
                     error('abc');
                 end
                 
