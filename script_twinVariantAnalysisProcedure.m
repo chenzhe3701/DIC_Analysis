@@ -190,6 +190,8 @@ for iE = iE_start:iE_stop
         set(gca,'xTick',[],'yTick',[],'fontsize',18);
         colormap(parula(3));
         set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
+        
+        script_twinVariantAnalysisProcedure_labelExample(x_local,y_local,ID_local,ID_current,19:24,gca);
     end
     
     % Because we have just cleaned clusterNumMap again, we need to update the clusterNumMapCell, which is different from the real code, which just load existing cleaned data

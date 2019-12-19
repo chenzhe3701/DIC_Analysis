@@ -1128,7 +1128,7 @@ for iE = 2:5
         save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', 'lookupMa','lookupMb', ...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
             '-v7.3');
-%         copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
+        copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
     
 end
 
