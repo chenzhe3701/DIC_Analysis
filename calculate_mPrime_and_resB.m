@@ -70,7 +70,6 @@ end
 for iSS = 1:nss
     slipPlaneG1(iSS,:) = ss(1,:,iSS) * m1;         % for grain 1, [slip plane normal] expressed in Global system
     slipDirectionG1(iSS,:) = ss(2,:,iSS) * m1;     % for grain 1, [slip direction] expressed in Global system
-    slipDirectionG1(iSS,:) = slipDirectionG1(iSS,:) * sign(dot(slipDirectionG1(iSS,:), gbNormal));  % This makes the incoming and outgoing burgers vector pointing to the same side of the GB.
     slipDirectionG1W(iSS,:) = slipDirectionG1(iSS,:)*burgersWeight(iSS);
     schmidFactorG1(iSS,1) = abs(slipPlaneG1(iSS,:) * stressTensor * slipDirectionG1(iSS,:)');  % Schimid factor for slip system j
 end
@@ -78,21 +77,20 @@ for iSS = nss+1 : nss+ntwin
     slipPlaneG1(iSS,:) = ss(1,:,iSS) * m1;         % for grain 1, [slip plane normal] expressed in Global system
     slipDirectionG1(iSS,:) = ss(2,:,iSS) * m1;     % for grain 1, [slip direction] expressed in Global system
     slipDirectionG1W(iSS,:) = slipDirectionG1(iSS,:)*burgersWeight(iSS);
-    schmidFactorG1(iSS,1) =slipPlaneG1(iSS,:) * stressTensor * slipDirectionG1(iSS,:)';  % Schimid factor for TWIN system j
+    schmidFactorG1(iSS,1) = slipPlaneG1(iSS,:) * stressTensor * slipDirectionG1(iSS,:)';  % Schimid factor for TWIN system j
 end
 
 
 
 for iSS = 1:nss
-    slipPlaneG2(iSS,:) = ss(1,:,iSS) * m2;         % for grain 1, [slip plane normal] expressed in Global system
-    slipDirectionG2(iSS,:) = ss(2,:,iSS) * m2;     % for grain 1, [slip direction] expressed in Global system
-    slipDirectionG2(iSS,:) = slipDirectionG2(iSS,:) * sign(dot(slipDirectionG2(iSS,:), gbNormal));      % This makes the incoming and outgoing burgers vector pointing to the same side of the GB. (same as gb_normal)
+    slipPlaneG2(iSS,:) = ss(1,:,iSS) * m2;         % for grain 2, [slip plane normal] expressed in Global system
+    slipDirectionG2(iSS,:) = ss(2,:,iSS) * m2;     % for grain 2, [slip direction] expressed in Global system
     slipDirectionG2W(iSS,:) = slipDirectionG2(iSS,:)*burgersWeight(iSS);
     schmidFactorG2(iSS,1) = abs(slipPlaneG2(iSS,:) * stressTensor * slipDirectionG2(iSS,:)');  % Schimid factor for slip system j
 end
 for iSS = nss+1 : nss+ntwin
-    slipPlaneG2(iSS,:) = ss(1,:,iSS) * m2;         % for grain 1, [slip plane normal] expressed in Global system
-    slipDirectionG2(iSS,:) = ss(2,:,iSS) * m2;     % for grain 1, [slip direction] expressed in Global system
+    slipPlaneG2(iSS,:) = ss(1,:,iSS) * m2;         % for grain 2, [slip plane normal] expressed in Global system
+    slipDirectionG2(iSS,:) = ss(2,:,iSS) * m2;     % for grain 2, [slip direction] expressed in Global system
     slipDirectionG2W(iSS,:) = slipDirectionG2(iSS,:)*burgersWeight(iSS);
     schmidFactorG2(iSS,1) = slipPlaneG2(iSS,:) * stressTensor * slipDirectionG2(iSS,:)';  % Schimid factor for TWIN system j
 end
@@ -110,20 +108,54 @@ for iSSG1 = 1:nSS
     for iSSG2 = 1:nSS
         s1 = slipDirectionG1(iSSG1,:);
         s2 = slipDirectionG2(iSSG2,:);
-        % slip-slip already aligned to same direction. twin-twin cannot change direction.  
-        % If slip-twin, first need to find out relative direction between twin and gb_normal, then find relative direction between slip and gb_normal and change to the same   
-        if ismember(iSSG1,1:nss) && ismember(iSSG2,nss+1:nss+ntwin)
-            % if twin_dir(s2) is different from gb_normal, change s1 again 
-            if sign(dot(s2, gbNormal))<0
-                s1 = -s1;
-            end
-        elseif ismember(iSSG1,nss+1:nss+ntwin) && ismember(iSSG2,1:nss) 
-            % if twin_dir(s1) is different from gb_normal, change s1 again 
-            if sign(dot(s1, gbNormal))<0
-                s2 = -s2;
+        n1 = slipPlaneG1(iSSG1,:);
+        n2 = slipPlaneG2(iSSG2,:);
+        
+        % The purpose is to find the best combination of alignment of <dir,dir> and <normal,normal> and see how good they are geometrically compatible:  
+        % For slip system, the slip_plan_normal and slip_direction can both have sign changed   
+        % For twin system, if change slip_direction, the slip_plan_normal also need to be changed 
+        % 
+        % Method-1: First check <normal,normal>, then check <dir,dir> 
+        % (1) Try to align slip_plan_normals, to make the dot product positive, <normal, normal> < 90 degree.  
+        % If change the slip_plan_normal_dir, also need to flip the slip/twin_dir.  
+        % (2) Try to align slip/twin_dirs to the same side of the grain boundary, by checking sign(dot(slip,gb_normal))  
+        % (2.1) If slip-slip, can change freely
+        % (2.2) If slip-twin, first check twin, then change basal freely  
+        % (2.3) If twin-twin, we cannot do anything more
+        %
+        % Method-2: First check <dir,dir>, then check <normal, normal>  
+        % (1) Try to align slip/twin_dirs to the same side of the grain boundary, by checking sign(dot(slip,gb_normal))  
+        %   Check dir_1 -> check dir_2 and compare -> if different, change     
+        %   If change the slip_dir, also need to flip the plan_normal_dir  
+        % (2) Try to align slip_plan_normal_dirs, to make the dot product positive, <normal, normal> < 90 degree.  
+        % (2.1) If slip-slip, can change freely
+        % (2.2) If slip-twin, can change slip freely
+        % (2.3) If twin-twin, cannot do anything more
+        
+        % use method-2
+        % (step-1)
+        sign_dirAlign_1 = sign(dot(s1,gbNormal));
+        sign_dirAlign_2 = sign(dot(s2,gbNormal));
+        if (sign_dirAlign_1~=sign_dirAlign_2)
+            s2 = -s2;
+            n2 = -n2;
+        end
+        % (step-2)
+        sign_normalAlign = sign(dot(n1,n2));
+        if (sign_normalAlign==-1)
+            if ismember(iSSG1, 1:nss) && ismember(iSSG2, 1:nss)
+                n2 = -n2;
+            elseif ismember(iSSG1, 1:nss) && ismember(iSSG2, nss+1:nSS)
+                n1 = -n1;
+            elseif ismember(iSSG1, nss+1:nSS) && ismember(iSSG2, 1:nss) 
+                n2 = -n2;
+            elseif ismember(iSSG1, nss+1:nSS) && ismember(iSSG2, nss+1:nSS) 
+                % nothing we can do
             end
         end
-        mPrimeMatrix(iSSG1,iSSG2) = abs(dot(slipPlaneG1(iSSG1,:),slipPlaneG2(iSSG2,:))) * dot(s1,s2);
+        
+
+        mPrimeMatrix(iSSG1,iSSG2) = dot(n1,n2) * dot(s1,s2);
         resBurgersMatrix(iSSG1,iSSG2) = norm( s1-s2 );
         resBurgersMatrixAbs(iSSG1,iSSG2) = min(norm(s1-s2),  norm(s1+s2) );
         
