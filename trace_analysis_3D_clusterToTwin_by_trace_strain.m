@@ -23,7 +23,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -31,9 +31,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 catch
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -72,6 +72,18 @@ end
 
 %% (1) analyze
 warning('off','all');
+
+% tunning parameters
+p.diffStrain_cr = 0.07;   % diff in strain need to < 0.07;
+p.rEffStrain = [0.1, 1.9];    % ratio of cluster effective strain and twin effective strain should be within this range   
+p.strainRank_cr = 0.3;  % rank need to >=1 (in 0-based) 
+p.SF_th = 0.2;        % twin SF need to be larger than this  (or 0.1)
+p.pctTotalPeaks_bwd_cr = 0.2; % when going backward, need at least these pct of total number of peaks to be considered as active trace  (or 0.05, 0.15)  
+% note that this is 'th_1' input outside of this function  
+p.pctTotalPeaks_fwd_cr = 0.3;
+
+pctTotalPeaks_fwd_cr = p.pctTotalPeaks_fwd_cr; 
+                    
 stru = struCell{iE_start};
 for iS = 1:length(stru)
     %     iS = find(arrayfun(@(x) x.gID == 378,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace]
@@ -112,6 +124,7 @@ for iS = 1:length(stru)
     boundaryTF_local = boundaryTF(indR_min:indR_max, indC_min:indC_max);
     x_local = X(indR_min:indR_max, indC_min:indC_max);
     y_local = Y(indR_min:indR_max, indC_min:indC_max);
+    uniqueBoundary_local = uniqueBoundary(indR_min:indR_max, indC_min:indC_max);
     
     % initialize for each grain (iS)
     for iE = iE_start:iE_stop
@@ -145,8 +158,13 @@ for iS = 1:length(stru)
                     end
                     
                     ssAllowed = ones(ntwin,1);
-                    [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-                        struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, 0.3,0.3,ssAllowed);
+                    
+%                     [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = ...
+%                         label_twin_trace(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+%                         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,'twin',debugTF, pctTotalPeaks_fwd_cr, 0.3, ssAllowed);
+                    [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = ...
+                        label_twin_trace_with_stats(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local,uniqueBoundary_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
+                        struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceDir,traceND,traceSF,sampleMaterial,'twin',debugTF, pctTotalPeaks_fwd_cr, p, ssAllowed);
                     % each cell contains cells of tMap at an iEs
 
                 end % end of iEC
@@ -198,10 +216,231 @@ end % end of iS
 warning('on','all');
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','-v7.3');
+save([timeStr,'_twinMaps.mat'],'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','p','-v7.3');
+
+%% Need more code to analyze accuracy.  
+if 0
+    
+[truthFile, truthPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\new_variant_map.mat','select the truth results for twin-grain boundary intersection');
+[checkFile, checkPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection to check');
+d = load(fullfile(truthPath,truthFile),'struCell');
+trueStruCell = d.struCell;
+load(fullfile(truthPath,truthFile),'trueTwinMapCell');
+if max(trueTwinMapCell{3}(:))>6
+    for iE=2:5
+        temp = trueTwinMapCell{iE};
+        temp(temp>18) = temp(temp>18)-18;
+        trueTwinMapCell{iE} = temp;
+    end
+end
+
+load(fullfile(checkPath,checkFile),'struCell');
+load(fullfile(checkPath,checkFile),'twinMapCell');
+if max(twinMapCell{3}(:))>6
+    for iE=2:5
+        temp = twinMapCell{iE};
+        temp(temp>18) = temp(temp>18)-18;
+        twinMapCell{iE} = temp;
+    end
+end
+
+% (1) count summary
+mt_all = [];
+mi_all = [];
+conf_mat = [];
+for iE = 2:5
+    mt = [];
+    mi = [];
+   for iS = 1:length(struCell{iE})
+       numC = length(struCell{iE}(iS).cLabel);
+       % number accuracy
+       cTrueTwin = trueStruCell{iE}(iS).cTrueTwin;
+       mt = [mt;cTrueTwin];
+       
+       cActiveSS = struCell{iE}(iS).cActiveSS;
+       mi = [mi;cActiveSS];
+   end
+   mt_all = [mt_all; mt];
+   mi_all = [mi_all; mi];
+   
+%    tp = sum((mt(:)==1)&(mi(:)==1));
+%    fp = sum((mt(:)==0)&(mi(:)==1));
+%    fn = sum((mt(:)==1)&(mi(:)==0));
+%    tn = sum((mt(:)==0)&(mi(:)==0));
+   
+   % method new - 1
+   tp = sum(sum((mt>0)&(mi>0)&(mt==mi)));   % should be the same as above  
+   fp = sum(sum((mt==0)&(mi>0)));   % should be the same as above
+   fn = sum(sum((mt>0)&(mi==0)));   % should be the same as above  
+   tn = sum((sum(mt,2)==0)&(sum(mi,2)==0));     % should be different
+   
+   % method new - 2. 
+   % actually twinned = any(mt,2) 
+   % identified the same = ~any(mt-mi,2).   
+   % identified different = any(mt-mi,2). 
+   tp = sum( any(mt,2) & ~any(mt-mi,2) );
+   fp = sum( ~any(mt,2) & any(mt-mi,2) );
+   fn = sum( any(mt,2) & any(mt-mi,2) );
+   tn = sum( ~any(mt,2) & ~any(mt-mi,2) );
+   
+   conf_mat = [conf_mat;tp,fp,fn,tn];
+end
+conf_mat_all = sum(conf_mat,1);
+
+tbl_1 = summarize_confusion(conf_mat);
+
+%% (2) area summary (not cleaned)
+conf_matA = [];
+for iE=2:5
+    ind = (trueTwinMapCell{iE}==twinMapCell{iE})&(trueTwinMapCell{iE}>0);
+    tp = sum(ind(:));
+    ind = (trueTwinMapCell{iE}==0)&(twinMapCell{iE}>0);
+    fp = sum(ind(:));
+    ind = (trueTwinMapCell{iE}>0)&(twinMapCell{iE}==0);
+    fn = sum(ind(:));
+    ind = (trueTwinMapCell{iE}==twinMapCell{iE})&(trueTwinMapCell{iE}==0);
+    tn = sum(ind(:));
+    conf_matA = [conf_matA;tp,fp,fn,tn];
+end
+conf_matA_all = sum(conf_matA,1);
+
+tbl_2 = summarize_confusion(conf_matA);
+
+%% (3) area summary cleaned
+
+load(fullfile(checkPath,checkFile),'twinMapCleanedCell');
+if max(twinMapCleanedCell{3}(:))>6
+    for iE=2:5
+        temp = twinMapCleanedCell{iE};
+        temp(temp>18) = temp(temp>18)-18;
+        twinMapCleanedCell{iE} = temp;
+    end
+end
+
+conf_matB = [];
+confMap = [];
+confMapCell = [];
+for iE=2:5
+    confMap = zeros(size(trueTwinMapCell{iE}));
+    
+    ind = (trueTwinMapCell{iE}==twinMapCleanedCell{iE})&(trueTwinMapCell{iE}>0);
+    confMap(ind) = 3;
+    tp = sum(ind(:));
+    
+    ind = (trueTwinMapCell{iE}==0)&(twinMapCleanedCell{iE}>0);
+    confMap(ind) = 2;
+    fp = sum(ind(:));
+    
+    ind = (trueTwinMapCell{iE}>0)&(twinMapCleanedCell{iE}~=trueTwinMapCell{iE});
+    confMap(ind) = 1;
+    fn = sum(ind(:));
+    
+    ind = (trueTwinMapCell{iE}==twinMapCleanedCell{iE})&(trueTwinMapCell{iE}==0);
+    confMap(ind) = 0;
+    tn = sum(ind(:));
+    
+    confMapCell{iE} = confMap;
+    conf_matB = [conf_matB;tp,fp,fn,tn];
+end
+conf_matB_all = sum(conf_matB,1);
+
+tbl_3 = summarize_confusion(conf_matB);
+
+end
+
+%% plot confusion map
+colors = lines(7);
+colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
+[f,a,c] = myplot(X, Y, confMapCell{4}, boundaryTFB, 3);
+colormap(colorMap);
+caxis([-1.5 3.5]);set(c,'limits',[-0.5, 3.5]);
+c.Ticks = 0:3;
+c.TickLabels={['TN'], ['FN'],['FP'],['TP']};
+% c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['TP: ',num2str(TP)]};
+set(a,'fontsize',18);
+
+%% maximize plot and run this:
+script_make_double_axis;
+%%
+print([ttl,'.tif'],'-dtiff');
+
+
 %%
 
+if 0
+%% cleanup, plot trueTwinMaps, indicate TF/FP/FN/TN values
+% select data that want to do clean up
+[toCleanFile, toCleanPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results to do clean up');
+load(fullfile(toCleanPath,toCleanFile),'struCell','twinMapCell');
 
+useParallel = 1;
+if useParallel    
+    for iE = iE_start:iE_stop
+        variantMap = twinMapCell{iE};
+        
+        npool = 3;
+        tN = 1:length(struCell{iE});
+        a = npool - mod(length(tN),npool);
+        tN = [zeros(1,a),tN];
+        tN = reshape(tN,npool,[]);
+        ipool = [];
+        partMap = [];
+        for ii = 1:npool
+            ipool{ii} =  tN(ii,:);
+            partMap{ii} = zeros(size(ID));
+        end
+        parfor ii = 1:npool
+            for iS =ipool{ii}
+                % iS = find(arrayfun(@(x) x.gID == 246,stru));  % for debugging
+                % iS = find(gIDwithTrace == 296); % for debugging.
+                if iS > 0
+                    ID_current = struCell{iE}(iS).gID;
+
+                    ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+                    indC_min = find(sum(ind_local, 1), 1, 'first');
+                    indC_max = find(sum(ind_local, 1), 1, 'last');
+                    indR_min = find(sum(ind_local, 2), 1, 'first');
+                    indR_max = find(sum(ind_local, 2), 1, 'last');
+                    
+                    ID_local = ID(indR_min:indR_max, indC_min:indC_max);
+                    
+                    variantMapLocal = variantMap(indR_min:indR_max, indC_min:indC_max);
+                    variantMapLocal(ID_local~=ID_current) = 0;  % cluster number just this grain
+                    
+                    variantMapLocal = one_pass_fill(variantMapLocal);
+                    
+                    partMap{ii}(indR_min:indR_max, indC_min:indC_max) = partMap{ii}(indR_min:indR_max, indC_min:indC_max) + variantMapLocal;
+                    disp(['ID = ',num2str(ID_current)]);
+                end
+            end
+        end
+        
+        variantMapCleaned = zeros(size(ID)); % new map of interest
+        for ii=1:npool
+            variantMapCleaned = variantMapCleaned + partMap{ii};
+        end
+        
+        twinMapCleanedCell{iE} = variantMapCleaned;
+    end    
+end
+save(fullfile(toCleanPath,toCleanFile),'twinMapCleanedCell','-append');
+
+
+%% 
+tp = a(:,1);
+fp = a(:,2);
+fn = a(:,3);
+tn = a(:,4);
+
+PPV = tp./(tp+fp);
+TPR = tp./(tp+fn);
+ACC = (tp+tn)./(tp+fp+fn+tn);
+
+a(:,5:7) = [ACC, PPV, TPR];
+
+
+
+end
 
 
 

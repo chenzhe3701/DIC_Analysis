@@ -5,7 +5,7 @@ close all;
 iE = 4;
 strain_file = ['D:\WE43_T6_C1_insitu_compression\stitched_DIC\_',num2str(iE),'.mat'];
 translation_file = 'D:\WE43_T6_C1_insitu_compression\stitched_img\translations_searched_vertical_stop_0.mat'
-ws_file = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign_2\WE43_T6_C1_EbsdToSemForTraceAnalysis_GbAdjusted.mat'
+ws_file = 'D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign\WE43_T6_C1_EbsdToSemForTraceAnalysis_GbAdjusted.mat'
 twin_file = 'D:\p\m\DIC_Analysis\twinMaps.mat';
 
 addChenFunction;
@@ -35,8 +35,9 @@ title(c,'\epsilon_x_x');
 
 %% enlarged
 
-ID_target = 1144;   
-ID_target = 190;   
+ID_target = 1144;   % This is the grain for MSEA
+ID_target = 190;    % This is the grain for my research statement
+ID_target = 639;    % This is the grain for 2020 paper
 % ID_target = find_ID_on_map(X,Y,ID,gcf,gca);
 
 ID_current=ID_target;
@@ -54,7 +55,6 @@ x_local = X(indR_min:indR_max, indC_min:indC_max);
 y_local = Y(indR_min:indR_max, indC_min:indC_max);
 ID_local = ID(indR_min:indR_max, indC_min:indC_max);
 boundary_local = boundaryTFB(indR_min:indR_max, indC_min:indC_max);
-twinMap_local = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
     
 
 % plot local exx
@@ -71,6 +71,8 @@ title('');
 title(c,'\epsilon_x_x','fontweight','normal');
 axis off;
 
+%%
+twinMap_local = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
 % plot twinMap_local
 twinMap_local(twinMap_local<19) = nan;
 [f4,a4,c4]=myplotm(twinMap_local,'x',x_local,'y',y_local,'tf',boundary_local,'r',1);

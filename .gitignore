@@ -2,3 +2,4 @@
 *.tif
 /all_temp_result/*
 /temp_results/*
+/back_up_results/*

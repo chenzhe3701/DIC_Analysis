@@ -293,6 +293,8 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
                 Y_r = imrotate(Y_local, traceDir(iTwin), 'nearest', 'loose');
                 uniqueBoundary_r = imrotate(uniqueBoundary_local, traceDir(iTwin), 'nearest', 'loose');
                 uniqueBoundary_r = imdilate(uniqueBoundary_r,ones(3));
+                boundaryTF_local_r = imrotate(boundaryTF_local, traceDir(iTwin), 'nearest', 'loose');
+                boundaryTF_local_r = imdilate( boundaryTF_local_r,ones(3));
                 clusterNumMap_r = imrotate(clusterNumMap_local, traceDir(iTwin), 'nearest', 'loose');
                 vMap_r = ismember(clusterNumMap_r, twinClusters); % try this to segment clusterNumMap into variantMap(or trueTwinMap)
                 
@@ -374,6 +376,13 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
                             gbLabelMap(ir,:) = 0;
                         end
                     end
+                end
+                
+                if debugTF==1
+                    myplot(cslMap, boundaryTF_local_r);
+                    caxis([0 370]);
+                    set(gca,'xTick',[],'yTick',[],'fontsize',18);
+                    title('');
                 end
                 
                 temp = cslMap;

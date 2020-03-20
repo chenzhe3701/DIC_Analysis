@@ -52,7 +52,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     
     cAllCluster = effective_strain_nBy3(struCell{iE}(iS).cCen);
     [sorted,rank_in_raw] = sort(cAllCluster);
-    [tf,rank_in_sorted] = ismember(cAllCluster,sorted);
+    [tf,rank_in_sorted] = ismember(cAllCluster,sorted);     % this can make sure equal get equal rank, e.g., [.1 .1 .2] get rank [1 1 3]
     rank_in_sorted_0_base = rank_in_sorted - 1; % convert to 0-based rank for easier comparison
     ok_3 = rank_in_sorted_0_base(iC) >= 0.3 * (length(struCell{iE}(iS).cLabel)-1);
     ok_3 = ones(size(ok_1)) * ok_3;
@@ -69,6 +69,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % Know to be active in a previous step   
     if iEC > 1
         active_pre = struCell{iE_list(iEC-1)}(iS).cActiveSS(iC_list(iEC-1),:);
+        active_pre = active_pre(:);
     else
         active_pre = zeros(ntwin,1);
     end
