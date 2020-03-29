@@ -118,10 +118,15 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
         % clusterNumMapT = double(bwmorph((clusterNumMapC),'thin',inf) );
     end
     if debugTF==1
-        [f,a,c] = myplot(clusterNumMapT,  grow_boundary(boundaryTFLocal));
+        % [f,a,c] = myplot(clusterNumMapT,  grow_boundary(boundaryTFLocal));
+        t = clusterNumMapT;
+        t(t==0) = 0.01;
+        myplotm(t,boundaryTFLocal)
+        ca([0, 2]);
         title('skeleton of cluster considered');
         set(gca,'xticklabel','','yticklabel','','fontsize',18);
         title('Skeleton', 'fontweight', 'normal');
+        colorbar('off');
         
         myplotm(clusterNumMapL, 'TF',clusterNumMapT, 'r', 1);
         caxis([-0.1, max(clusterNumMapL(:))+0.1]);
