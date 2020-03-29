@@ -33,9 +33,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the confirmed results where twin identification was based on trace dir and strain');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the confirmed results where twin identification was based on trace dir and strain, for trueTwinMapCell');
 
-[newVariantFile, newVariantPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
+[newVariantFile, newVariantPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for variantMapCleanedCell');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -379,9 +379,14 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
                 end
                 
                 if debugTF==1
-                    myplot(cslMap, boundaryTF_local_r);
-                    caxis([0 370]);
-                    set(gca,'xTick',[],'yTick',[],'fontsize',18);
+                    cslMap_t = cslMap;
+                    cslMap_t(cslMap_t==0) = nan;
+                    myplotm(cslMap_t,'TF',boundaryTF_local_r)
+                    ca([0 370]);
+                    % myplot(cslMap, boundaryTF_local_r);
+                    % caxis([0 370]);
+%                     set(gca,'xTick',[],'yTick',[],'fontsize',18);
+                    set(gca,'fontsize',18);xlabel('x');ylabel('y');
                     title('');
                 end
                 
@@ -435,11 +440,18 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
     tnMap(~ismember(clusterNumMap_local,twinClusters)) = 0;
     
     if debugTF==1
-        [f,a,c] = myplot(tnMap,boundaryTF_local);
+        tnMap_t = tnMap;
+        tnMap_t(tnMap_t==0) = -inf;
+        [f,a,c] = myplot(tnMap_t,boundaryTF_local);
         colormap(parula(3));
         caxis([0,2]);
-        set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
+%         tnMap_t = tnMap;
+%         tnMap_t(tnMap_t==0) = -inf;
+%         [f,a,c] = myplotm(tnMap_t, 'tf',boundaryTF_local);
+%         [~,c] = ca([0 2]);
+%         colormap(parula(3));
         
+        set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
         set(gca,'xticklabel','','yticklabel','');
         title('Variant ID, uncleaned','fontweight','normal');
         set(gca,'xTick',[],'yTick',[],'fontsize',18);
@@ -453,11 +465,12 @@ end % end of for iC = 1:num_of_clusters
 % Note: if not all clusters are selected, the result can be different from that actually analyzed for the data.  
 grains_variant_map  = one_pass_fill(grains_variant_map);
 if debugTF==1
+    grains_variant_map(grains_variant_map==0) = -inf;   % -> make background white
     [f,a,c] = myplot(grains_variant_map,boundaryTF_local);
     colormap(parula(3));
     caxis([0,2]);
-    set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
     
+    set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
     set(gca,'xticklabel','','yticklabel','');
     title('Variant ID, cleaned','fontweight','normal');
     set(gca,'xTick',[],'yTick',[],'fontsize',18);
@@ -666,7 +679,9 @@ for iTwin = 1:6%iTwin_selected
             for ii = 1:length(gb_list)
                 tempMap(tempMap==gb_list(ii)) = ii;
             end
+            tempMap(tempMap==0)=-inf;   % --> make back ground white
             [f,a,c] = myplot(X_local, Y_local,tempMap,boundaryTF_local);
+            caxis([0 3]);
             label_map_with_ID(X_local, Y_local, ID_local, gcf, unique(ID_local(:)), 'r', 18);
             title('','fontweight','normal');
             N = length(gb_list);
@@ -698,7 +713,13 @@ end % end of for iTwin=1:6
 % end
 
 
-%% (1) cluster to twin by trace analysis. [Old method].  Still needed to show the Hough plot.
+%% (1) cluster to twin by trace analysis. [Old method].  Still needed to show the Hough plot. 
+% Note:
+% 1. The process of skeletonization is the same.
+% 2. The logical operation is a little bit different in detail. The current
+% new method is neater. 
+% 3. Dividing map into variants were done differently in new method.
+close all;
 debugTF = 1;
 iS = iS;
 
@@ -779,7 +800,7 @@ for iE_entry = iE_start:iE_stop
                     
                     
                     
-                    error('abc');
+                    error('abc');   % use this to stop the process.
                 end
                 
                 % run this for real analysis.  Below: each cell contains cells of tMap at an iEs
