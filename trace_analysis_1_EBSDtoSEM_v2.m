@@ -58,9 +58,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('E:\Ti7Al_E1_insitu_tension\Ti7Al_E1_EBSD\*.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('.txt','choose the EBSD file (txt format, from type-1 grain file)');
 [EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile(['E:\Ti7Al_E1_insitu_tension\Ti7Al_E1_Images\stitched_DIC\*.mat'],'choose one of the strain file (mat format) for aligning purpose');
+[strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -68,7 +68,7 @@ tform = make_average_transform('projective',cpEBSD,cpSEM);
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-saveDataPath = [uigetdir('E:\Ti7Al_E1_insitu_tension\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir(pathSetting,'choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 try
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
 catch

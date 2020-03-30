@@ -1,6 +1,10 @@
-
-
-% script to run a single iteration of function label_twin_trace
+% chenzhe, commented on 202-03-29
+% 
+% This script is based on the old version of function label_twin_trace_()
+% and is used in script_twinVariantAnalysisProcedure_() to plot example of
+% how to identify active twin system and twin variant, i.e., this script is
+% to run a single iteration of function label_twin_trace_()
+%
 % function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace(...
 %     twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
 %     struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,th_2, ssAllowed, goBack)
