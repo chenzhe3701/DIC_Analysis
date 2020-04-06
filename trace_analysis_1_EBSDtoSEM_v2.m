@@ -49,7 +49,7 @@
 clear;
 addChenFunction;
 
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\WE_43_example_data\Analysis_by_Matlab\*.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 sampleName = [];    % such as 'Ti7Al_#B6'
 cpEBSD = [];    % control points on EBSD image (unit um !!!!)
 cpSEM = [];     % control points on SEM image (unit pixel)
@@ -58,9 +58,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE_43_example_data\EW43_T6_C1_EBSD\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
 [EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
+[strainFileName, strainFilePath] = uigetfile('D:\WE_43_example_data\SEM_Images\stitched_DIC\*.mat','choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -98,12 +98,12 @@ gEdge = EBSDdata2(:,columnIndex2(10));
 gNeighbors = EBSDdata2(:,(columnIndex2(7)+1):(size(EBSDdata2,2)));
     
 % [temp disable] construct grain neighbor structure S.g1 = [1;2;3], S.g2{ind_in_g1} = [2;3;...]
-neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
+% neighborStruct = construct_neighbor_structure(EBSDfilePath2,EBSDfileName2);
 
 % [temp disable] Note this is currently only for HCP!
 % misorientationStruct.g1 = [1;2;3], misorientationStruct.g2{i} = [2;3;...],
 % misorientationStruct.misorientation{i}=[5d;75d;...]
-misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
+% misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
 
 
 % EBSD data, from type-1 grain file. (column, data) pair:
@@ -207,8 +207,7 @@ disp('saving ...');
 save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
 save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
     'phi1','phi','phi2','q0','q1','q2','q3',...
-    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',...
-    'neighborStruct','misorientationStruct',...    
+    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',... %     'neighborStruct','misorientationStruct',...    
     'gArea','gCenterX','gCenterY','gDiameter','gExx','gID','gNNeighbors',...
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
     'ebsdStepSize','fileSetting','pathSetting',...
