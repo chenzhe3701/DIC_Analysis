@@ -75,8 +75,8 @@ for ii=1:length(ID_targets)
             elseif is<=12
             elseif is<=18
             else
-                plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',3,'color', 'b');
-                text(x_this_nb + dx, y_this_nb + dy,['TS#',num2str(ssLabel(ii),'%2d')],'fontsize',24, 'color', 'r');
+                plot3(ha, [x_this_nb - dx, x_this_nb + dx], [y_this_nb - dy, y_this_nb + dy], [20,20],'linewidth',3,'color', 'k');
+                text(x_this_nb + dx, y_this_nb + dy,['TS#',num2str(ssLabel(ii),'%2d')],'fontsize',24, 'color', 'k');
             end
             %         text(x_this_nb, y_this_nb, 50, num2str(ID_target));
             %     text(x_this_nb, y_this_nb, 50, num2str(sfs(ii),3));

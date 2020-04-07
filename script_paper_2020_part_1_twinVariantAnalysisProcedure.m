@@ -554,7 +554,7 @@ activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
 % end
 
 gGbLabelMap = zeros(size(variantMap_local));
-for iTwin = 1%iTwin_selected
+for iTwin = 1:6 %iTwin_selected
     if activeTS(iTwin)==1
         
         if debugTF==1

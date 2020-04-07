@@ -221,11 +221,15 @@ save([timeStr,'_twinMaps.mat'],'twinMapCell','sfMapCell','cToGbDistMapCell','str
 %% Need more code to analyze accuracy.  
 if 0
     
-[truthFile, truthPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\new_variant_map.mat','select the truth results for twin-grain boundary intersection');
-[checkFile, checkPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection to check');
+[truthFile, truthPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the truth results for twin-grain boundary intersection');
+[checkFile, checkPath] = uigetfile('D:\p\m\DIC_Analysis\20191230_1756_twinMaps_K.mat','select the results for twin-grain boundary intersection to check');
 d = load(fullfile(truthPath,truthFile),'struCell');
 trueStruCell = d.struCell;
 load(fullfile(truthPath,truthFile),'trueTwinMapCell');
+
+% In some codes twin systems use number 19:24. 
+% but variant map -> trueTwinMap uses 1:6.
+% So, check first.
 if max(trueTwinMapCell{3}(:))>6
     for iE=2:5
         temp = trueTwinMapCell{iE};
@@ -244,7 +248,7 @@ if max(twinMapCell{3}(:))>6
     end
 end
 
-% (1) count summary
+%% (1) count summary (grain level)
 mt_all = [];
 mi_all = [];
 conf_mat = [];
@@ -289,7 +293,7 @@ conf_mat_all = sum(conf_mat,1);
 
 tbl_1 = summarize_confusion(conf_mat);
 
-%% (2) area summary (not cleaned)
+%% (2) area summary (not cleaned, so a rough summary)
 conf_matA = [];
 for iE=2:5
     ind = (trueTwinMapCell{iE}==twinMapCell{iE})&(trueTwinMapCell{iE}>0);
@@ -306,7 +310,7 @@ conf_matA_all = sum(conf_matA,1);
 
 tbl_2 = summarize_confusion(conf_matA);
 
-%% (3) area summary cleaned
+%% (3) area summary cleaned (pixel level). May need to run codes following this part to clean first.
 
 load(fullfile(checkPath,checkFile),'twinMapCleanedCell');
 if max(twinMapCleanedCell{3}(:))>6
@@ -348,14 +352,23 @@ tbl_3 = summarize_confusion(conf_matB);
 
 end
 
-%% plot confusion map
+%% plot confusion map (pixel level summary)
+iE_start = 2;
+iE_select = 4;
 colors = lines(7);
 colorMap = [0 0 0; 1 1 1; 0 0 1; colors(5,:); 1 0 0];
-[f,a,c] = myplot(X, Y, confMapCell{4}, boundaryTFB, 3);
+[f,a,c] = myplot(X, Y, confMapCell{iE_select}, boundaryTFB, 3);
 colormap(colorMap);
 caxis([-1.5 3.5]);set(c,'limits',[-0.5, 3.5]);
 c.Ticks = 0:3;
 c.TickLabels={['TN'], ['FN'],['FP'],['TP']};
+tp = conf_matB(iE_select-iE_start+1,1);
+fp = conf_matB(iE_select-iE_start+1,2);
+fn = conf_matB(iE_select-iE_start+1,3);
+tn = conf_matB(iE_select-iE_start+1,4);
+nPix = tp+fp+fn+tn;
+c.TickLabels={['TN: ',[num2str(tn/nPix*100,'%0.2f'),'%']], ['FN: ',[num2str(fn/nPix*100,'%0.2f'),'%']],...
+    ['FP: ',[num2str(fp/nPix*100,'%0.2f'),'%']],['TP: ',[num2str(tp/nPix*100,'%0.2f'),'%']]};
 % c.TickLabels={['TN: ',num2str(TN)], ['FN: ',num2str(FN)],['FP: ',num2str(FP)],['TP: ',num2str(TP)]};
 set(a,'fontsize',18);
 
