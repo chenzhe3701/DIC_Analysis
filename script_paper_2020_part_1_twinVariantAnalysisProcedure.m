@@ -33,9 +33,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the confirmed results where twin identification was based on trace dir and strain, for trueTwinMapCell');
+% [confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\20190222_1217_relabeled_result.mat','select the confirmed results where twin identification was based on trace dir and strain, for trueTwinMapCell');
 
-[newVariantFile, newVariantPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for variantMapCleanedCell');
+[newVariantFile, newVariantPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the results for variantMapCleanedCell');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -120,7 +120,9 @@ end
 close all;
 clusterNumMapCell = cell(1,length(STOP)-1);
 
-load(fullfile(confirmedLabelPath,confirmedLabelFile),'trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
+% not loaded 'twinMapCell','sfMapCell','tNote'.
+% in newVariantFile, trueTwinMapCell was modified to = variantMapCleanedCell  
+load(fullfile(newVariantPath,newVariantFile),'trueTwinMapCell');     
 
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
@@ -191,7 +193,7 @@ for iE = iE_start:iE_stop
         colormap(parula(3));
         set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
         
-        script_twinVariantAnalysisProcedure_labelExample(x_local,y_local,ID_local,ID_current,19:24,gca);
+        aux_script_2020_p1_labelExample(x_local,y_local,ID_local,ID_current,19:24,gca);
     end
     
     % Because we have just cleaned clusterNumMap again, we need to update the clusterNumMapCell, which is different from the real code, which just load existing cleaned data
@@ -796,7 +798,7 @@ for iE_entry = iE_start:iE_stop
                     ssAllowed = ones(ntwin,1);
                     
                     
-                    script_label_twin_trace;    % -------------------------------------------------------------> this is the script to plot everything   
+                    aux_script_2020_p1_label_twin_trace;    % -------------------------------------------------------------> this is the script to plot everything   
                     
                     
                     

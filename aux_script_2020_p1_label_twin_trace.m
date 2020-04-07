@@ -1,4 +1,4 @@
-% chenzhe, commented on 202-03-29
+% chenzhe, commented on 2020-03-29
 % 
 % This script is based on the old version of function label_twin_trace_()
 % and is used in script_twinVariantAnalysisProcedure_() to plot example of
