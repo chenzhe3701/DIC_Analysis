@@ -164,20 +164,26 @@ for iE = iE_start:iE_stop
     % (Figure-1)
     if ismember(iE,iE_select)
         exxLocal(ID_local~=ID_current)=nan;
-        myplot(x_local, y_local, exxLocal, (boundaryTFLocal));
-        title('\epsilon_x_x','fontweight','normal');
-        set(gca,'xTick',[],'yTick',[],'fontsize',18);
-        
+        [f,a,c] = myplot(x_local, y_local, exxLocal, (boundaryTFLocal));
+        title('\epsilon_x_x','fontweight','normal');title('');
+        set(gca,'xTick',[],'yTick',[],'fontsize',24);
+         
         clusterNumMapLocal_a = clusterNumMapLocal;
         clusterNumMapLocal_a(ID_local~=ID_current)=nan;
         clusterNumMapLocal_a(clusterNumMapLocal_a==0)=nan;
         [f,a,c] = myplot(x_local, y_local, clusterNumMapLocal_a, (boundaryTFLocal));
         caxis([0 2]);
         set(c,'Ticks',[0 1 2]);
-        title('Cluster ID','fontweight','normal');
-        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        title('Cluster ID','fontweight','normal');title('');
         colormap(parula(3));
         set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
+        set(gca,'xTick',[],'yTick',[],'fontsize',24);
+        % new color codes
+        colors = parula(6);
+        C = colormap;
+        C(2,:) = colors(2,:);
+        C(3,:) = colors(5,:);
+        colormap(C);
     end
     % choices can be 0.0025 or 0.00025, whichever ok to keep more small and long traces. In real code = 0.001.  ------------------------------------------------- 
     clusterNumMapLocal = one_pass_fill_and_clean(clusterNumMapLocal, 0.00025);   
@@ -188,10 +194,16 @@ for iE = iE_start:iE_stop
         [f,a,c] = myplot(x_local, y_local, clusterNumMapLocal_a, (boundaryTFLocal));
         caxis([0 2]);
         set(c,'Ticks',[0 1 2]);
-        title('Cluster ID','fontweight','normal');
-        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        title('Cluster ID','fontweight','normal');title('');
         colormap(parula(3));
         set(c,'limits',[2/3,2],'Ticks',[1,1+2/3],'TickLabels',{'1','2'});
+        set(gca,'xTick',[],'yTick',[],'fontsize',24);
+        % new color codes
+        colors = parula(6);
+        C = colormap;
+        C(2,:) = colors(2,:);
+        C(3,:) = colors(5,:);
+        colormap(C);
         
         aux_script_2020_p1_labelExample(x_local,y_local,ID_local,ID_current,19:24,gca);
     end
@@ -388,7 +400,7 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
                     % myplot(cslMap, boundaryTF_local_r);
                     % caxis([0 370]);
 %                     set(gca,'xTick',[],'yTick',[],'fontsize',18);
-                    set(gca,'fontsize',18);xlabel('x');ylabel('y');
+                    set(gca,'fontsize',24);xlabel('x');ylabel('y');
                     title('');
                 end
                 
@@ -455,8 +467,14 @@ for iC =  1:size(struCell{iE}(iS).cTrueTwin,1) % iC_select %
         
         set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
         set(gca,'xticklabel','','yticklabel','');
-        title('Variant ID, uncleaned','fontweight','normal');
-        set(gca,'xTick',[],'yTick',[],'fontsize',18);
+        title('Variant ID, uncleaned','fontweight','normal');title('');
+        set(gca,'xTick',[],'yTick',[],'fontsize',24);
+        % new color codes
+        colors = parula(6);
+        C = colormap;
+        C(2,:) = colors(2,:);
+        C(3,:) = colors(5,:);
+        colormap(C);
     end
     
     clusters_variant_map{iC} = tnMap;
@@ -474,8 +492,14 @@ if debugTF==1
     
     set(c,'limits',[2/3,2],'Ticks',[1, 5/3],'TickLabels',{'1','4'});
     set(gca,'xticklabel','','yticklabel','');
-    title('Variant ID, cleaned','fontweight','normal');
-    set(gca,'xTick',[],'yTick',[],'fontsize',18);
+    title('Variant ID, cleaned','fontweight','normal');title('');
+    set(gca,'xTick',[],'yTick',[],'fontsize',24);
+    % new color codes
+    colors = parula(6);
+    C = colormap;
+    C(2,:) = colors(2,:);
+    C(3,:) = colors(5,:);
+    colormap(C);
 end
 
 
@@ -530,7 +554,7 @@ activeTS = sum(struCell{iE}(iS).cTrueTwin,1)>0;
 % end
 
 gGbLabelMap = zeros(size(variantMap_local));
-for iTwin = 1:6%iTwin_selected
+for iTwin = 1%iTwin_selected
     if activeTS(iTwin)==1
         
         if debugTF==1
@@ -675,6 +699,7 @@ for iTwin = 1:6%iTwin_selected
         
         % This is for plot.  In the rotated back frame.  Plot a little bit larger area. 
         if debugTF==1
+            colormap('default');
             gb_list = unique(gbLabelMap_back(:));
             gb_list(gb_list==0) = [];
             tempMap = gbLabelMap_back;
@@ -684,7 +709,7 @@ for iTwin = 1:6%iTwin_selected
             tempMap(tempMap==0)=-inf;   % --> make back ground white
             [f,a,c] = myplot(X_local, Y_local,tempMap,boundaryTF_local);
             caxis([0 3]);
-            label_map_with_ID(X_local, Y_local, ID_local, gcf, unique(ID_local(:)), 'r', 18);
+            label_map_with_ID(X_local, Y_local, ID_local, gcf, unique(ID_local(:)), 'r', 24);
             title('','fontweight','normal');
             N = length(gb_list);
             colormap(parula(N+1));
@@ -693,7 +718,14 @@ for iTwin = 1:6%iTwin_selected
                str{ii} = [num2str(floor(gb_list(ii)/10000)),' - ',num2str(mod(gb_list(ii),10000)) ];
             end
             set(c,'limits',[N/(N+1),N],'ticks', N/(N+1)+(N-N/(N+1))/(2*N).*[1:2:2*N], 'TickLabels',str);
-            set(gca,'fontsize',18,'xtick',[],'ytick',[]);
+            set(gca,'fontsize',24,'xtick',[],'ytick',[]);
+            % new color codes
+            colors = parula(6);
+            C = colormap;
+            C(2,:) = colors(2,:);
+            C(3,:) = colors(4,:);
+            C(4,:) = colors(5,:);
+            colormap(C);
         end
         
         gGbLabelMap = gGbLabelMap + gbLabelMap_back;

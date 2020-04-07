@@ -124,12 +124,12 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     if debugTF==1
         % [f,a,c] = myplot(clusterNumMapT,  grow_boundary(boundaryTFLocal));
         t = clusterNumMapT;
-        t(t==0) = 0.01;
+        t(t==0) = -inf; 
         myplotm(t,boundaryTFLocal)
-        ca([0, 2]);
+        ca([0, 10]);
         title('skeleton of cluster considered');
         set(gca,'xticklabel','','yticklabel','','fontsize',18);
-        title('Skeleton', 'fontweight', 'normal');
+        title('Skeleton', 'fontweight', 'normal'); title('');
         colorbar('off');
         
         myplotm(clusterNumMapL, 'TF',clusterNumMapT, 'r', 1);
@@ -153,7 +153,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % This is just to [illustrate] where the peak is in the hough space
     if debugTF==1
         myplot(Theta,Rho,H);
-        title('Hough Transform of Skeleton','fontweight','normal')
+        title('Hough Transform of Skeleton','fontweight','normal'); title('');
         axis normal;
         hold on;
         for k = 1:size(peaks,1)
@@ -161,7 +161,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             plot3(xy(1),xy(2),max(H(:)),'s','LineWidth',((maxNumPeaks+1-k)/maxNumPeaks)*4,'Color','k');
         end
         xlabel('\theta, degrees'); ylabel('\rho');
-        set(gca,'fontsize',16,'xTick',[-90:45:90]);
+        set(gca,'fontsize',24,'xTick',[-90:45:90]);
     end
     
     % (8) Find lines. (A) Should keep gap small to prevent joining too many irrelavent parts. (2) MinLength should be decent
