@@ -107,7 +107,7 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the new result of dividing twin into variants');
+[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the new result of dividing twin into variants');
 load(fullfile(newVariantFilePath,newVariantFile),'struCell');   %,'trueTwinMapCell');
 
 %% Find triple points
@@ -233,7 +233,7 @@ for iE = 2:5
                 euler_nb = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
                 
                 if ~isempty(iS_neighbor)
-                    gDia_neighbor = sqrt(4*(struCell{iE}(iS_neighbor).gVol* (360/4096*5)^2)/pi);
+                    gDia_neighbor = sqrt(4*(struCell{iE}(iS_neighbor).gVol* (umPerDp)^2)/pi);
                     % activeTS_nb = sum(struCell{iE}(iS_neighbor).cTrueTwin,1)>0;
                     activeTS_nb = cellfun(@(x) ~isempty(x), struCell{iE}(iS_neighbor).tGb);
                     
