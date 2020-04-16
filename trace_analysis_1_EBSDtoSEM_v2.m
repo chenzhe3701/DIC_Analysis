@@ -49,7 +49,7 @@
 clear;
 addChenFunction;
 
-[fileSetting,pathSetting] = uigetfile('D:\WE_43_example_data\Analysis_by_Matlab\*.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 sampleName = [];    % such as 'Ti7Al_#B6'
 cpEBSD = [];    % control points on EBSD image (unit um !!!!)
 cpSEM = [];     % control points on SEM image (unit pixel)
@@ -58,9 +58,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE_43_example_data\EW43_T6_C1_EBSD\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile('D:\WE_43_example_data\SEM_Images\stitched_DIC\*.mat','choose one of the strain file (mat format) for aligning purpose');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile('D:\WE43_T6_C1\SEM Data\stitched_DIC\_5_v73.mat','choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -68,7 +68,7 @@ tform = make_average_transform('projective',cpEBSD,cpSEM);
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-saveDataPath = [uigetdir(pathSetting,'choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 try
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
 catch
@@ -187,14 +187,6 @@ phi1 = interp_data(x,y,phi1,X,Y,tform,'interp','nearest');
 phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
 edge = interp_data(x,y,edge,X,Y,tform,'interp','nearest');
-[boundaryTF, ~, ~, ~, ~] = find_boundary_from_ID_matrix(ID);
-boundaryTFB = boundaryTF;  % make it thicker
-for iThick = 1:4
-    boundaryTFB = grow_boundary(boundaryTFB);       % grow boundary thicker
-end
-
-% x = X;  % replace x with X
-% y = Y;
 
 [gCenterX, gCenterY] = tformfwd(tform,[gCenterX, gCenterY]);
 
@@ -202,14 +194,42 @@ end
 % If > 20% data points are valid in this grain, then there will be an avg value.  Otherwise, the value is NaN. ----------------- can modify. 
 [gExx,~] = generate_grain_avg_data(ID,gID,exx, 0.2, sigma);
 
+%% special case, if the EBSD data was processed to have gbAdjusted, to align with SEM-DIC, and want to read the adjusted EBSD data
+if strcmpi(fileSetting, 'WE43_T6_C1_reducedAOI_setting.mat')
+    load('D:\WE43_T6_C1\Analysis_by_Matlab_reducedAOI\EBSD_reduced_AOI.mat');
+end
+
+%% Boundary and Unique Boundary Map
+[boundaryTF, ~, ~, ~, ~] = find_boundary_from_ID_matrix(ID);
+boundaryTFB = boundaryTF;  % make it thicker
+for iThick = 1:4
+    boundaryTFB = grow_boundary(boundaryTFB);       % grow boundary thicker
+end
+[~, boundaryID, neighborID, ~, ~] = find_one_boundary_from_ID_matrix(ID);
+uniqueBoundary = max(boundaryID,neighborID)*10000 + min(boundaryID,neighborID);
+uniqueBoundaryList = unique(uniqueBoundary(:));
+uniqueBoundaryList(uniqueBoundaryList==0) = [];
+distMap = bwdist(boundaryTF);
+
+%% neighborStruct and misorinetatinStruct
+for ii = 1:length(gID)
+    neighborStruct.g1(ii) = gID(ii);
+    nbs = gNeighbors(ii,:);
+    nbs(nbs==0)=[];
+    neighborStruct.g2{ii} = nbs;
+end
+misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
+
 %% Save the data
 disp('saving ...');
 save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
 save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned',...
+    'distMap','uniqueBoundary','uniqueBoundaryList',...
     'phi1','phi','phi2','q0','q1','q2','q3',...
-    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',... %     'neighborStruct','misorientationStruct',...    
+    'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',... 
+    'neighborStruct','misorientationStruct',...    
     'gArea','gCenterX','gCenterY','gDiameter','gExx','gID','gNNeighbors',...
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
     'ebsdStepSize','fileSetting','pathSetting',...
     'sampleName','sampleMaterial','stressTensor');
-
+disp('saving finished');
