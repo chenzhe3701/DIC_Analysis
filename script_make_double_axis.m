@@ -6,8 +6,8 @@ if changeColor==0
     a = gca; title(a,'');
     set(a, 'fontsize',24);
     set(a,'XAxisLocation','top','YAxisLocation','right', 'Color','none');
-    xlabel(a,'X, mm','color','k');
-    ylabel(a,'Y, mm','color','k');
+    xlabel(a,'X (mm)','color','k');
+    ylabel(a,'Y (mm)','color','k');
     
     % record original tick
     xTick = a.XTick;
@@ -24,8 +24,8 @@ if changeColor==0
     ax2 = copyobj(a,a.Parent);
     ax2.ActivePositionProperty = 'Position';
     set(ax2, 'XAxisLocation','bottom','YAxisLocation','left', 'Color','none');
-    xlabel(ax2,'X, \times10^4 pixels','color','k');
-    ylabel(ax2,'Y, \times10^4 pixels','color','k');
+    xlabel(ax2,'X (\times10^4 pixels)','color','k');
+    ylabel(ax2,'Y (\times10^4 pixels)','color','k');
     
     set(ax2,'XTick',xTick,'YTick',yTick);
     set(ax2,'XTickLabel', xTickLabel);
@@ -36,8 +36,8 @@ else
     a = gca; title(a,'');
     set(a, 'fontsize',24);
     set(a,'XAxisLocation','top','YAxisLocation','right', 'Color','none');
-    xlabel(a,'X, mm','color','b');
-    ylabel(a,'Y, mm','color','b');
+    xlabel(a,'X (mm)','color','b');
+    ylabel(a,'Y (mm)','color','b');
     
     % record original tick
     xTick = a.XTick;
@@ -66,8 +66,8 @@ else
     ax2 = copyobj(a,a.Parent);
     ax2.ActivePositionProperty = 'Position';
     set(ax2, 'XAxisLocation','bottom','YAxisLocation','left', 'Color','none');
-    xlabel(ax2,'X, \times10^4 pixels','color','k');
-    ylabel(ax2,'Y, \times10^4 pixels','color','k');
+    xlabel(ax2,'X (\times10^4 pixels)','color','k');
+    ylabel(ax2,'Y (\times10^4 pixels)','color','k');
     
     set(ax2,'XTick',xTick,'YTick',yTick);
     labels = [];
