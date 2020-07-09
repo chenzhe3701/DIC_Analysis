@@ -13,7 +13,7 @@ clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
@@ -23,7 +23,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -69,6 +69,15 @@ for iE = iE_start:iE_stop
     end
     struCell{iE} = stru;
 end
+
+%% a script to summarize typical number of peaks. added to revise paper part-1, 2020-07-07.
+trace_analysis_3D_aux_summarize_npeaks();
+save('peakInfo.mat','peakInfo')
+figure;
+histogram(peakInfo(:,5),0:50:1500);
+xlabel('Number of Peaks');
+ylabel('Counts');
+set(gca,'fontsize',18)
 
 %% (1) analyze
 warning('off','all');
@@ -454,6 +463,4 @@ a(:,5:7) = [ACC, PPV, TPR];
 
 
 end
-
-
 
