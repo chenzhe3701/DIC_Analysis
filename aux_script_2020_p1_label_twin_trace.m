@@ -160,6 +160,9 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             xy = [Theta(peaks(k,2)), Rho(peaks(k,1))];
             plot3(xy(1),xy(2),max(H(:)),'s','LineWidth',((maxNumPeaks+1-k)/maxNumPeaks)*4,'Color','k');
         end
+        % Indicate window size ?
+        drawrectangle('Position',[-80, 400, 5,round_odd(0.05*min(size(clusterNumMapL)))], 'InteractionsAllowed','none', 'Color', 'r');
+        
         xlabel('\theta, degrees'); ylabel('\rho');
         set(gca,'fontsize',24,'xTick',[-90:45:90]);
     end
