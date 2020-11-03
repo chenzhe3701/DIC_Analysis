@@ -17,7 +17,7 @@
 % The reason is, DIC area might be smaller than EBSD area, so ID_target may
 % actually have less grains than actually scanned during EBSD.
 
-function [ID_new, id_link_additional] = hungarian_assign_ID_map(ID_temp, ID_target, max_previous_ID)
+function [ID_new, id_link_additional, id_link] = hungarian_assign_ID_map(ID_temp, ID_target, max_previous_ID)
 
 % should ignore ID = 0. First if there are nans, convert to 0
 ID_temp(isnan(ID_temp)) = 0;
@@ -65,6 +65,7 @@ job_a = job_full(ind_additional_match);
 % job = munkres(max(overlap(:))-overlap);
 
 % (1) one-to-one match
+id_link = [];   % map from inputID to targetID
 ID_new = ID_temp;
 for ii = 1:length(worker)
     % if this one has a match
@@ -74,6 +75,7 @@ for ii = 1:length(worker)
         if job(ii)~=0
             id_in_target = uniqueID_target(job(ii));
             ID_new(ID_temp==id_in_temp) = id_in_target;
+            id_link = [id_link; id_in_temp, id_in_target];
         end
     end
 end
