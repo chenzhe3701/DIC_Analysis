@@ -1,9 +1,18 @@
-% For selected grain
+% This is for the WE43 twin statistics paper. But example not used because
+% the paper is too long.
+%
+% For selected grain:
 % label theoretical trace direction (highlight active?)
 % find the active twin system (by looking at theoretical trace direction)  
 % find the intersecting neighbor/all neighbors
 % find available/all deformation modes in neighbor
 % find the mPrime_matrix
+%
+% In this example, the neighbor information of the selected grain will be
+% stored in the structure 'data'. It can give a concrete example of how the
+% analysis look like.
+%
+% Note modified 2020-01-04.
 
 clear;
 addChenFunction;

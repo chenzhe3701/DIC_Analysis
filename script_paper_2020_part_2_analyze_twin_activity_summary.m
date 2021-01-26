@@ -332,8 +332,9 @@ end
 %% Summary. To determine twin activation, effect of (1) m' rank, (2) m', (3) resB, (4) resB rank
 % Objects to compare: twinned variants in twinned grains (1) All twin boundaries 
 % (2) Boundaries with intersecting twins (3) Boundaries where twins are considered 
-% to be initiated from Properties to compare: (1) m', (2) m' rank, (3) resB, (4) 
-% resB rank
+% to be initiated from 
+% 
+% Properties to compare: (1) m', (2) m' rank, (3) resB, (4) resB rank
 
 iE = 5;
 load(['D:\p\m\DIC_Analysis\temp_results\twin_gb_summary_',num2str(iE),'.mat']);
@@ -415,9 +416,9 @@ title('Active Variants','fontweight','normal');
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N1(:)+N2(:)], 1, 'stacked');
-legend({'Basal slip/twin in neighbor'},'location','northwest');
+% legend({'Basal slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 170]);
-xlabel('m'' factor');
+xlabel('M'' factor');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
 
@@ -509,9 +510,9 @@ pmf_twin_exp = N2./sum(N2(:));  % probability mass function, for active variants
 N5 = histcounts(TT.mPrime, edges);
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N5(:)], 1, 'stacked');
-legend({'Slip/twin in neighbor'},'location','northwest');
+% legend({'Slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 7200]);
-xlabel('m'' factor');
+xlabel('M'' factor');
 ylabel('Counts');
 title('All Possible Variants','fontweight','normal');
 pmf_all = N5./sum(N5);
@@ -520,15 +521,15 @@ pmf_all = N5./sum(N5);
 
 % (8) relative strength, slip/twin in neighbor
 figure; disableDefaultInteractivity(gca); hold on;
-plot(xpos, pmf_all_exp, '-ko','linewidth',1.5);
-plot(xpos, pmf_all, '--kd','linewidth',1.5);
+plot(xpos, pmf_all_exp, '-ko','linewidth',1.5,'MarkerSize',8);
+plot(xpos, pmf_all, '--kd','linewidth',1.5,'MarkerSize',8);
 set(gca,'ylim',[0 0.2]);
-ylabel('Probability Distribution');
+ylabel('Probability');
 yyaxis right;
-plot(xpos, pmf_all_exp./pmf_all, '-ro','linewidth',1.5);
+plot(xpos, pmf_all_exp./pmf_all, '-ro','linewidth',1.5,'MarkerSize',8);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
-ylabel('Multiples of Random');
-xlabel('m'' factor');
+ylabel('Ratio');
+xlabel('M'' factor');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','northwest');
 title('');
@@ -551,9 +552,9 @@ disp("============consider SF>0.3============")
 N6 = histcounts(tt.mPrime, edges);
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N6(:)], 1, 'stacked');
-legend({'Slip/twin in neighbor'},'location','northwest');
+% legend({'Slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 2600]);
-xlabel('m'' factor');
+xlabel('M'' factor');
 ylabel('Counts');
 title('All Possible Variants with SF>0.3','fontweight','normal');
 pmf_all_r = N6./sum(N6);
@@ -562,15 +563,15 @@ pmf_all_r = N6./sum(N6);
 
 % (10) relative strength, slip/twin in neighbor
 figure; disableDefaultInteractivity(gca); hold on;
-plot(xpos, pmf_all_exp, '-ko','linewidth',1.5);
-plot(xpos, pmf_all_r, '--kd','linewidth',1.5);
+plot(xpos, pmf_all_exp, '-ko','linewidth',1.5,'MarkerSize',8);
+plot(xpos, pmf_all_r, '--kd','linewidth',1.5,'MarkerSize',8);
 set(gca,'ylim',[0 0.2]);
-ylabel('Probability Distribution');
+ylabel('Probability');
 yyaxis right;
-plot(xpos, pmf_all_exp./pmf_all_r, '-ro','linewidth',1.5);
+plot(xpos, pmf_all_exp./pmf_all_r, '-ro','linewidth',1.5,'MarkerSize',8);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.5]);
-ylabel('Multiples of Random');
-xlabel('m'' factor');
+ylabel('Ratio');
+xlabel('M'' factor');
 set(gca,'fontsize',16);
 legend({'Active variants','Possible variants with SF>0.3','Ratio'},'location','northwest');
 % title('Twin in neighbor', 'fontweight','normal');
@@ -612,7 +613,7 @@ histogram(t.incoming)
 %% 
 % *(II) Similarly, effect of m'-rank.*
 
-disp("============ Effect of m'-rank ============")
+disp("============ Effect of M'-rank ============")
 % close all;
 edges = [0.5:1:6.5];
 xpos = 1:6;
@@ -631,9 +632,9 @@ N = histcounts(t.rank_mPrime, edges);
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N(:)], 1, 'stacked');
-legend({'Basal slip/twin in neighbor'},'location','northeast');
+% legend({'Basal slip/twin in neighbor'},'location','northeast');
 set(gca,'fontsize',16);
-xlabel('m'' Rank');
+xlabel('M'' Rank');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
 
@@ -749,9 +750,9 @@ pmf_twin = N4./sum(N4);
 N5 = histcounts(TT.rank_mPrime, edges);
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N5(:)], 1, 'stacked');
-legend({'Basal slip/twin in neighbor'},'location','northeast');
+% legend({'Basal slip/twin in neighbor'},'location','northeast');
 set(gca,'fontsize',16,'ylim',[0,11000]);
-xlabel('m'' Rank');
+xlabel('M'' Rank');
 ylabel('Counts');
 title('All Possible Variants','fontweight','normal');
 
@@ -763,15 +764,14 @@ pmf_all = N5./sum(N5);
 figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_all_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_all, '--kd','linewidth',1.5);
-ylabel('Probability Distribution');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_all_exp./pmf_all, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
-ylabel('Multiples of Random');
-xlabel('m'' Rank');
+ylabel('Ratio');
+xlabel('M'' Rank');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','north');
-title('Twin in neighbor', 'fontweight','normal');
 title('');
 
 %%
@@ -796,11 +796,11 @@ pmf_all_r = N6./sum(N6);    % restricted
 figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_all_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_all_r, '--kd','linewidth',1.5);
-ylabel('Probability distribution');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_all_exp./pmf_all_r, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
-ylabel('Multiples of random');
+ylabel('Ratio');
 xlabel('m'' rank');
 set(gca,'fontsize',16);
 legend({'Active variants','Possible variants with SF>0.3','Ratio'},'location','north');
@@ -835,11 +835,11 @@ figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_r, '--kd','linewidth',1.5);
 set(gca,'ylim',get(gca,'ylim').*[0,1.5]);
-ylabel('Probability Density');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_exp./pmf_r, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Multiples of Random');
+ylabel('Ratio');
 xlabel('RBV');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','north');
@@ -876,11 +876,11 @@ figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_r, '--kd','linewidth',1.5);
 set(gca,'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Probability Density');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_exp./pmf_r, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Multiples of Random');
+ylabel('Ratio');
 xlabel('RBV rank');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','north');
@@ -943,11 +943,11 @@ figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_all, '--kd','linewidth',1.5);
 set(gca,'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Probability Density');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Multiples of Random');
+ylabel('Ratio');
 xlabel('e_{xz}^{ba}');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','north');
@@ -1025,11 +1025,11 @@ figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
 plot(xpos, pmf_all, '--kd','linewidth',1.5);
 set(gca,'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Probability Density');
+ylabel('Probability');
 yyaxis right;
 plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
-ylabel('Multiples of Random');
+ylabel('Ratio');
 xlabel('e_{xz}^{etw}');
 set(gca,'fontsize',16);
 legend({'Active variants','All possible variants','Ratio'},'location','northwest');
