@@ -49,7 +49,7 @@
 clear;
 addChenFunction;
 
-[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\Mg4Al_m1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 sampleName = [];    % such as 'Ti7Al_#B6'
 cpEBSD = [];    % control points on EBSD image (unit um !!!!)
 cpSEM = [];     % control points on SEM image (unit pixel)
@@ -58,9 +58,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile('D:\WE43_T6_C1\SEM Data\stitched_DIC\_5_v73.mat','choose one of the strain file (mat format) for aligning purpose');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\EBSD Data\Mg4Al_grain_file_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\EBSD Data\Mg4Al_grain_file_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\SEM Data\stitched DIC\DIC_merged_3.mat','choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -68,7 +68,7 @@ tform = make_average_transform('projective',cpEBSD,cpSEM);
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\Analysis','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 try
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
 catch
@@ -183,6 +183,7 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'eulerAligned','
 % [x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,x,y);
 
 ID = interp_data(x,y,ID,X,Y,tform,'interp','nearest');
+ID(isnan(ID))=0;
 phi1 = interp_data(x,y,phi1,X,Y,tform,'interp','nearest');
 phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
@@ -211,6 +212,7 @@ uniqueBoundaryList = unique(uniqueBoundary(:));
 uniqueBoundaryList(uniqueBoundaryList==0) = [];
 distMap = bwdist(boundaryTF);
 
+myplot(exx,boundaryTF);
 %% neighborStruct and misorinetatinStruct
 for ii = 1:length(gID)
     neighborStruct.g1(ii) = gID(ii);
