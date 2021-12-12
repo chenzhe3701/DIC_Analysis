@@ -13,17 +13,17 @@ clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
-dicFiles = dir([dicPath,'\*.mat']);
-dicFiles = struct2cell(dicFiles);
-dicFiles = dicFiles(1,:)';
+% dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+% dicFiles = dir([dicPath,'\*.mat']);
+% dicFiles = struct2cell(dicFiles);
+% dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -31,9 +31,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -54,7 +54,7 @@ clusterNumberMapCell = cell(1,length(STOP)-1);
 struCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'stru','clusterNumMap','clusterNumMapCleaned');
+    load(fullfile(saveDataPath,fName_c2t_result),'stru','clusterNumMap','clusterNumMapCleaned');
     clusterNumberMapCell{iE} = clusterNumMapCleaned;
     twinMapCell{iE} = zeros(size(clusterNumMapCleaned));
     sfMapCell{iE} = zeros(size(clusterNumMapCleaned));
@@ -71,31 +71,34 @@ for iE = iE_start:iE_stop
 end
 
 %% a script to summarize typical number of peaks. added to revise paper part-1, 2020-07-07.
-trace_analysis_3D_aux_summarize_npeaks();
-save('peakInfo.mat','peakInfo')
-figure;
-histogram(peakInfo(:,5),0:50:1500);
-xlabel('Number of Peaks');
-ylabel('Counts');
-set(gca,'fontsize',18)
+if 0
+    trace_analysis_3D_aux_summarize_npeaks();
+    save('peakInfo.mat','peakInfo')
+    figure;
+    histogram(peakInfo(:,5),0:50:1500);
+    xlabel('Number of Peaks');
+    ylabel('Counts');
+    set(gca,'fontsize',18)
+end
 
 %% (1) analyze
 warning('off','all');
 
 % tunning parameters
-p.diffStrain_cr = 0.07;   % diff in strain need to < 0.07;
-p.rEffStrain = [0.1, 1.9];    % ratio of cluster effective strain and twin effective strain should be within this range   
+p.diffStrain_cr = 0.05;   % diff in strain need to < 0.07;
+p.rEffStrain = [0.2, 1.8];    % ratio of cluster effective strain and twin effective strain should be within this range   
 p.strainRank_cr = 0.3;  % rank need to >=1 (in 0-based) 
 p.SF_th = 0.2;        % twin SF need to be larger than this  (or 0.1)
 p.pctTotalPeaks_bwd_cr = 0.2; % when going backward, need at least these pct of total number of peaks to be considered as active trace  (or 0.05, 0.15)  
 % note that this is 'th_1' input outside of this function  
 p.pctTotalPeaks_fwd_cr = 0.3;
+p.clusterToGbPct_th = 0.2; % 95% quantile of cluster point's distance to gb. if < pct * gDia, considered as too close, and not identify as twin.
 
 pctTotalPeaks_fwd_cr = p.pctTotalPeaks_fwd_cr; 
                     
 stru = struCell{iE_start};
 for iS = 1:length(stru)
-    %     iS = find(arrayfun(@(x) x.gID == 378,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace]
+    %     iS = find(arrayfun(@(x) x.gID == 179,stru));  % for debugging. [for WE43, some grains: 378, 694, 1144] [697 interesting as there is a non-twin trace]
     %     iS = find(gIDwithTrace == 296); % for debugging.
     close all;
     ID_current = stru(iS).gID;
@@ -122,11 +125,17 @@ for iS = 1:length(stru)
     % For examples in twinning analysis, we previously performed cluster analysis and 'identified'/'confirmed' twin clusters.
     % More generally, we might need to first do a rough clustering based on strain map, then perform trace analysis, to decide which are the exist slip/twin systems.
     
-    ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
-    indC_min = find(sum(ind_local, 1), 1, 'first');
-    indC_max = find(sum(ind_local, 1), 1, 'last');
-    indR_min = find(sum(ind_local, 2), 1, 'first');
-    indR_max = find(sum(ind_local, 2), 1, 'last');
+    ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]); 
+    [nR,nC] = size(ID);
+    indC_min = find(sum(ind_local, 1), 1, 'first'); 
+    indC_max = find(sum(ind_local, 1), 1, 'last');  
+    indR_min = find(sum(ind_local, 2), 1, 'first'); 
+    indR_max = find(sum(ind_local, 2), 1, 'last');  
+    % increase area size by 1 pixel. 2021-09-29
+    indC_min = max(indC_min-1, 1);
+    indC_max = min(indC_max+1, nC);
+    indR_min = max(indR_min-1, 1);
+    indR_max = min(indR_max+1, nR);
     
     ID_local = ID(indR_min:indR_max, indC_min:indC_max);
     
@@ -175,7 +184,7 @@ for iS = 1:length(stru)
                         label_twin_trace_with_stats(twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local,uniqueBoundary_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
                         struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceDir,traceND,traceSF,sampleMaterial,'twin',debugTF, pctTotalPeaks_fwd_cr, p, ssAllowed);
                     % each cell contains cells of tMap at an iEs
-
+                    
                 end % end of iEC
                 
             end
@@ -192,6 +201,10 @@ for iS = 1:length(stru)
                 sfMapLocal{iE} = sfMapLocal{iE} + sfMapCell_cluster{iE,jj};
             end
         end
+        % double check ================================================================================================================> 2021-09-28
+        if any(~ismember(unique(twinMapLocal{iE}(:)),0:6))
+            error(' ')
+        end
         
         clusterNumMapL = clusterNumberMapCell{iE}(indR_min:indR_max, indC_min:indC_max);
         clusterNumMapL(ID_local~=ID_current) = 0;  % First, clean-up those doesn't belong to this grain
@@ -203,9 +216,16 @@ for iS = 1:length(stru)
         
         % update. First clean old map, then add new map.
         map_local = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max);  % (1) Cut a squared map from big map
-        twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;          % (2) Eliminate this sqaured region from the big map
+        twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = 0;          % (2) Eliminate this squared region from the big map
         map_local(ID_local == ID_current) = 0;                              % (3) clean the grain area on the cut map
+        % ID_local(128,37)
         map_local = map_local + twinMapLocal{iE};                           % (4) update the grain area on the cut map
+        
+        % double check ===========================================================================================================================> 2021-09-28
+        if any(~ismember(unique(map_local(:)),0:6))
+            
+            error(' ')
+        end
         twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = twinMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + map_local;  % (5) Add the modified cut map to big map
         
         map_local = sfMapCell{iE}(indR_min:indR_max, indC_min:indC_max); 
@@ -225,9 +245,13 @@ end % end of iS
 warning('on','all');
 
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twinMaps.mat'],'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','p','-v7.3');
+save(fullfile(saveDataPath,[timeStr,'_twinMaps.mat']),'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','p','-v7.3');
 
 %% Need more code to analyze accuracy.  
+% Note 2021-09-26 when recovering from disk crash 2021-08: 
+% this seems like repeating the analysis of assessing identification parameters for MaterChar tiwn identification paper 2020.
+% Some TP/FP/FN/TN analysis.
+
 if 0
     
 [truthFile, truthPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the truth results for twin-grain boundary intersection');
@@ -361,6 +385,7 @@ tbl_3 = summarize_confusion(conf_matB);
 
 end
 
+if 0
 %% plot confusion map (pixel level summary)
 iE_start = 2;
 iE_select = 4;
@@ -384,8 +409,8 @@ set(a,'fontsize',18);
 %% maximize plot and run this:
 script_make_double_axis;
 %%
-print([ttl,'.tif'],'-dtiff');
-
+print(fullfile(saveDataPath, [ttl,'.tif']),'-dtiff');
+end
 
 %%
 

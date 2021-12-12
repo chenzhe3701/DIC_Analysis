@@ -16,7 +16,7 @@ dicFiles = dicFiles(1,:)';
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -30,9 +30,9 @@ end
 % [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -107,7 +107,7 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the new result of dividing twin into variants');
+[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\struCell_with_tGbVol.mat','select file for the most recent struCell');
 load(fullfile(newVariantFilePath,newVariantFile),'struCell');   %,'trueTwinMapCell');
 
 %% Find triple points
@@ -695,7 +695,8 @@ for iE = 2:5
                             continueTF = false;
                     end
                 end
-                saveas(gcf,['temp_results\iE_',num2str(iE),'_ID_',num2str(ID_current),'.tiff']);
+                mkdir(fullfile(saveDataPath, 'temp_results'));
+                saveas(gcf,fullfile(saveDataPath, 'temp_results',['iE_',num2str(iE),'_ID_',num2str(ID_current),'.tiff']));
             end
             
         else
@@ -1125,10 +1126,10 @@ for iE = 2:5
     
     %% Save
         timeStr = datestr(now,'yyyymmdd_HHMM');
-        save(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], 'struCell','T','T2', 'lookupMa','lookupMb', ...
+        save(fullfile(saveDataPath, [timeStr,'_twin_gb_summary_',num2str(iE),'.mat']), 'struCell','T','T2', 'lookupMa','lookupMb', ...
             'bg_not_involved','bg_slip_twin_a','bg_slip_twin_b','bg_co_found','bg_twin_twin_a','bg_twin_twin_b','bg_slip_growth_a','bg_slip_growth_b','bg_co_growth',...
             '-v7.3');
-        copyfile(['temp_results/',timeStr,'_twin_gb_summary_',num2str(iE),'.mat'], ['temp_results/twin_gb_summary_',num2str(iE),'.mat']);
+        copyfile(fullfile(saveDataPath, [timeStr,'_twin_gb_summary_',num2str(iE),'.mat']), fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']), 'f');
     
 end
 
@@ -1212,16 +1213,16 @@ for iE = 2:5
     switch iE
         case 2
             edmat_2 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_2','x_dist', '-append','-v7.3');
+            save(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'edmat_2','x_dist', '-append','-v7.3');
         case 3
             edmat_3 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_3','x_dist', '-append','-v7.3');
+            save(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'edmat_3','x_dist', '-append','-v7.3');
         case 4
             edmat_4 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_4','x_dist', '-append','-v7.3');
+            save(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'edmat_4','x_dist', '-append','-v7.3');
         case 5
             edmat_5 = edmat;
-            save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'edmat_5','x_dist', '-append','-v7.3');
+            save(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'edmat_5','x_dist', '-append','-v7.3');
     end
     
 end
@@ -1324,7 +1325,7 @@ end
 %% Added something to the code, but run here to increase speed, no need to calculate everything again.  If run from beginning, no need to run again.
 if 0
     for iE = 2:5
-        load(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2');
+        load(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'T','T2');
         for ir = 1:size(T,1)
             ID_current = T.ID(ir)
             ID_neighbor = T.ID_neighbor(ir);
@@ -1366,7 +1367,7 @@ if 0
             T2.tGbStrength(ir) = T2.tGbVolPct(ir)/T2.gb_length(ir);
         end
         
-        save(['temp_results/twin_gb_summary_',num2str(iE),'.mat'],'T','T2','-append');
+        save(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']),'T','T2','-append');
     end
 end
 %% next, need to go to the code for summary.

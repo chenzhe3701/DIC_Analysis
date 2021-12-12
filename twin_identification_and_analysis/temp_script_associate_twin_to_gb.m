@@ -9,17 +9,17 @@ clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -31,9 +31,9 @@ end
 % [confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results where twin identification was based on trace dir and strain');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -105,8 +105,12 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the new result of dividing twin into variants');
-load(fullfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
+[finalVariantFile, finalVariantPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select file for the most recent trueTwinMapCell');
+load(fullfile(finalVariantPath,finalVariantFile),'trueTwinMapCell');
+
+
+[struFile, struPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211004_2115_twin_gb_intersection_manual_label.mat','select file for the most recent struCell');
+load(fullfile(struPath,struFile),'struCell');
 %%
 % Assign each variant to each boundary.
 %
@@ -310,11 +314,7 @@ for iE = 2:5
 end % end of (for iE=2:5) 
 
 %% save updated struCell
-save('temp_results\new_variant_map.mat','struCell','-append');
-
-
-
-
+save(fullfile(saveDataPath,'struCell_with_tGbVol.mat'),'struCell');
 
 
 

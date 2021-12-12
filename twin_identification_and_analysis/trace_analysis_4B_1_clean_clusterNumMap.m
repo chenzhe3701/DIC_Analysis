@@ -16,11 +16,11 @@ clear;
 addChenFunction;
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -28,9 +28,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','exx');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','exx');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','exx');
 end
 
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
@@ -87,7 +87,7 @@ if ~useParallel
             disp(['ID = ',num2str(ID_current)]);
         end
         
-        save([saveDataPath,fName_c2t_result],'clusterNumMapCleaned','-append');
+        save(fullfile(saveDataPath,fName_c2t_result),'clusterNumMapCleaned','-append');
     end
 end
 
@@ -96,9 +96,9 @@ if useParallel
     for iE = iE_start:iE_stop
         fName_source = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat'];
         fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-        copyfile([saveDataPath,fName_source],[saveDataPath,fName_c2t_result],'f');
+        copyfile(fullfile(saveDataPath,fName_source), fullfile(saveDataPath,fName_c2t_result),'f');
         
-        load([saveDataPath,fName_c2t_result],'clusterNumMap','stru');
+        load(fullfile(saveDataPath,fName_c2t_result),'clusterNumMap','stru');
         
         npool = 3;
         tN = 1:length(stru);
@@ -142,7 +142,7 @@ if useParallel
             clusterNumMapCleaned = clusterNumMapCleaned + partMap{ii};
         end
         
-        save([saveDataPath,fName_c2t_result],'clusterNumMapCleaned','-append');
+        save(fullfile(saveDataPath,fName_c2t_result),'clusterNumMapCleaned','-append');
     end    
 end
 
@@ -151,7 +151,7 @@ end
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     
-    load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
+    load(fullfile(saveDataPath,fName_c2t_result),'clusterNumMap','stru','clusterNumMapCleaned');
     
     clusterNumMap = abs(clusterNumMap);
     clusterNumMapCleaned = abs(clusterNumMapCleaned);
@@ -198,7 +198,7 @@ for iE = iE_start:iE_stop
             disp(['finished ',num2str(iS),' grains']);
         end
     end
-    save([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned','-append');
+    save(fullfile(saveDataPath,fName_c2t_result),'clusterNumMap','stru','clusterNumMapCleaned','-append');
 end
 
 

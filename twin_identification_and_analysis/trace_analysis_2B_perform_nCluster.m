@@ -10,17 +10,17 @@
 
 clear;
 addChenFunction;
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -28,9 +28,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']);
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
 end
 
 gIDwithTrace = gID(~isnan(gExx));
@@ -85,7 +85,7 @@ for iE = iE_start:iE_stop
     eyy(ind_outlier) = nan;
     
     struNC_fName = [sampleName, '_s',STOP{iE+B},'_nClusters.mat']
-    load([saveDataPath,struNC_fName],'struNC');
+    load(fullfile(saveDataPath,struNC_fName),'struNC');
     %% Cluster strain and record information in a structure, assign clusters to twin systems on the fly, but can also modify later.
     
     debugTF = 0;
@@ -370,11 +370,11 @@ for iE = iE_start:iE_stop
     %%
     timeStr = datestr(now,'yyyymmdd_HHMM')
     name_result_on_the_fly = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly_',timeStr,'.mat'];
-    save([saveDataPath,name_result_on_the_fly] ,'clusterNumMap','twinMap','sfMap','mDistMap','scoreMap','stru');
+    save(fullfile(saveDataPath,name_result_on_the_fly) ,'clusterNumMap','twinMap','sfMap','mDistMap','scoreMap','stru');
     try
-        save([saveDataPath,name_result_on_the_fly] ,'twinMap_2','shearMap','sfMap_2','costMap','-append');
+        save(fullfile(saveDataPath,name_result_on_the_fly) ,'twinMap_2','shearMap','sfMap_2','costMap','-append');
     end
-    
+    copyfile(fullfile(saveDataPath,name_result_on_the_fly), fullfile(saveDataPath, [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_result_on_the_fly.mat']), 'f');
     disp(['saved cluster_result_on_the_fly: ',name_result_on_the_fly]);
     
     

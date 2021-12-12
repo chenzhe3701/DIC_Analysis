@@ -2,22 +2,30 @@
 % the grain boundareis, etc.... 2018-11-07.
 %
 % chenzhe, 2019-01-07, continue with analysis...
+%
+% chenzhe, 2020-04-19 note
+% This is an older method to identify twin-gb intersection.
+% Basically, (1) first divide trueTwinMap into fragments, (2) for each
+% fragment, look at how many pts are within how many dist to a gb, to
+% identify.
+% There should be newer/better method: briefly: on currently how to rotate the
+% map to align twin traces horizontal, then find in
 
 clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -25,13 +33,13 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 
-% Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\','select the confirmed results where twin identification was based on trace dir and strain');
+% Load trueTwinMapCell
+[finalLabelFile, finalLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select the results for trueTwinMapCell');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -40,7 +48,6 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 % file name prefixes
-f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 debugTF = 0;
@@ -102,14 +109,14 @@ end
 struCell = [];
 trueTwinMapCell = [];
 tNote = [];
-load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell','trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
+load(fullfile(finalLabelPath,finalLabelFile),'struCell','trueTwinMapCell');     % not loaded 'twinMapCell','sfMapCell','tNote'
 
 
 %%
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','gNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 
 % Create a list that makes a note of the [iE, grainID, tSF, truceTwin
@@ -154,7 +161,8 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
         struCell{iE}(iS).tGbPts{ii} = {[]};
     end
     
-    ID_current = struCell{iE}(iS).gID
+    ID_current = struCell{iE}(iS).gID;
+    disp(['iE=',num2str(iE),', ID=',num2str(ID_current)]);
     % If there are twins active: if sum(struCell{iE}(iS).cTrueTwin(:))>0
     if sum(struCell{iE}(iS).cTrueTwin(:))>0
         
@@ -244,7 +252,7 @@ for iS = 1:length(struCell{iE})     % e.g., iS=1253, ID_current=1390, ID=378
             if spanEnough
                 tsNum = mode(trueTwinMapL(fragMap>0));    % most frequent element, is the ts number of this branch  % choice-1: branch_N
                 
-                iTwin = tsNum - nss;
+                iTwin = mod(tsNum-nss-1,6)+1;   % ts=1 or 19, my code was not so consistent. 
                 
                 theta_target = traceND(iTwin);
                 [H,Theta,Rho] = hough(fragMap,'RhoResolution',1);
@@ -408,8 +416,8 @@ end
 
 %%
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_twin_at_boundary_result.mat'], 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
-save([timeStr,'_twin_at_boundary_result_ws.mat'],'-v7.3');
+save(fullfile(saveDataPath,[timeStr,'_twin_at_boundary_result.mat']), 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
+save(fullfile(saveDataPath,[timeStr,'_twin_at_boundary_result_ws.mat']),'-v7.3');
 
 %% Analysis (1): Assume the previous analysis is correct.
 % (1) calculate the average misorientation of twinned boundary vs non twinned boundary

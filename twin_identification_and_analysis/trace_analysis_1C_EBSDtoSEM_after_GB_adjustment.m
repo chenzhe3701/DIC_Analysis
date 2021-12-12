@@ -7,7 +7,7 @@ clear;
 clc;
 addChenFunction;
 
-[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 sampleName = [];    % such as 'Ti7Al_#B6'
 cpEBSD = [];    % control points on EBSD image (unit um !!!!)
 cpSEM = [];     % control points on SEM image (unit pixel)
@@ -16,20 +16,20 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('*.txt','choose the EBSD file (txt format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile([EBSDfilePath1,'.txt'],'choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile([EBSDfilePath1,'.mat'],'choose one of the strain file (mat format) for aligning purpose');
-[gbReAlignedFileName, gbReAlignedFilePath] = uigetfile(['D:\p\m\DIC_Analysis\setting_for_real_samples\',sampleName,'_boundary_model.mat'],'choose the file of the re-aligned grain boundary data');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile(['D:\WE43_T6_C1\SEM Data\stitched_DIC\_5.mat'],'choose one of the strain file (mat format) for aligning purpose');
+% [gbReAlignedFileName, gbReAlignedFilePath] = uigetfile(['D:\p\m\DIC_Analysis\setting_for_real_samples\',sampleName,'_boundary_model.mat'],'choose the file of the re-aligned grain boundary data');
 
-saveDataPath = [uigetdir(pathSetting,'choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 
 umPerPtDIC = 360/4096*5;
 min_valid_gID = 2;  % e.g., grain # 1 represents the frame of the EBSD area, so it is not a valid grain.
 
 try
-    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
+    save(fullfile(saveDataPath,[sampleName,'_traceAnalysis_WS_settings.mat']),'-append');
 catch
-    save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
+    save(fullfile(saveDataPath,[sampleName,'_traceAnalysis_WS_settings.mat']));
 end
 
 demo = 1;   % some transformations can be demonstrated as not the best choice. Use demo=1 to plot the results to confirm.
@@ -119,7 +119,7 @@ else
 end
 clear EBSDdata1 EBSDdata2 strainData;
 
-load([sampleName,'_boundary_model.mat'], 'ID_aligned', 'ID_link_additional');   % this is the ID that was adjusted to align well with the strain map.
+load(fullfile(saveDataPath, [sampleName,'_boundary_model.mat']), 'ID_aligned', 'ID_link_additional');   % this is the ID that was adjusted to align well with the strain map.
 
 
 %% Use the selected adjusted grains to define an averaged transformation for alignment, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
@@ -275,7 +275,8 @@ misorientationStruct_aligned = construct_misorientation_structure(neighborStruct
 
 
 %% Save the data
-[gQ0,gQ1,gQ2,gQ3,gPhi1,gPhi,gPhi2] = regulate_euler_quat(gPhi1_aligned,gPhi_aligned,gPhi2_aligned);   % regulate the angles
+% Note:2021-12-09, there might be better ways to regulate. But for WE43_T6_C1 sample, to reproduce the same result, we need to keep this function.    
+[gQ0,gQ1,gQ2,gQ3,gPhi1,gPhi,gPhi2] = regulate_euler_quat(gPhi1_aligned,gPhi_aligned,gPhi2_aligned);   % regulate the angles.  
 % Grain average strains should be done after SEM and EBSD is aligned.
 % If > 20% data points are valid in this grain, then there will be an avg value.  Otherwise, the value is NaN. ----------------- can modify.
 [gExx_aligned,~] = generate_grain_avg_data(ID_aligned,gID_aligned,exx, 0.2, sigma);
@@ -306,7 +307,7 @@ uniqueBoundaryList = unique(uniqueBoundary(:));
 uniqueBoundaryList(uniqueBoundaryList==0) = [];
 distMap = bwdist(boundaryTF);
 
-save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'], 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned', ... % 'cityDistMap',...
+save(fullfile(saveDataPath,[sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']), 'ID','X','Y','x','y','boundaryTF','boundaryTFB','eulerAligned', ... % 'cityDistMap',...
     'distMap','uniqueBoundary','uniqueBoundaryList',...
     'gPhi1','gPhi','gPhi2','gQ0','gQ1','gQ2','gQ3',...
     'phi1','phi','phi2',...

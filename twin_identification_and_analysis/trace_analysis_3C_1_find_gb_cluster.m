@@ -16,21 +16,21 @@ addChenFunction;
 % dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
-load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
+load(fullfile(saveDataPath,[sampleName,'_traceAnalysis_WS_settings.mat']));
 if ~strcmpi(saveDataPath,saveDataPathInput)
     disp('Input saveDataPath is different from that saved in setting.mat file. Check files or code.');
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','cityDistMap','ID','gID','gExx','gPhi1','gPhi','gPhi2');    
 end
 
 % load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
@@ -50,12 +50,14 @@ debugTF = 0;
 
 
 %% Calculate the city block distance, if not calculated yet.
-% cityDistMap = city_block(boundaryTF);
-% try
-%     save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'cityDistMap','-append');
-% catch
-%     save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','-append');
-% end
+if ~exist('cityDistMap','var')
+    cityDistMap = city_block(boundaryTF);
+end
+try
+    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'cityDistMap','-append');
+catch
+    save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'cityDistMap','-append');
+end
 %% (0) Load cluster number data at all stops
 
 cluster_number_maps = cell(1,length(STOP)-1);    % store all the clusterNumMap s, omit stop-0
@@ -64,7 +66,7 @@ struCell = cell(1,length(STOP)-1);
 
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'clusterNumMap','stru','clusterNumMapCleaned');
+    load(fullfile(saveDataPath,fName_c2t_result),'clusterNumMap','stru','clusterNumMapCleaned');
     cluster_number_maps{iE} = clusterNumMap;
     cluster_number_maps_cleaned{iE} = clusterNumMapCleaned;
     
@@ -118,7 +120,9 @@ for iS =1:length(struCell{iE_start})
         cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) = cToGbDistMapCell{iE}(indR_min:indR_max, indC_min:indC_max) + cToGbDistMapLocal;
     end
     
-    waitbar(iS/length(struCell{iE}), hWaitbar);
+    try
+        waitbar(iS/length(struCell{iE}), hWaitbar);
+    end
             
 end
 
@@ -132,7 +136,7 @@ for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
     stru = struCell{iE};
     cToGbDistMap = cToGbDistMapCell{iE};
-    save([saveDataPath,fName_c2t_result],'stru','cToGbDistMap','-append');
+    save(fullfile(saveDataPath,fName_c2t_result),'stru','cToGbDistMap','-append');
 end
 
 

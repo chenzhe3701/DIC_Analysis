@@ -9,17 +9,17 @@ clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09\','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -28,15 +28,15 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the confirmed labeled results, for struCell');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_0212_relabeled_result.mat','select the confirmed labeled results, for struCell');
 
 % This provides a valid struCell
 % [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -131,10 +131,11 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell');
 % 
 % (5) Go back, and check each row's data points' two associated gbLabels.
 
-for iE = 2:5
+for iE = 5%2:5
     variantMap = zeros(size(ID));
-    for iS = 1:length(struCell{iE}) % 23
-        ID_current = struCell{iE}(iS).gID
+    for iS = 165%1:length(struCell{iE}) % 23
+        ID_current = struCell{iE}(iS).gID;
+        disp(['check iE=',num2str(iE),', ID=',num2str(ID_current)]);
         ind = find(gID==ID_current);
         
         euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
@@ -326,9 +327,10 @@ for iE = 2:5
     end % end of (for iS=1:end)
     variantMapCell{iE} = variantMap;
 end % end of (for iE=2:5) 
-save(['temp_results\',sampleName,'_new_variant_map.mat'],'variantMapCell','-v7.3')  
+% save(fullfile(saveDataPath, [sampleName,'_new_variant_map.mat']),'variantMapCell','-v7.3')  
  
 %% try to clean variantMap again 
+disp('clean variant map ...');
 useParallel = 1;
 if useParallel    
     for iE = iE_start:iE_stop
@@ -367,7 +369,7 @@ if useParallel
                     variantMapLocal = one_pass_fill(variantMapLocal);
                     
                     partMap{ii}(indR_min:indR_max, indC_min:indC_max) = partMap{ii}(indR_min:indR_max, indC_min:indC_max) + variantMapLocal;
-                    disp(['ID = ',num2str(ID_current)]);
+                    disp(['cleaning, ID = ',num2str(ID_current)]);
                 end
             end
         end
@@ -380,7 +382,7 @@ if useParallel
         variantMapCleanedCell{iE} = variantMapCleaned;
     end    
 end
-save(['temp_results\',sampleName,'_new_variant_map.mat'],'variantMapCleanedCell','-append');
+save(fullfile(saveDataPath, [sampleName,'_new_variant_map.mat']),'variantMapCleanedCell','-append');
 
 
 %% Count tVol again, need to load a valid struCell here. ================================================  
@@ -395,8 +397,8 @@ for iE = iE_start:iE_stop
     idicCount = histcounts(ID(ind)*1000+trueTwinMapCell{iE}(ind),[idic(:);idic(end)+1]);
     
     for iS = 1:length(struCell{iE})
-        ID_current = struCell{iE}(iS).gID
-        
+        ID_current = struCell{iE}(iS).gID;
+        disp(['count tVol, iE=',num2str(iE),', ID=',num2str(ID_current)]);
         struCell{iE}(iS).tVol = zeros(1, length(struCell{iE}(iS).tLabel));  % reset and count again.
         
         for iTwin = 1:length(struCell{iE}(iS).tSF)
@@ -418,8 +420,8 @@ struCell{5}(105)
 struCell{5}(106)
 struCell{5}(107)
 
-save(['temp_results\',sampleName,'_new_variant_map.mat'],'trueTwinMapCell','struCell','-append');
-
+save(fullfile(saveDataPath, [sampleName,'_new_variant_map.mat']),'trueTwinMapCell','struCell','-append');
+copyfile(fullfile(saveDataPath, [sampleName,'_new_variant_map.mat']),fullfile(saveDataPath, [sampleName,'_final_variant_map.mat']));
 
 
 

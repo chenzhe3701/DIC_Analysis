@@ -91,7 +91,7 @@ M2alpha = ones(size(M2));
 M2alpha(isnan(M2)) = 0;
 imagesc([X(1),X(end)],[Y(1),Y(end)],M2,'alphadata',M2alpha);
 try
-    caxis(gca, [-1, 24]);
+    caxis(gca, [-0.1, 6.1]);
 end
 
 

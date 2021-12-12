@@ -11,19 +11,19 @@
 
 clear; clc;
 addChenFunction;
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
-load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'gID','gNeighbors','gNNeighbors','ID','ID_0','iThick','x','y','X','Y','exx','gExx');
+load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'gID','gNeighbors','gNNeighbors','ID','x','y','X','Y','exx','gExx');
 
 gIDwithTrace = gID(~isnan(gExx));
 
@@ -42,7 +42,7 @@ neighbor_elim = 1;          % don't consider this ID as neighbor. For example, I
 
 %%
 % pre-deformation SEM image with grain boundary
-[fileBoundaryImg, pathBoundaryImg] = uigetfile('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\ref imgs for gb\IpreToDIC_1.tif','select SEM img with grain boundary');
+[fileBoundaryImg, pathBoundaryImg] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\ref imgs for gb\IpreToDIC_1.tif','select SEM img with grain boundary');
 ImgGB = imread([pathBoundaryImg,fileBoundaryImg]);
 
 %% crop an area of data
@@ -106,7 +106,7 @@ ebsd_resolution = 1/4; % # of EBSD_data_point / um
 resolution = img_resolution / ebsd_resolution;
 
 [gb_dir, gb_s_pt, pt_pos, pt_s_gb, tripleLookup] = model_grain_boundary(ID_input,x_input,y_input,resolution);
-save([sampleName,'_boundary_model_temp.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
+save(fullfile(saveDataPath, [sampleName,'_boundary_model_temp.mat']), 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
 %% Divide whole map into several AOIs
 nPts = size(pt_pos,1);
@@ -224,10 +224,10 @@ axis equal;
 % print('c:\users\zhechen\desktop\gray_post.tiff','-dtiff')
 
     
-%% use modify_gb_model to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
+%% use function 'modify_gb_model()' to modify and update [pt_pos, gb_dir, gb_s_pt, pt_s_gb] and all hangles and groups of hangles, etc   
 % and can save temporarily
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([sampleName,'_boundary_model_temp_',timeStr,'.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
+save(fullfile(saveDataPath, [sampleName,'_boundary_model_temp_',timeStr,'.mat']), 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','stepSize');
 
 
 %% plot the mask to check
@@ -235,7 +235,7 @@ save([sampleName,'_boundary_model_temp_',timeStr,'.mat'], 'gb_dir', 'gb_s_pt', '
 myplot(ID_input, grow_boundary(mask));  % check how it align with ID map. If not too different, that's fine 
 
 % Save the plotted mask, and boundary model
-save([sampleName,'_boundary_model.mat'], 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize','mask');
+save(fullfile(saveDataPath,[sampleName,'_boundary_model.mat']), 'gb_dir', 'gb_s_pt', 'pt_pos', 'pt_s_gb', 'tripleLookup','x_input','y_input','ID_input','exx_input','stepSize','mask');
 
 
 %%
@@ -276,7 +276,7 @@ myplot(ID_input, grow_boundary(grow_boundary(gb)));
 
 
 %% Appended the aligned_ID which is from the modeled grain boundary, to the gb model file
-save([sampleName,'_boundary_model.mat'], 'ID_aligned', 'ID_link_additional', '-append');
+save(fullfile(saveDataPath,[sampleName,'_boundary_model.mat']), 'ID_aligned', 'ID_link_additional', '-append');
 
 
 

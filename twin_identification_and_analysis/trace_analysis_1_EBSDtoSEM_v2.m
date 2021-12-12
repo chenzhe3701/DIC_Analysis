@@ -14,42 +14,18 @@
 % error maximum
 %
 % Therefore, when performing trace analysis, it is better to align EBSD
-% with SEM.  This might result in too large matrices due to high resolution
-% DIC data, so at this stage, the code needs to be written seperately for
-% trace analysis.
+% with SEM.  
 %
 % The purpose of the code will be mainly, align EBSD to SEM to find grain
-% boundaries, therefore to analyze different grains for their traces, or
-% neighboring grains traces.  We might need to extend this direction of
-% projecting data, but this can be done later.
-%
-% chenzhe, 2017-06-07.  review code, update some functions.  pay attention
-% to FCC.
-% note, required functions in chenFunctions
-%
-% chenzhe, 2017-08-31. change the input format of grain file from .csv to
-% .txt, so it is of more general use.
-%
-% prerequisite: may need EBSD_tool_convert_grain_file_txt_to_CSV()
-% ---------- level 1----------
-% load_settings()
-% grain_file_read()
-% find_variable_column_from_grain_file_header()
-% % construct_neighbor_structure()
-% % construct_misorientation_structure()
-% % ----> calculate_misorientation_hcp()
-% % --------> euler_to_transformation()
-% % --------> derotation()
-% find_boundary_from_ID_matrix()
-% interp_data()
-% generate_grain_avg_data()
+% boundaries, therefore to analyze different grains for varies purposes.
+% note: may require custom functions in chenFunctions
 
 
 
 clear;
 addChenFunction;
 
-[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\Mg4Al_m1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 sampleName = [];    % such as 'Ti7Al_#B6'
 cpEBSD = [];    % control points on EBSD image (unit um !!!!)
 cpSEM = [];     % control points on SEM image (unit pixel)
@@ -58,9 +34,9 @@ stressTensor = [];
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % data files
-[EBSDfileName1, EBSDfilePath1] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\EBSD Data\Mg4Al_grain_file_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
-[EBSDfileName2, EBSDfilePath2] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\EBSD Data\Mg4Al_grain_file_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
-[strainFileName, strainFilePath] = uigetfile('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\SEM Data\stitched DIC\DIC_merged_3.mat','choose one of the strain file (mat format) for aligning purpose');
+[EBSDfileName1, EBSDfilePath1] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_1.txt','choose the EBSD file (txt format, from type-1 grain file)');
+[EBSDfileName2, EBSDfilePath2] = uigetfile('D:\WE43_T6_C1\EBSD Data\WE43_T6_C1_grainFile_type_2.txt','choose the EBSD file (txt format, from type-2 grain file)');
+[strainFileName, strainFilePath] = uigetfile('D:\WE43_T6_C1\SEM Data\stitched_DIC\_5_v73.mat','choose one of the strain file (mat format) for aligning purpose');
 
 % This defines the overlay relationship, ebsdpoint(x,y) * tMatrix = sempoint(x,y)
 tform = make_average_transform('projective',cpEBSD,cpSEM);
@@ -68,7 +44,7 @@ tform = make_average_transform('projective',cpEBSD,cpSEM);
 tMatrix = tform.tdata.T;
 tInvMatrix = tform.tdata.Tinv;
 
-saveDataPath = [uigetdir('E:\zhec umich Drive\2021-10-01 MgAl insitu SEM-DIC\Analysis','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 try
     save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'-append');
 catch
@@ -183,7 +159,6 @@ save([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat'],'eulerAligned','
 % [x_EBSD_fwd, y_EBSD_fwd] = tformfwd(tform,x,y);
 
 ID = interp_data(x,y,ID,X,Y,tform,'interp','nearest');
-ID(isnan(ID))=0;
 phi1 = interp_data(x,y,phi1,X,Y,tform,'interp','nearest');
 phi = interp_data(x,y,phi,X,Y,tform,'interp','nearest');
 phi2 = interp_data(x,y,phi2,X,Y,tform,'interp','nearest');
@@ -195,7 +170,7 @@ edge = interp_data(x,y,edge,X,Y,tform,'interp','nearest');
 % If > 20% data points are valid in this grain, then there will be an avg value.  Otherwise, the value is NaN. ----------------- can modify. 
 [gExx,~] = generate_grain_avg_data(ID,gID,exx, 0.2, sigma);
 
-%% special case, if the EBSD data was processed to have gbAdjusted, to align with SEM-DIC, and want to read the adjusted EBSD data
+%% special case
 if strcmpi(fileSetting, 'WE43_T6_C1_reducedAOI_setting.mat')
     load('D:\WE43_T6_C1\Analysis_by_Matlab_reducedAOI\EBSD_reduced_AOI.mat');
 end
@@ -212,7 +187,6 @@ uniqueBoundaryList = unique(uniqueBoundary(:));
 uniqueBoundaryList(uniqueBoundaryList==0) = [];
 distMap = bwdist(boundaryTF);
 
-myplot(exx,boundaryTF);
 %% neighborStruct and misorinetatinStruct
 for ii = 1:length(gID)
     neighborStruct.g1(ii) = gID(ii);
@@ -220,8 +194,9 @@ for ii = 1:length(gID)
     nbs(nbs==0)=[];
     neighborStruct.g2{ii} = nbs;
 end
+warning off
 misorientationStruct = construct_misorientation_structure(neighborStruct, gPhi1, gPhi, gPhi2);
-
+warning on
 %% Save the data
 disp('saving ...');
 save([saveDataPath,sampleName,'_traceAnalysis_WS2_rename.mat']);
@@ -234,9 +209,4 @@ save([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'], 'ID','X','Y','x','y
     'gNeighbors','gPhi1','gPhi','gPhi2','exx','exy','eyy','sigma',...
     'ebsdStepSize','fileSetting','pathSetting',...
     'sampleName','sampleMaterial','stressTensor');
-save([saveDataPath,sampleName,'_organized_data'], 'ID','X','Y','x','y','boundaryTF','eulerAligned',...
-    'phi1','phi','phi2',...
-    'gPhi1','gPhi','gPhi2',... 
-    'gArea','gCenterX','gCenterY','gDiameter','gID','gNNeighbors',...
-    'gNeighbors');
 disp('saving finished');

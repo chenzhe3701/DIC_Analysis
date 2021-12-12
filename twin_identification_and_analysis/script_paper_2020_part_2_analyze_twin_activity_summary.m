@@ -15,8 +15,12 @@ dicFiles = dicFiles(1,:)';
 [fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
+% output figure 
+output_dir = uigetdir('D:\WE43_T6_C1\Analysis_2021_09\output_figures','select output dir for analysis');
+mkdir(output_dir);
+
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_by_Matlab_after_realign','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -29,9 +33,9 @@ end
 % [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\*.mat','select the results for twin-grain boundary intersection');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gDiameter','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gDiameter','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gDiameter','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -106,8 +110,8 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\p\m\DIC_Analysis\temp_results\WE43_T6_C1_new_variant_map.mat','select the new result of dividing twin into variants');
-load(fullfile(newVariantFilePath,newVariantFile),'struCell','trueTwinMapCell');
+[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\struCell_with_tGbVol.mat','select for the most recent struCell');
+load(fullfile(newVariantFilePath,newVariantFile),'struCell');
 
 edge_gIDs = unique([reshape(ID(1,:),[],1); reshape(ID(end,:),[],1); ID(:,1); ID(:,end)]);
 %% 
@@ -133,7 +137,7 @@ edge_gIDs = unique([reshape(ID(1,:),[],1); reshape(ID(end,:),[],1); ID(:,1); ID(
 % --> slip-slip, and slip side of slip-new twin pair, also tend to have high 
 % strain.
 % 
-% *[Plot used for paper, Fig 10]*
+% *[Paper-2, Fig 9]*
 
 yLimits = [nan,nan];
 yLimits = [NaN       NaN;
@@ -149,7 +153,7 @@ yLimits = [NaN       NaN;
 
 titleStr = {'','\epsilon^G = -0.004','\epsilon^G = -0.012','\epsilon^G = -0.023','\epsilon^G = -0.039'};
 for iE = 2:5
-    load(['D:\p\m\DIC_Analysis\temp_results\twin_gb_summary_',num2str(iE),'.mat']);
+    load(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']));
     
     um_per_dp = 5*360/4096;    % micron per data point, ~0.43
     nPts = 180; %length(x_dist);    % or 150
@@ -157,6 +161,7 @@ for iE = 2:5
     
     expr = ['edmat_',num2str(iE),';'];  % or 'edmatII_[iE]'
     edmat = evalin('base',expr);
+    % edmat has rows: [iE, ID, gb, arrayfun(@(x) nanmean(eMap_local(distMap_local==x)), 1:250)]
     
     %% (1) nanmean
     clear eline_not_involved eline_slip_twin_a eline_slip_twin_b eline_co_found eline_twin_twin_a eline_twin_twin_b eline_slip_growth_a eline_slip_growth_b eline_co_growth
@@ -257,6 +262,7 @@ for iE = 2:5
     title(titleStr{iE},'fontweight','normal');
     yLimits(iE,:) = get(gca,'YLim');
     
+    print(fullfile(output_dir, ['Fig 9 iE=',num2str(iE),'.tiff']),'-dtiff');
     %     %% (2) median
     %     clear eline_not_involved eline_slip_twin_a eline_slip_twin_b eline_co_found eline_twin_twin_a eline_twin_twin_b eline_slip_growth_a eline_slip_growth_b eline_co_growth
     %     legend_str = []; istr = 1;
@@ -337,7 +343,7 @@ end
 % Properties to compare: (1) m', (2) m' rank, (3) resB, (4) resB rank
 
 iE = 5;
-load(['D:\p\m\DIC_Analysis\temp_results\twin_gb_summary_',num2str(iE),'.mat']);
+load(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']));
 %% *Summarize some distribution, e.g., grain size, gb_length, etc*
 % 
 % 
@@ -348,8 +354,9 @@ histogram(T.gb_length, 0:10:500);
 xlabel('gb length, # data points');
 ylabel('counts');
 ind = (T.gb_length > 20);
+pause(1)
 %% 
-% *Distribution of grain diameter*
+% *[Paper-2, Figure 5b, Distribution of grain diameter]*
 
 gs = [];
 for iS = 1:length(struCell{2})
@@ -359,16 +366,18 @@ for iS = 1:length(struCell{2})
 end
 figure;
 histogram(gs,0:20:400);
-xlabel('Grain diameter, um');
+xlabel(['Grain Diameter (',char(181),'m)']);
 ylabel('Counts');
 set(gca,'fontsize',16)
+
+print(fullfile(output_dir, ['Fig 5b grain diameter distribution.tiff']),'-dtiff');
 %% 
 %% *To study the effect of m', m'-rank, etc.  Note how we should define TT, the background distribution.*
 
 iE = 5;
-load(['D:\p\m\DIC_Analysis\temp_results\twin_gb_summary_',num2str(iE),'.mat'], 'T', 'T2', 'struCell');
+load(fullfile(saveDataPath, ['twin_gb_summary_',num2str(iE),'.mat']), 'T', 'T2', 'struCell');
 
-TT = [T;T2];
+TT = [T;T2];    % T is for grains with active twins, T2 is for grains without active twins
 %% 
 % *(I) Effect of m'-factor.  Compared <active variants> vs. <all possible variants>*  
 % 
@@ -412,15 +421,16 @@ ylabel('Counts');
 title('Active Variants','fontweight','normal');
 
 %% 
-% *[Plot for paper, Fig 12a ]*
+% *[Paper-2, Fig 10a ]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N1(:)+N2(:)], 1, 'stacked');
 % legend({'Basal slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 170]);
-xlabel('M'' factor');
+xlabel('M'' Factor');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
+print(fullfile(output_dir, 'Fig 10a Mprime acitve variants.tiff'),'-dtiff');
 
 % ((())) just those with basal in neighbor
 % figure; disableDefaultInteractivity(gca);
@@ -504,7 +514,7 @@ pmf_twin_exp = N2./sum(N2(:));  % probability mass function, for active variants
 % xlabel('wrt basal');
 % ylabel('wrt twin');
 %% 
-% *[Plot for paper, Fig 12b ]*
+% *[Paper-2, Fig 10b ]*
 
 % (7) For: all the possible variants, look at their m' wrt all neighbor grains' MOST POSSIBLE slip or twin
 N5 = histcounts(TT.mPrime, edges);
@@ -512,12 +522,14 @@ figure; disableDefaultInteractivity(gca);
 bar(xpos, [N5(:)], 1, 'stacked');
 % legend({'Slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 7200]);
-xlabel('M'' factor');
+xlabel('M'' Factor');
 ylabel('Counts');
 title('All Possible Variants','fontweight','normal');
+print(fullfile(output_dir, 'Fig 10b Mprime all possible variants.tiff'),'-dtiff');
 pmf_all = N5./sum(N5);
+
 %% 
-% *[Plot for paper, Fig 12c ]*
+% *[Paper-2, Fig 10c ]*
 
 % (8) relative strength, slip/twin in neighbor
 figure; disableDefaultInteractivity(gca); hold on;
@@ -529,11 +541,11 @@ yyaxis right;
 plot(xpos, pmf_all_exp./pmf_all, '-ro','linewidth',1.5,'MarkerSize',8);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
 ylabel('Ratio');
-xlabel('M'' factor');
+xlabel('M'' Factor');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','northwest');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','northwest');
 title('');
-
+print(fullfile(output_dir, 'Fig 10c Mprime prob mass func.tiff'),'-dtiff');
 
 %%
 
@@ -546,7 +558,7 @@ tt = [T;T2(ind,:)];
 disp("============consider SF>0.3============")
 
 %% 
-% *[Plot for paper, Fig 12d ]*
+% *[Paper-2, Fig 10d ]*
 
 % (9) A restricted background
 N6 = histcounts(tt.mPrime, edges);
@@ -554,12 +566,13 @@ figure; disableDefaultInteractivity(gca);
 bar(xpos, [N6(:)], 1, 'stacked');
 % legend({'Slip/twin in neighbor'},'location','northwest');
 set(gca,'fontsize',16,'ylim',[0 2600]);
-xlabel('M'' factor');
+xlabel('M'' Factor');
 ylabel('Counts');
 title('All Possible Variants with SF>0.3','fontweight','normal');
 pmf_all_r = N6./sum(N6);
+print(fullfile(output_dir, 'Fig 10d Mprime all with high SF.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 12e ]*
+% *[Paper-2, Fig 10e ]*
 
 % (10) relative strength, slip/twin in neighbor
 figure; disableDefaultInteractivity(gca); hold on;
@@ -571,13 +584,13 @@ yyaxis right;
 plot(xpos, pmf_all_exp./pmf_all_r, '-ro','linewidth',1.5,'MarkerSize',8);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.5]);
 ylabel('Ratio');
-xlabel('M'' factor');
+xlabel('M'' Factor');
 set(gca,'fontsize',16);
-legend({'Active variants','Possible variants with SF>0.3','Ratio'},'location','northwest');
+legend({'Active Variants','Possible Variants with SF>0.3','Ratio'},'location','northwest');
 % title('Twin in neighbor', 'fontweight','normal');
-
+print(fullfile(output_dir, 'Fig 10e Mprime prob mass func high SF.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 12f ]*
+% *[used to be figure f, M' for random euler ]*
 
 % calculate distribution of m' factor for random samples
 edges = [0-1:0.05:0.95, 1+1000*eps];
@@ -599,7 +612,7 @@ figure; disableDefaultInteractivity(gca);
 bar(xpos, [N7(:)], 1, 'stacked');
 legend({'Slip in neighbor'},'location','northwest');
 set(gca,'fontsize',16);
-xlabel('m'' factor');
+xlabel('M'' Factor');
 ylabel('Counts');
 title('Randomly generated variants','fontweight','normal');
 %%
@@ -628,7 +641,7 @@ t = T(ind,:);
 % title('for active variants at the initiating boundary','fontweight','normal');
 N = histcounts(t.rank_mPrime, edges);
 %% 
-% *[Plot for paper, Fig 13a ]*
+% *[Paper-2, Fig 11a ]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N(:)], 1, 'stacked');
@@ -637,6 +650,7 @@ set(gca,'fontsize',16);
 xlabel('M'' Rank');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
+print(fullfile(output_dir, 'Fig 11a Mprime rank active variants.tiff'),'-dtiff');
 
 % When the active mode in neighbor is basal
 ind1 = ind&(ismember(T.ssn_nb,[1,2,3]));
@@ -744,7 +758,7 @@ pmf_twin = N4./sum(N4);
 % title('Twin in neighbor', 'fontweight','normal');
 
 %% 
-% *[Plot for paper, Fig 13b ]*
+% *[Paper-2, Fig 11b ]*
 
 % Look at all possible variants, with basal/twin in neighbor
 N5 = histcounts(TT.rank_mPrime, edges);
@@ -755,10 +769,11 @@ set(gca,'fontsize',16,'ylim',[0,11000]);
 xlabel('M'' Rank');
 ylabel('Counts');
 title('All Possible Variants','fontweight','normal');
+print(fullfile(output_dir, 'Fig 11b Mprime rank all possible variants.tiff'),'-dtiff');
 
 pmf_all = N5./sum(N5);
 %% 
-% *[Plot for paper, Fig 13c ]*
+% *[Paper-2, Fig 11c ]*
 
 % (8) relative strength, slip/twin in neighbor
 figure; disableDefaultInteractivity(gca); hold on;
@@ -771,9 +786,9 @@ set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1]);
 ylabel('Ratio');
 xlabel('M'' Rank');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','north');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','north');
 title('');
-
+print(fullfile(output_dir, 'Fig 11c Mprime rank prob mass func.tiff'),'-dtiff');
 %%
 % ((())) If only select the twin system of interest with SF > 0.3
 % For mPrime with both TorB in neighbor, there were already some assumptions, such as SF>0.2, SF_normalized>0.8, exist before twin of interest.
@@ -821,15 +836,19 @@ t = T(ind,:);
 figure; disableDefaultInteractivity(gca);
 histogram(t.resB,20);
 N = histcounts(t.resB, edges);
+title('RBV Active Variants', 'fontweight','normal');
+pause(1)
 pmf_exp = N./sum(N);
 
 tt = [T;T2];
 figure; disableDefaultInteractivity(gca);
 histogram(tt.resB,20);
 N3 = histcounts(tt.resB, edges);
+title('RBV All Possible Variants', 'fontweight','normal')
+pause(1)
 pmf_r = N3./sum(N3);    % theoretical and restricted
 %% 
-% *[Plot for paper, Fig 14a ]*
+% *[Paper-2, Fig 12a ]*
 
 figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
@@ -842,10 +861,10 @@ set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Ratio');
 xlabel('RBV');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','north');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','north');
 title('Slip/twin in neighbor', 'fontweight','normal');
 title('');
-
+print(fullfile(output_dir, 'Fig 12a RBV prob mass func.tiff'),'-dtiff');
 
 
 %% 
@@ -870,7 +889,7 @@ histogram(tt.rank_resB,20);
 N3 = histcounts(tt.rank_resB, edges);
 pmf_r = N3./sum(N3);    % theoretical and restricted
 %% 
-% *[Plot for paper, Fig 14b ]*
+% *[Paper-2, Fig 12b ]*
 
 figure; disableDefaultInteractivity(gca); hold on;
 plot(xpos, pmf_exp, '-ko','linewidth',1.5);
@@ -883,9 +902,10 @@ set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Ratio');
 xlabel('RBV rank');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','north');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','north');
 title('Slip/twin in neighbor', 'fontweight','normal');
 title('');
+print(fullfile(output_dir, 'Fig 12b RBV rank prob mass func.tiff'),'-dtiff');
 %% 
 % 
 %% 
@@ -914,7 +934,7 @@ N_pyII_all = histcounts(tt.exz_pyII, edges);
 N_etw_all = histcounts(tt.exz_etw, edges);
 
 %% 
-% *[Plot for paper, Fig 15a ]*
+% *[Paper-2, Fig 13a ]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N_ba_exp(:)], 1);
@@ -924,8 +944,9 @@ xlabel('e_{xz}^{ba}');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
 pmf_exp = N_ba_exp./sum(N_ba_exp);
+print(fullfile(output_dir, 'Fig 13a exzba active variants.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 15b ]*
+% *[Paper-2, Fig 13b ]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [N_ba_all(:)], 1, 'stacked');
@@ -935,24 +956,26 @@ xlabel('e_{xz}^{ba}');
 ylabel('Counts');
 title('All Possible Variants','fontweight','normal');
 pmf_all = N_ba_all./sum(N_ba_all);    % theoretical and restricted
+print(fullfile(output_dir, 'Fig 13b exzba all possible variants.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 15c ]*
+% *[Paper-2, Fig 13c ]*
 
 % ratio
 figure; disableDefaultInteractivity(gca); hold on;
-plot(xpos, pmf_exp, '-ko','linewidth',1.5);
-plot(xpos, pmf_all, '--kd','linewidth',1.5);
+plot(xpos, pmf_exp, '-ko','linewidth',1.5,'MarkerSize',10);
+plot(xpos, pmf_all, '--kd','linewidth',1.5,'MarkerSize',10);
 set(gca,'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Probability');
 yyaxis right;
-plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5);
+plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5,'MarkerSize',10);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Ratio');
 xlabel('e_{xz}^{ba}');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','north');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','north');
 title('Slip/twin in neighbor', 'fontweight','normal');
 title('');
+print(fullfile(output_dir, 'Fig 13c exzba prob mass func.tiff'),'-dtiff');
 
 
 % all ratio
@@ -972,10 +995,11 @@ plot(xpos, pmf_pr_exp./pmf_pr_all, '-go','linewidth',1.5);
 plot(xpos, pmf_py_exp./pmf_py_all, '-bo','linewidth',1.5);
 plot(xpos, pmf_pyII_exp./pmf_pyII_all, '-mo','linewidth',1.5);
 plot(xpos, pmf_etw_exp./pmf_etw_all, '-ko','linewidth',1.5);
-
+legend('exz basal', 'exz prism', 'exz pyramidal', 'exz pyII', 'exy etw', 'location','north');
 
 %% 
-% *Effect of exzr, such as exzr_etw.  Almost no effect*
+% *Effect of exzr (i.e., gamma in Shi's paper), such as exzr_etw (i.e., gamma 
+% in Shi's paper).  Almost no effect*
 
 edges = [0:0.1:1];
 edges(end) = edges(end)+ 1000*eps;
@@ -998,43 +1022,46 @@ Nr_pyII_all = histcounts(tt.exzr_pyII, edges);
 Nr_etw_all = histcounts(tt.exzr_etw, edges);
 
 %% 
-% *[Plot for paper, Fig 16a ]*
+% *[Paper-2, Fig 14a ]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [Nr_etw_exp(:)], 1);
 set(gca,'fontsize',16);
-xlabel('e_{xz}^{etw}');
+xlabel('\gamma^{etw}');
 ylabel('Counts');
 title('Active Variants','fontweight','normal');
 pmf_exp = Nr_etw_exp./sum(Nr_etw_exp);
+print(fullfile(output_dir, 'Fig 14a gamma etw active variants.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 16b]*
+% *[Paper-2, Fig 14b]*
 
 figure; disableDefaultInteractivity(gca);
 bar(xpos, [Nr_etw_all(:)], 1, 'stacked');
 set(gca,'fontsize',16);
-xlabel('e_{xz}^{etw}');
+xlabel('\gamma^{etw}');
 ylabel('Counts');
-title('All Possiblee Variants','fontweight','normal');
+title('All Possible Variants','fontweight','normal');
 pmf_all = Nr_etw_all./sum(Nr_etw_all);    % theoretical and restricted
+print(fullfile(output_dir, 'Fig 14b gamma etw all possible variants.tiff'),'-dtiff');
 %% 
-% *[Plot for paper, Fig 16c ]*
+% *[Paper-2, Fig 14c ]*
 
 % ratio
 figure; disableDefaultInteractivity(gca); hold on;
-plot(xpos, pmf_exp, '-ko','linewidth',1.5);
-plot(xpos, pmf_all, '--kd','linewidth',1.5);
+plot(xpos, pmf_exp, '-ko','linewidth',1.5,'MarkerSize',10);
+plot(xpos, pmf_all, '--kd','linewidth',1.5,'MarkerSize',10);
 set(gca,'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Probability');
 yyaxis right;
-plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5);
+plot(xpos, pmf_exp./pmf_all, '-ro','linewidth',1.5,'MarkerSize',10);
 set(gca,'ycolor','r', 'ylim',get(gca,'ylim').*[0,1.3]);
 ylabel('Ratio');
-xlabel('e_{xz}^{etw}');
+xlabel('\gamma^{etw}');
 set(gca,'fontsize',16);
-legend({'Active variants','All possible variants','Ratio'},'location','northwest');
+legend({'Active Variants','All Possible Variants','Ratio'},'location','northwest');
 title('Slip/twin in neighbor', 'fontweight','normal');
 title('');
+print(fullfile(output_dir, 'Fig 14c gamma etw prob mass func.tiff'),'-dtiff');
 
 
 % all ratio
@@ -1054,7 +1081,7 @@ plot(xpos, pmf_pr_exp./pmf_pr_all, '-go','linewidth',1.5);
 plot(xpos, pmf_py_exp./pmf_py_all, '-bo','linewidth',1.5);
 plot(xpos, pmf_pyII_exp./pmf_pyII_all, '-mo','linewidth',1.5);
 plot(xpos, pmf_etw_exp./pmf_etw_all, '-ko','linewidth',1.5);
-
+legend('exz basal', 'exz prism', 'exz pyramidal', 'exz pyII', 'exy etw', 'location','north');
 
 %% 
 %% This shows the relationship between m' rank and resB rank.

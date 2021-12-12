@@ -16,12 +16,13 @@
 
 function [twinMapCell_cluster, sfMapCell_cluster, struCell, haveActiveSS] = label_twin_trace_with_stats(...
     twinMapCell_cluster, sfMapCell_cluster, clusterNumberMapCell,x_local,y_local,uniqueBoundary_local, indR_min,indR_max, indC_min,indC_max, ID_local,ID_current,...
-    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceDir,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1,p, ssAllowed, goBack)
+    struCell,iS,iE,iC,iE_list,iC_list,iEC,iE_stop,traceDir,traceND,traceSF,sampleMaterial,twinTF,debugTF,th_1_pctTotalPeaks_bwd_cr_initial, p, ssAllowed, goBack)
 
 diffStrain_cr = p.diffStrain_cr;    % 0.07;         % diff in strain need to < 0.07;
 rEffStrain = p.rEffStrain;          %[0.1, 1.9];    % ratio of cluster effective strain and twin effective strain should be within this range   
 strainRank_cr = p.strainRank_cr;    %1;             % rank need to >=1 (in 0-based) 
 SF_th = p.SF_th;                    %0.2;           % twin SF need to be larger than this  (or 0.1)
+clusterToGbPct_th = p.clusterToGbPct_th;            % compare 95% quantile of cluster points' distance to gb. If < than th*gDia, consider as too close to gb and not identify as twin
 
 pctTotalPeaks_bwd_cr = p.pctTotalPeaks_bwd_cr ;     %0.1; % when going backward, need at least these pct of total number of peaks to be considered as active trace  (or 0.05, 0.15)  
 % note that this is 'th_1' input outside of this function  
@@ -106,10 +107,14 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     clusterNumMapC(clusterNumMapC~=iC) = 0;
     
     % (2) Check if this cluster is too close to the grain boundary ---------------------------------------------------------------      
-    if struCell{iE}(iS).cToGbDist(iC,end) < 50
+    pct = struCell{iE}(iS).cToGbDist(iC,end)/struCell{iE}(iS).cToGbDist(iC,1);
+    if  pct < clusterToGbPct_th  % struCell{iE}(iS).cToGbDist(iC,end) < 50
         % This means OK, cluster not too close to gb
         clusterNumMapC(clusterNumMapC==iC) = 0;
-        disp(['cluster too close to gb: ID=',num2str(struCell{iE}(iS).gID),',iE=',num2str(iE),',iC=',num2str(iC)]);
+        disp(['cluster too close to gb: ID=',num2str(struCell{iE}(iS).gID),',iE=',num2str(iE),',iC=',num2str(iC), ',pct=',num2str(pct)]);
+        clusterTooCloseToGB = 1;
+    else
+        clusterTooCloseToGB = 0;
     end
  
     
@@ -199,7 +204,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % [Need enough distinct peaks] The voted trace should be distinct. So if max(traceVote) < th_1 (e.g., 30%) * length(peakAngles), that means it's 'junk' vote
     % enough_votes = max(traceVote) >= length(peakAngles) * th_1;
     % traceOKSS = (traceVote > th_2 * max(traceVote)) .* enough_votes;    % Any one larger than 30% max vote is also selected --> this need re-tunning
-    traceOKSS =  (traceVote >= length(peakAngles) * th_1) & (traceSF>SF_th);
+    traceOKSS =  (traceVote >= length(peakAngles) * th_1_pctTotalPeaks_bwd_cr_initial) & (traceSF>SF_th);
     
     % something left for debugging ...
     cVolPct = sum(clusterNumMapL(:)==iC)/sum(clusterNumMapL(:));
@@ -212,9 +217,10 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
     % ok_3: it is the high strain cluster
     % refActiveSS: previously strain level active
     % ok_4: previous strain NOT active
-    % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level
+    % cVolPctNotDecrease: cluster vol not decrease compared to previous strain level  
+    % clusterTooCloseToGB: if cluster is too close to gb
     %     activeSS = ssAllowed & (traceOKSS & (ok_3 & ((ok_1&ok_2)|ok_4))) | refActiveSS(:);
-    activeSS = ssAllowed & (traceOKSS & ok_3 & ((ok_1&ok_2)|active_post)) | active_pre(:);
+    activeSS = ~clusterTooCloseToGB & ( ssAllowed & (traceOKSS & ok_3 & ((ok_1&ok_2)|active_post)) | active_pre(:) );
     
     if debugTF >= 1
         disp(['# of peaks found: ', num2str(length(peakAngles))]);
@@ -366,7 +372,7 @@ if sum(alreadyActive(:)-ssAllowed(:)) ~= 0
             % note: 'fragmentsGrouped' = 'tnMap' in new method.  
             % [illustrate] the fragments
             if debugTF >= 1
-                myplot(tnMap); caxis([1,6]);
+                myplot(tnMap); caxis([0,6]);
             end
             
     end
@@ -399,6 +405,21 @@ end
 
 % Only update iE level.  Other levels were updated iteratively.
 if ~isempty(tnMap)
+    % chenzhe, 2021-09-28, double check. Due to rotation, tnMap might contain pixels of other grains 
+    if any(tnMap(ID_local(:)~=ID_current))
+        warning on;
+        warning("in label_twin_trace_with_stats, twin map contain other grains, correct.");
+        warning off;
+        tnMap(ID_local~=ID_current) = 0;
+    end   
+    % chenzhe, 2021-09-30, double check. Due to rotation, tnMap might contain pixels of other clusters
+    if any(tnMap(clusterNumMapC(:)==0))
+        warning on;
+        warning("in label_twin_trace_with_stats, twin map contain other CLUSTERS, correct.");
+        warning off;
+        tnMap(clusterNumMapC==0) = 0;
+    end
+    
     twinMapCell_cluster{iE,iC} = tnMap;
     
     sfMap = zeros(size(tnMap));

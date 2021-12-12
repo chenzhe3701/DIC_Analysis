@@ -7,17 +7,17 @@ clear;
 addChenFunction;
 
 % grainDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab\Grain_1144_data_for_paper_ppt','Folder to save the grain data'),'\'];
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path of the saved processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path of the saved processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -26,12 +26,12 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[preLabelFile, preLabelPath] = uigetfile('D:\p\m\DIC_Analysis\','select the results where twin identification was based on trace dir and strain');
+[preLabelFile, preLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_0027_twinMaps.mat','select the results where twin identification was based on trace dir and strain');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -94,7 +94,7 @@ end
 clusterNumberMapCell = cell(1,length(STOP)-1);
 for iE = iE_start:iE_stop
     fName_c2t_result = [sampleName,'_s',num2str(STOP{iE+B}),'_cluster_to_twin_result.mat'];
-    load([saveDataPath,fName_c2t_result],'clusterNumMapCleaned');
+    load(fullfile(saveDataPath,fName_c2t_result),'clusterNumMapCleaned');
     clusterNumberMapCell{iE} = clusterNumMapCleaned;
 end
 
@@ -140,15 +140,28 @@ for iE = iE_start:iE_stop
 end
 
 %% Then we need to plot strain maps, cluster number maps, temporary trueTwinMaps to modify
-iE_select = 4;  % select an iE
+close all;
+if ~exist(fullfile(saveDataPath,'tNote_temp.mat'),'file')
+    tNote = zeros(1,9);
+    save(fullfile(saveDataPath,'tNote_temp.mat'),'tNote')
+else
+    load(fullfile(saveDataPath,'tNote_temp.mat'),'tNote')
+end
+
+iE_select = 3;  % select an iE
 
 % plot maps to check: strain map, twin map, cluster number map
 % close all;
 myplot_twin_id(strainFile{iE_select}.exx,trueTwinMapCell{iE_select},clusterNumberMapCell{iE_select},'tf',boundaryTFB,'x',X,'y',Y);
 
-%% Then [relabel] and [recalculated tVol].
+%% Then [relabel] and [recalculated tVol]. 
+% ==> 2021-09 note when recovering data from disk crash.  We need 'tNote'
+% to relabel, so we need to remake tNote from a good struCell using the
+% code 'remake_tNote_using_ref.m'.
+
 warning('off','all');
 for ii = 2:size(tNote,1)
+    fprintf('processing %d/%d\n',ii, size(tNote,1));
     ID_current = tNote(ii,1);
     iE = tNote(ii,2);
     iC = tNote(ii,3);
@@ -177,10 +190,18 @@ for ii = 2:size(tNote,1)
         
         
         ind_local = ismember(ID, ID_current); %ismember(ID, [ID_current,ID_neighbor]);
+        [nR,nC] = size(ID);
+        
         indC_min = find(sum(ind_local, 1), 1, 'first');
         indC_max = find(sum(ind_local, 1), 1, 'last');
         indR_min = find(sum(ind_local, 2), 1, 'first');
         indR_max = find(sum(ind_local, 2), 1, 'last');
+        % increase area size by 1 pixel. 2021-09-29
+        indC_min = max(indC_min-1, 1);
+        indC_max = min(indC_max+1, nC);
+        indR_min = max(indR_min-1, 1);
+        indR_max = min(indR_max+1, nR);
+        
         
         ID_local = ID(indR_min:indR_max, indC_min:indC_max);
         
@@ -218,7 +239,7 @@ for ii = 2:size(tNote,1)
                 
             case 1     % If try always run fit r2 procedure, can disable this part by using case '-1'
                 ind = find(activeSS);
-                fragments = (nss+ind) * ones(size(clusterNumMapC));
+                fragments = (nss*0 + ind) * ones(size(clusterNumMapC));             % ==> nss*0+ind this is to make twinMap in range 1-6. 2021-12-11 note.    
                 fragments(clusterNumMapC==0) = 0;
                 
             otherwise
@@ -253,7 +274,7 @@ for ii = 2:size(tNote,1)
                     dAngle = abs(traceND - branchND);
                     dAngle(~activeSS) = inf;
                     [~,ind] = min(dAngle);
-                    branchGrouped(branchNumbered == uniqueBranchNum(ib)) = nss + ind;
+                    branchGrouped(branchNumbered == uniqueBranchNum(ib)) = nss*0 + ind;
                 end
                 
                 % (12) Grow each grouped branch into a a fragment with ID equals to active ss/ts.
@@ -271,7 +292,7 @@ for ii = 2:size(tNote,1)
             
             sfMap = zeros(size(fragments));
             for it = 1:ntwin
-                sfMap(fragments==it+nss) = traceSF(it);
+                sfMap(fragments==it+nss*0) = traceSF(it);
             end
             sfMapCell_cluster = sfMap;
         end
@@ -332,12 +353,12 @@ disp('finished relabel');
 %% show the relabeled, updated map
 close all;
 for iE = 2:5
-    myplot(trueTwinMapCell{iE},boundaryTFB); caxis([18 24]);
+    myplot(trueTwinMapCell{iE},boundaryTFB); caxis([0 6]);
 end
 
 %% save again
 timeStr = datestr(now,'yyyymmdd_HHMM');
-save([timeStr,'_relabeled_result.mat'],'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');     % maybe save 'twinMapCell' just to compare with 'trueTwinMapCell' ?
+save(fullfile(saveDataPath, [timeStr,'_relabeled_result.mat']),'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');     % maybe save 'twinMapCell' just to compare with 'trueTwinMapCell' ?
 
 
 

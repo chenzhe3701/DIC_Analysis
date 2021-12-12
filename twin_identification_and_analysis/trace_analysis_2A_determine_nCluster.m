@@ -4,17 +4,17 @@
 
 clear;
 addChenFunction;
-dicPath = uigetdir('D:\WE43_T6_C1_insitu_compression\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
+dicPath = uigetdir('D:\WE43_T6_C1\SEM Data\stitched_DIC','pick DIC directory, which contains the stitched DIC data for each stop');
 dicFiles = dir([dicPath,'\*.mat']);
 dicFiles = struct2cell(dicFiles);
 dicFiles = dicFiles(1,:)';
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor');
 
 % load previous data and settings
-saveDataPath = [uigetdir('D:\WE43_T6_C1_insitu_compression\Analysis_by_Matlab','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
+saveDataPath = [uigetdir('D:\WE43_T6_C1\Analysis_2021_09','choose a path [to save the]/[of the saved] processed data, or WS, or etc.'),'\'];
 saveDataPathInput = saveDataPath;
 load([saveDataPath,sampleName,'_traceAnalysis_WS_settings.mat']);
 if ~strcmpi(saveDataPath,saveDataPathInput)
@@ -22,9 +22,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
     return;
 end
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis']);
+    load(fullfile(saveDataPath,[sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']));
 catch
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted']);
+    load(fullfile(saveDataPath,[sampleName,'_EbsdToSemForTraceAnalysis']));
 end
 
 gIDwithTrace = gID(~isnan(gExx));
@@ -242,7 +242,8 @@ for iE = iE_start:iE_stop
     %%
     timeStr = datestr(now,'yyyymmdd_HHMM')
     nameNC = [sampleName,'_s',num2str(STOP{iE+B}),'_nClusters_',timeStr,'.mat'];
-    save([saveDataPath,nameNC],'struNC');
+    save(fullfile(saveDataPath,nameNC),'struNC');
+    copyfile(fullfile(saveDataPath,nameNC), fullfile(saveDataPath,[sampleName,'_s',num2str(STOP{iE+B}),'_nClusters.mat']), 'f');
     disp(['finished strain: ',num2str(STOP{iE+B})]);
     
 end

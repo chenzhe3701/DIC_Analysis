@@ -84,7 +84,7 @@ for iE = iE_start:iE_stop
     alpha(isnan(tMapLocal)) = 0;
     imagesc([x_local(1),x_local(end)],[y_local(1),y_local(end)],tMapLocal,'alphadata',alpha);
     colorbar;
-    caxis([18,24]); 
+    caxis([0,6]); 
     axis equal;
     
     
@@ -95,7 +95,7 @@ for iE = iE_start:iE_stop
     colorbar;
 %     caxis([0, 5]);
     axis equal;
-    
+    title(['iE=',num2str(iE)],'fontweight','normal');
 end
 
 

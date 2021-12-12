@@ -1,8 +1,8 @@
 prompt = {'ID', 'iE:', 'iC:', 'activeSS = [x x x x x x]'};
-title = 'input ID, iE,iC,activeSS';
+title_str = 'input ID, iE,iC,activeSS';
 dims = [1 50; 1 50; 1 50; 1 50];
 defaultInput = {num2str(ids(1)),'0','0','[0 0 0 0 0 0]'};
-answer = inputdlg(prompt, title, dims, defaultInput);
+answer = inputdlg(prompt, title_str, dims, defaultInput);
 
 % If not exist, make one
 try
@@ -32,5 +32,6 @@ if ~isempty(answer)
     end
     tNote = unique(tNote,'rows');
     
-    save('tNote_temp.mat','tNote');
+    saveDataPath = evalin('base','saveDataPath');
+    save(fullfile(saveDataPath,'tNote_temp.mat'),'tNote');
 end
