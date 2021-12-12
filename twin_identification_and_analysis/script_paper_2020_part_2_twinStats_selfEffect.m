@@ -111,10 +111,10 @@ end
 % load previous twin_gb interaction result
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select file for the trueTwinMapCell');
+[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_3_twin_result_with_variant.mat','select file for the trueTwinMapCell');
 load(fullfile(newVariantFilePath,newVariantFile),'variantMapCleanedCell','trueTwinMapCell');
 
-load(fullfile(saveDataPath, 'struCell_with_tGbVol.mat'), 'struCell')
+load(fullfile(saveDataPath, 'WE43_T6_C1_6_struCell_with_tGbVol.mat'), 'struCell')
 edge_gIDs = unique([reshape(ID(1,:),[],1); reshape(ID(end,:),[],1); ID(:,1); ID(:,end)]);
 %% 
 % *How should twinning be affected by different microstructural parameters?*

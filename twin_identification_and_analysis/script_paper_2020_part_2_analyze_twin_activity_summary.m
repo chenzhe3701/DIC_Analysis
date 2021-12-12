@@ -110,7 +110,7 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\struCell_with_tGbVol.mat','select for the most recent struCell');
+[newVariantFile, newVariantFilePath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_6_struCell_with_tGbVol.mat','select for the most recent struCell');
 load(fullfile(newVariantFilePath,newVariantFile),'struCell');
 
 edge_gIDs = unique([reshape(ID(1,:),[],1); reshape(ID(end,:),[],1); ID(:,1); ID(:,end)]);
