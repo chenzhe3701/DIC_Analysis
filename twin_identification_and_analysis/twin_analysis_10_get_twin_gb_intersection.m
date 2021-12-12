@@ -34,7 +34,7 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load trueTwinMapCell
-[finalLabelFile, finalLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select the results for trueTwinMapCell');
+[finalLabelFile, finalLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_3_twin_result_with_variant.mat','select the results for trueTwinMapCell');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
@@ -415,9 +415,8 @@ end
 
 
 %%
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(fullfile(saveDataPath,[timeStr,'_twin_at_boundary_result.mat']), 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
-save(fullfile(saveDataPath,[timeStr,'_twin_at_boundary_result_ws.mat']),'-v7.3');
+save(fullfile(saveDataPath,[sampleName,'_4_twin_result_with_gb_intersection.mat']), 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tBoundaryCell','tBoundary_accum','struCell','-v7.3');
+save(fullfile(saveDataPath,[sampleName,'_4_twin_result_with_gb_intersection_ws.mat']),'-v7.3');
 
 %% Analysis (1): Assume the previous analysis is correct.
 % (1) calculate the average misorientation of twinned boundary vs non twinned boundary

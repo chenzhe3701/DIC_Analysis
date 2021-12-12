@@ -26,7 +26,7 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load struCell from the confirmed twin label results
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_0212_relabeled_result.mat','select the confirmed labeled results, for struCell');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_2_twin_result_corrected_confirmed.mat','select the confirmed labeled results, for struCell');
 
 % This provides a valid struCell
 % [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection');
@@ -275,8 +275,7 @@ for iE = 2:5
     variantMapCell{iE} = variantMap;
 end % end of (for iE=2:5) 
 
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save([saveDataPath,sampleName,'_final_variant_map_',timeStr,'.mat'],'variantMapCell','-v7.3');  
+save(fullfile(saveDataPath, [sampleName,'_3_twin_result_with_variant.mat']),'variantMapCell','-v7.3');  
  
 %% try to clean variantMap again 
 disp('clean variant map ...');
@@ -331,7 +330,7 @@ if useParallel
         variantMapCleanedCell{iE} = variantMapCleaned;
     end    
 end
-save(fullfile(saveDataPath,[sampleName,'_final_variant_map_',timeStr,'.mat']),'variantMapCleanedCell','-append','-v7.3');  
+save(fullfile(saveDataPath,[sampleName,'_3_twin_result_with_variant.mat']),'variantMapCleanedCell','-append','-v7.3');  
 
 %% Count tVol again, need to load a valid struCell here. ================================================  
 SF_th = 0.15;  % this can be used to make sure low_SFs are not labeled as twins, although cTrueTwin
@@ -367,8 +366,8 @@ for iE = iE_start:iE_stop
     
 end
 
-save([saveDataPath,sampleName,'_final_variant_map_',timeStr,'.mat'],'trueTwinMapCell','struCell','boundaryTF','-append','-v7.3');  
-copyfile([saveDataPath,sampleName,'_final_variant_map_',timeStr,'.mat'],[saveDataPath,sampleName,'_final_variant_map.mat'], 'f'); 
+save(fullfile(saveDataPath, [sampleName,'_3_twin_result_with_variant.mat']),'trueTwinMapCell','struCell','boundaryTF','-append','-v7.3');  
+
 
 %% previous thought, but may not be good
 % E.g., v_1, accounts for 40% of grain size.

@@ -22,9 +22,9 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select the results where twin identification was based on trace dir and strain');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_3_twin_result_with_variant.mat','select the results where twin identification was based on trace dir and strain');
 
-[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_1345_twin_at_boundary_result.mat','select the results for twin-grain boundary intersection (auto analyzed)');
+[twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_4_twin_result_with_gb_intersection.mat','select the results for twin-grain boundary intersection (auto analyzed)');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
@@ -594,15 +594,13 @@ iE = iE_current;    % change back
 %%
 timeStr = datestr(now,'yyyymmdd_HHMM');
 try
-    save(fullfile(saveDataPath, [timeStr,'_twin_at_boundary_manual_result.mat']), 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
+    save(fullfile(saveDataPath, [sampleName,'_5_twin_result_with_gb_intersection_manual.mat']), 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
         'tBoundaryCell','tBoundary_accum','struCell','-append');
     % save([timeStr,'_twin_at_boundary_result_ws.mat'],'-v7.3');
 catch
-    save(fullfile(saveDataPath, [timeStr,'_twin_at_boundary_manual_result.mat']), 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
+    save(fullfile(saveDataPath, [sampleName,'_5_twin_result_with_gb_intersection_manual.mat']), 'TA', 'tb_gbNum', 'tb_iE', 'tb_gNum', 'tb_tsNum', 'tb_pts', 'tb_iE_inGrain', 'tb_iE_atBoundary',...
         'tBoundaryCell','struCell','-v7.3');
 end
-
-
 
 
 

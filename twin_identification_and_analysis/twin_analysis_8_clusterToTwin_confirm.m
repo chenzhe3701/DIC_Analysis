@@ -26,7 +26,7 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load from the pre-labeled results: twinMap, sfMap, struCell.  (cToGbDistMap is omitted, as will no longer be used in this code)
-[preLabelFile, preLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_0027_twinMaps.mat','select the results where twin identification was based on trace dir and strain');
+[preLabelFile, preLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_1_twin_result_by_trace_strain.mat','select the results where twin identification was based on trace dir and strain');
 
 try
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','ID','gID','gExx','gPhi1','gPhi','gPhi2');
@@ -357,8 +357,7 @@ for iE = 2:5
 end
 
 %% save again
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(fullfile(saveDataPath, [timeStr,'_relabeled_result.mat']),'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');     % maybe save 'twinMapCell' just to compare with 'trueTwinMapCell' ?
+save(fullfile(saveDataPath, [sampleName,'_2_twin_result_corrected_confirmed.mat']),'struCell','twinMapCell','trueTwinMapCell','sfMapCell','tNote','-v7.3');     % maybe save 'twinMapCell' just to compare with 'trueTwinMapCell' ?
 
 
 

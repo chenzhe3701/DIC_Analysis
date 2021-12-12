@@ -105,11 +105,11 @@ end
 % load previous twin_gb interaction result, for reference.
 % load(fullfile(twinGbIntersectionPath, twinGbIntersectionFile));
 
-[finalVariantFile, finalVariantPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_final_variant_map.mat','select file for the most recent trueTwinMapCell');
+[finalVariantFile, finalVariantPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_3_twin_result_with_variant.mat','select file for the most recent trueTwinMapCell');
 load(fullfile(finalVariantPath,finalVariantFile),'trueTwinMapCell');
 
 
-[struFile, struPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211004_2115_twin_gb_intersection_manual_label.mat','select file for the most recent struCell');
+[struFile, struPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\WE43_T6_C1_5_twin_result_with_gb_intersection_manual.mat','select file for the most recent struCell');
 load(fullfile(struPath,struFile),'struCell');
 %%
 % Assign each variant to each boundary.
@@ -314,7 +314,7 @@ for iE = 2:5
 end % end of (for iE=2:5) 
 
 %% save updated struCell
-save(fullfile(saveDataPath,'struCell_with_tGbVol.mat'),'struCell');
+save(fullfile(saveDataPath,[sampleName,'_6_struCell_with_tGbVol.mat']),'struCell');
 
 
 

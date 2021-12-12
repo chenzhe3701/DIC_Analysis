@@ -42,7 +42,6 @@ iE_start = 2;   % elongation levels to analyze. 0-based.
 iE_stop = 5;
 
 % file name prefixes
-f1 = 'WE43_T6_C1_s';
 f2 = '_';
 
 debugTF = 0;
@@ -244,9 +243,7 @@ for iS = 1:length(stru)
 end % end of iS
 warning('on','all');
 
-timeStr = datestr(now,'yyyymmdd_HHMM');
-save(fullfile(saveDataPath,[timeStr,'_twinMaps.mat']),'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','p','-v7.3');
-
+save(fullfile(saveDataPath,[sampleName,'_1_twin_result_by_trace_strain.mat']),'twinMapCell','sfMapCell','cToGbDistMapCell','struCell','p','-v7.3');
 %% Need more code to analyze accuracy.  
 % Note 2021-09-26 when recovering from disk crash 2021-08: 
 % this seems like repeating the analysis of assessing identification parameters for MaterChar tiwn identification paper 2020.
