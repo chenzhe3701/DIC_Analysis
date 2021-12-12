@@ -131,9 +131,9 @@ load(fullfile(confirmedLabelPath,confirmedLabelFile),'struCell');
 % 
 % (5) Go back, and check each row's data points' two associated gbLabels.
 
-for iE = 5%2:5
+for iE = 2:5
     variantMap = zeros(size(ID));
-    for iS = 165%1:length(struCell{iE}) % 23
+    for iS = 1:length(struCell{iE}) % 23
         ID_current = struCell{iE}(iS).gID;
         disp(['check iE=',num2str(iE),', ID=',num2str(ID_current)]);
         ind = find(gID==ID_current);

@@ -13,7 +13,7 @@ clear;
 addChenFunction;
 
 % looks like have to include this part to read the sample name.
-[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_reducedAOI_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
+[fileSetting,pathSetting] = uigetfile('D:\p\m\DIC_Analysis\setting_for_real_samples\WE43_T6_C1_setting.mat','select setting file which contains sampleName, stopNames, FOVs, translations, etc');
 load_settings([pathSetting,fileSetting],'sampleName','cpEBSD','cpSEM','sampleMaterial','stressTensor','strainPauses');
 
 % load previous data and settings
@@ -26,15 +26,15 @@ if ~strcmpi(saveDataPath,saveDataPathInput)
 end
 
 % Load struCell from the confirmed twin label results
-[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_by_Matlab_reducedAOI\WE43_T6_C1_relabeled_result.mat','select the confirmed labeled results, for struCell');
+[confirmedLabelFile, confirmedLabelPath] = uigetfile('D:\WE43_T6_C1\Analysis_2021_09\20211001_0212_relabeled_result.mat','select the confirmed labeled results, for struCell');
 
 % This provides a valid struCell
 % [twinGbIntersectionFile, twinGbIntersectionPath] = uigetfile('D:\p\m\DIC_Analysis\*.mat','select the results for twin-grain boundary intersection');
 
 try
-    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
-catch
     load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis_GbAdjusted'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
+catch
+    load([saveDataPath,sampleName,'_EbsdToSemForTraceAnalysis'],'X','Y','boundaryTF','boundaryTFB','uniqueBoundary','uniqueBoundaryList','ID','gID','gExx','gPhi1','gPhi','gPhi2','gNeighbors','gNNeighbors');
 end
 % modify / or keep an eye on these settings for the specific sample to analyze  ------------------------------------------------------------------------------------
 STOP = {'0','1','2','3','4','5','6','7'};
@@ -86,6 +86,7 @@ for iE = 2:5
     variantMap = zeros(size(ID));
     for iS = 1:length(struCell{iE}) % 23
         ID_current = struCell{iE}(iS).gID
+        disp(['check iE=',num2str(iE),', ID=',num2str(ID_current)]);
         ind = find(gID==ID_current);
         
         euler = [gPhi1(ind),gPhi(ind),gPhi2(ind)];
@@ -278,6 +279,7 @@ timeStr = datestr(now,'yyyymmdd_HHMM');
 save([saveDataPath,sampleName,'_final_variant_map_',timeStr,'.mat'],'variantMapCell','-v7.3');  
  
 %% try to clean variantMap again 
+disp('clean variant map ...');
 useParallel = 1;
 if useParallel    
     for iE = iE_start:iE_stop
@@ -316,7 +318,7 @@ if useParallel
                     variantMapLocal = one_pass_fill(variantMapLocal);
                     
                     partMap{ii}(indR_min:indR_max, indC_min:indC_max) = partMap{ii}(indR_min:indR_max, indC_min:indC_max) + variantMapLocal;
-                    disp(['ID = ',num2str(ID_current)]);
+                    disp(['cleaning, ID = ',num2str(ID_current)]);
                 end
             end
         end
@@ -329,7 +331,7 @@ if useParallel
         variantMapCleanedCell{iE} = variantMapCleaned;
     end    
 end
-save([saveDataPath,sampleName,'_final_variant_map_',timeStr,'.mat'],'variantMapCleanedCell','-append','-v7.3')  
+save(fullfile(saveDataPath,[sampleName,'_final_variant_map_',timeStr,'.mat']),'variantMapCleanedCell','-append','-v7.3');  
 
 %% Count tVol again, need to load a valid struCell here. ================================================  
 SF_th = 0.15;  % this can be used to make sure low_SFs are not labeled as twins, although cTrueTwin
@@ -343,8 +345,8 @@ for iE = iE_start:iE_stop
     idicCount = histcounts(ID(ind)*1000+trueTwinMapCell{iE}(ind),[idic(:);idic(end)+1]);
     
     for iS = 1:length(struCell{iE})
-        ID_current = struCell{iE}(iS).gID
-        
+        ID_current = struCell{iE}(iS).gID;
+        disp(['count tVol, iE=',num2str(iE),', ID=',num2str(ID_current)]);
         struCell{iE}(iS).tVol = zeros(1, length(struCell{iE}(iS).tLabel));  % reset and count again.
         
         for iTwin = 1:length(struCell{iE}(iS).tSF)
@@ -353,8 +355,8 @@ for iE = iE_start:iE_stop
                 % disp(struCell{iE}(iS).tSF(iTwin));
                 % disp(struCell{iE}(iS).cTrueTwin(iTwin));
 
-                % make it non-active?
-                %  struCell{iE}(iS).cTrueTwin(:,iTwin) = 0;
+                % make it non-active
+                struCell{iE}(iS).cTrueTwin(:,iTwin) = 0;
             end
             ind = find(idic==ID_current*1000+struCell{iE}(iS).tLabel(iTwin));
             if ~isempty(ind) % && sum(struCell{iE}(iS).cTrueTwin(:,iTwin))>0
